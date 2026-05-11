@@ -34,6 +34,20 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+// bootRun 태스크 설정
+tasks.named('bootRun') {
+    // .env 파일을 읽어서 환경변수로 주입
+    def envFile = rootProject.file('../.env')
+    if (envFile.exists()) {
+        envFile.readLines().each { line ->
+            if (line && !line.startsWith('#')) {
+                def (key, value) = line.split('=', 2)
+                environment(key.trim(), value?.trim() ?: '')
+            }
+        }
+    }
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 }

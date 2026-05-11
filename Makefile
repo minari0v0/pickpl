@@ -20,7 +20,7 @@ front:
 
 # 백엔드 (Spring Boot) 로컬 서버 실행
 back:
-	cd backend && ./gradlew bootRun
+	cd backend && .\gradlew.bat bootRun
 
 # 도커 DB 로그 실시간 확인
 logs:
