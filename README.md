@@ -40,7 +40,7 @@ graph TD
     Backend <-->|Read/Write| DB[(MySQL 8.0.35)]
     Backend <-->|Cache / PubSub| Cache[(Redis)]
     Batch -->|Crawling| ExternalAPI[Kakao/Naver API]
-    Batch -->|Multimodal Analysis| AI[Gemini 1.5 Flash API]
+    Batch -->|Multimodal Analysis| AI[Gemini 3.1 Flash API]
 ```
 
 ## 🔄 유저 플로우 (User Flow)
