@@ -1,0 +1,28 @@
+# =========================
+# 모노레포 최상단 공통 설정
+# =========================
+
+# 1. OS & 환경 파일
+.DS_Store
+Thumbs.db
+.env
+.env.local
+.env.*.local
+
+# 2. IDE (IntelliJ, VSCode 등)
+.idea/
+.vscode/
+*.iml
+*.iws
+*.swp
+
+# 3. Docker DB 볼륨 (매우 중요 ⭐️)
+# 도커 MySQL이 로컬에 저장하는 실제 데이터 파일들입니다. 
+# 이거 안 막으면 깃허브에 수백 MB짜리 DB 바이너리 파일이 다 올라갑니다.
+backend/db/data/
+db/data/
+
+# 4. 혹시 모를 최상단 빌드/의존성 폴더
+node_modules/
+build/
+dist/

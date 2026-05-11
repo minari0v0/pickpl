@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  pickpl-db:
+    image: mysql:8.0.35
+    container_name: pickpl-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - ./backend/db/data:/var/lib/mysql
+    networks:
+      - pickpl-network
+
+  pickpl-redis:
+    image: redis:latest
+    container_name: pickpl-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pickpl-network
+
+networks:
+  pickpl-network:
+    driver: bridge
