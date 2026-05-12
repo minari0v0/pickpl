@@ -1,6 +1,6 @@
-package com.example.demo.domain.place;
+package com.pickpl.app.domain.place;
 
-import com.example.demo.domain.common.BaseTimeEntity;
+import com.pickpl.app.domain.common.BaseTimeEntity;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
@@ -74,7 +74,7 @@ public class Place extends BaseTimeEntity {
 
     /** 이 공간을 스크랩한 내역 */
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<com.example.demo.domain.scrap.Scrap> scraps = new ArrayList<>();
+    private List<com.pickpl.app.domain.scrap.Scrap> scraps = new ArrayList<>();
 
     // --- 생성자 ---
 
@@ -97,7 +97,7 @@ public class Place extends BaseTimeEntity {
      * Tag를 이 공간에 추가합니다.
      * PlaceTagMap 중간 테이블 인스턴스를 생성하고 양쪽 컬렉션에 등록합니다.
      */
-    public void addTag(com.example.demo.domain.tag.Tag tag) {
+    public void addTag(com.pickpl.app.domain.tag.Tag tag) {
         PlaceTagMap mapping = new PlaceTagMap(this, tag);
         this.placeTagMaps.add(mapping);
         tag.getPlaceTagMaps().add(mapping);
@@ -106,7 +106,7 @@ public class Place extends BaseTimeEntity {
     /**
      * 특정 Tag를 이 공간에서 제거합니다.
      */
-    public void removeTag(com.example.demo.domain.tag.Tag tag) {
+    public void removeTag(com.pickpl.app.domain.tag.Tag tag) {
         placeTagMaps.removeIf(m -> m.getTag().equals(tag));
         tag.getPlaceTagMaps().removeIf(m -> m.getPlace().equals(this));
     }
@@ -124,7 +124,7 @@ public class Place extends BaseTimeEntity {
     public String getCategory() { return category; }
     public String getAiMoodSummary() { return aiMoodSummary; }
     public List<PlaceTagMap> getPlaceTagMaps() { return placeTagMaps; }
-    public List<com.example.demo.domain.scrap.Scrap> getScraps() { return scraps; }
+    public List<com.pickpl.app.domain.scrap.Scrap> getScraps() { return scraps; }
 
     // --- Setters (AI 파이프라인이 사용) ---
 

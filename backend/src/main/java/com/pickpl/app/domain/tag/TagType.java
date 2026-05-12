@@ -1,4 +1,4 @@
-package com.example.demo.domain.tag;
+package com.pickpl.app.domain.tag;
 
 /**
  * AI 태그 유형 분류.

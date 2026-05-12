@@ -1,7 +1,7 @@
-package com.example.demo.domain.tag;
+package com.pickpl.app.domain.tag;
 
-import com.example.demo.domain.common.BaseTimeEntity;
-import com.example.demo.domain.place.PlaceTagMap;
+import com.pickpl.app.domain.common.BaseTimeEntity;
+import com.pickpl.app.domain.place.PlaceTagMap;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;

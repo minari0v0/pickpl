@@ -1,6 +1,6 @@
-package com.example.demo.domain.place;
+package com.pickpl.app.domain.place;
 
-import com.example.demo.domain.tag.Tag;
+import com.pickpl.app.domain.tag.Tag;
 import jakarta.persistence.*;
 
 /**

@@ -1,7 +1,7 @@
-package com.example.demo.domain.scrap;
+package com.pickpl.app.domain.scrap;
 
-import com.example.demo.domain.common.BaseTimeEntity;
-import com.example.demo.domain.place.Place;
+import com.pickpl.app.domain.common.BaseTimeEntity;
+import com.pickpl.app.domain.place.Place;
 import jakarta.persistence.*;
 
 /**

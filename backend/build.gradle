@@ -18,17 +18,30 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-batch'
+	// ── Web / MVC ─────────────────────────────────────────────────────────
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	// ── JPA / DB ──────────────────────────────────────────────────────────
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// ── Redis ─────────────────────────────────────────────────────────────
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// ── Batch (향후 AI 파이프라인용, 지금은 미사용) ──────────────────────
+	implementation 'org.springframework.boot:spring-boot-starter-batch'
+
+	// ── Swagger (springdoc-openapi) ───────────────────────────────────────
+	// swagger-ui.html 에서 API를 눌러 바로 테스트할 수 있습니다.
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
+
+	// ── Lombok ───────────────────────────────────────────────────────────
+	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// ── Test ─────────────────────────────────────────────────────────────
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-batch-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
