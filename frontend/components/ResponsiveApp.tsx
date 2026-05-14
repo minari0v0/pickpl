@@ -9,23 +9,69 @@ const TAG_CATEGORIES = [
     { id: 'facility', title: "목적과 시설", tags: ["콘센트석", "편안한쇼파", "주차편리", "반려동물동반", "루프탑", "단체석"] }
 ];
 
-export default function ResponsiveApp({ initialPlaces }) {
-    const [activeView, setActiveView] = useState('home');
-    const [selectedTags, setSelectedTags] = useState([]);
+function DraggableScroll({ children, className }: { children: React.ReactNode, className?: string }) {
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+    const isDown = React.useRef(false);
+    const startX = React.useRef(0);
+    const scrollLeft = React.useRef(0);
+    const isDragging = React.useRef(false);
 
-    const [selectedPlace, setSelectedPlace] = useState(null);
-    const [showHiddenGemPopup, setShowHiddenGemPopup] = useState(false);
-    const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-    const [vibeStats, setVibeStats] = useState({ quiet: 50, chatty: 50 });
-    const [userVotedVibe, setUserVotedVibe] = useState(null);
+    const onMouseDown = (e: React.MouseEvent) => {
+        isDown.current = true;
+        isDragging.current = false;
+        startX.current = e.pageX - (scrollRef.current?.offsetLeft || 0);
+        scrollLeft.current = scrollRef.current?.scrollLeft || 0;
+    };
+    const onMouseLeave = () => { isDown.current = false; };
+    const onMouseUp = () => { isDown.current = false; };
+    const onMouseMove = (e: React.MouseEvent) => {
+        if (!isDown.current || !scrollRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - scrollRef.current.offsetLeft;
+        const walk = (x - startX.current) * 2;
+        if (Math.abs(walk) > 5) isDragging.current = true;
+        scrollRef.current.scrollLeft = scrollLeft.current - walk;
+    };
+
+    const onClickCapture = (e: React.MouseEvent) => {
+        if (isDragging.current) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+    };
+
+    return (
+        <div 
+            ref={scrollRef}
+            onMouseDown={onMouseDown}
+            onMouseLeave={onMouseLeave}
+            onMouseUp={onMouseUp}
+            onMouseMove={onMouseMove}
+            onClickCapture={onClickCapture}
+            className={`cursor-grab active:cursor-grabbing ${className || ''}`}
+        >
+            {children}
+        </div>
+    );
+}
+
+export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] }) {
+    const [activeView, setActiveView] = useState<string>('home');
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+    const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
+    const [showHiddenGemPopup, setShowHiddenGemPopup] = useState<boolean>(false);
+    const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
+    const [vibeStats, setVibeStats] = useState<{ quiet: number; chatty: number }>({ quiet: 50, chatty: 50 });
+    const [userVotedVibe, setUserVotedVibe] = useState<string | null>(null);
     const [isSaved, setIsSaved] = useState(false);
     const [showSaveAnim, setShowSaveAnim] = useState(false);
 
     // API 데이터와 디자인에 필요한 더미 속성 매핑
     const placesData = useMemo(() => {
-        return initialPlaces.map(place => {
+        return initialPlaces.map((place: any) => {
             // 태그 배열 문자열 추출
-            const tags = place.tags ? place.tags.map(t => t.name) : [];
+            const tags = place.tags ? place.tags.map((t: any) => t.name) : [];
             // 임의의 더미 데이터 생성 (API에 없는 필드 보완)
             const isHiddenGem = tags.includes("나만아는");
             const initialVibe = tags.includes("조용한") ? { quiet: 80, chatty: 20 } : { quiet: 30, chatty: 70 };
@@ -34,7 +80,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                 id: place.id,
                 name: place.name,
                 location: place.address,
-                distance: "내 위치에서 " + (Math.floor(Math.random() * 10) + 1) + "km",
+                distance: "내 위치에서 " + ((place.id % 10) + 1) + "km",
                 imageUrl: place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800",
                 aspectRatio: "aspect-[4/5]",
                 tags: tags,
@@ -47,16 +93,16 @@ export default function ResponsiveApp({ initialPlaces }) {
         });
     }, [initialPlaces]);
 
-    const toggleTag = (tag) => {
-        setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+    const toggleTag = (tag: string) => {
+        setSelectedTags(prev => prev.includes(tag) ? prev.filter((t: string) => t !== tag) : [...prev, tag]);
     };
 
     const filteredPlaces = useMemo(() => {
         if (selectedTags.length === 0) return placesData;
-        return placesData.filter(place => selectedTags.every(st => place.tags.includes(st)));
+        return placesData.filter((place: any) => selectedTags.every((st: string) => place.tags.includes(st)));
     }, [selectedTags, placesData]);
 
-    const handlePlaceClick = (place) => {
+    const handlePlaceClick = (place: any) => {
         if (place.isHiddenGem) {
             setShowHiddenGemPopup(true);
             setTimeout(() => {
@@ -77,7 +123,7 @@ export default function ResponsiveApp({ initialPlaces }) {
         setIsSaved(false);
     };
 
-    const handleVibeVote = (type) => {
+    const handleVibeVote = (type: string) => {
         if (userVotedVibe === type) return;
         setUserVotedVibe(type);
         setVibeStats(prev => {
@@ -176,7 +222,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                         <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center shadow-[0_4px_10px_rgba(249,115,22,0.3)]">
                             <span className="text-white font-bold text-xl">P</span>
                         </div>
-                        <span className="font-bold text-[24px] tracking-tight text-[#191F28]">PickPl</span>
+                        <span className="font-logo font-extrabold text-[28px] tracking-tight text-[#191F28]">Pick<span className="text-orange-500 text-[1em] font-logo">Pl</span></span>
                     </div>
 
                     <nav className="flex flex-col gap-2 mb-12">
@@ -197,7 +243,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                     <div className="flex-1 overflow-y-auto no-scrollbar">
                         <h3 className="text-[12px] font-bold text-[#8B95A1] tracking-wider mb-5 px-3">빠른 태그 검색</h3>
                         <div className="flex flex-col gap-2">
-                            {['#햇살맛집', '#코지한', '#디저트맛집', '#대형카페'].map((tag) => (
+                            {['#햇살맛집', '#코지한', '#디저트맛집', '#대형카페'].map((tag: any) => (
                                 <button key={tag} className="text-left px-4 py-2.5 rounded-[12px] text-[#4E5968] font-medium text-[15px] hover:bg-[#F9FAFB] hover:text-[#191F28] transition-colors">
                                     {tag}
                                 </button>
@@ -211,7 +257,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                                 <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Felix" alt="profile" />
                             </div>
                             <div className="text-left flex-1">
-                                <p className="font-bold text-[14px] text-[#191F28]">김토스</p>
+                                <p className="font-bold text-[14px] text-[#191F28]">미나리</p>
                                 <p className="font-medium text-[12px] text-[#8B95A1]">마이페이지</p>
                             </div>
                         </button>
@@ -231,7 +277,8 @@ export default function ResponsiveApp({ initialPlaces }) {
 
                                 {/* 헤더 (모바일/PC) */}
                                 <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-xl px-6 py-4 lg:px-10 lg:py-8 flex items-center justify-between border-b lg:border-b border-[#F2F4F6]/50">
-                                    <h1 className="font-bold text-[24px] lg:text-[28px] tracking-tight text-[#191F28]">발견</h1>
+                                    <h1 className="lg:hidden font-logo font-extrabold text-[28px] tracking-tight text-[#191F28]">Pick<span className="text-orange-500 text-[1em] font-logo">Pl</span></h1>
+                                    <h1 className="hidden lg:block font-bold text-[28px] tracking-tight text-[#191F28]">발견</h1>
                                     {/* 모바일에서만 보이는 탐색 버튼 */}
                                     <button onClick={() => setActiveView('explore')} className="lg:hidden w-10 h-10 bg-[#F2F4F6] rounded-full flex items-center justify-center hover:bg-[#E5E8EB] transition-colors">
                                         <svg className="w-5 h-5 text-[#4E5968]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -253,7 +300,7 @@ export default function ResponsiveApp({ initialPlaces }) {
 
                                 {/* 필터 바 */}
                                 <div className="sticky top-[72px] lg:top-[93px] z-10 bg-white/95 backdrop-blur-md pt-2 lg:pt-4 pb-3 lg:pb-5 mb-2 border-b border-[#F2F4F6]/50">
-                                    <div className="px-6 lg:px-10 flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap items-center fade-edges">
+                                    <DraggableScroll className="px-6 lg:px-10 flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap items-center">
                                         <button className="px-5 py-2.5 rounded-[14px] bg-[#191F28] text-white text-[14px] font-bold shadow-sm shrink-0">추천 무드</button>
                                         <button onClick={() => setActiveView('explore')} className="px-5 py-2.5 rounded-[14px] bg-orange-50 text-orange-600 border border-orange-100 text-[14px] font-bold shrink-0 flex items-center gap-1.5 hover:bg-orange-100 transition-colors">
                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
@@ -262,7 +309,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                                         <button className="px-5 py-2.5 rounded-[14px] bg-[#F2F4F6] text-[#4E5968] text-[14px] font-semibold shrink-0 hover:bg-[#E5E8EB]">#햇살맛집</button>
                                         <button className="px-5 py-2.5 rounded-[14px] bg-[#F2F4F6] text-[#4E5968] text-[14px] font-semibold shrink-0 hover:bg-[#E5E8EB]">#뷰맛집</button>
                                         <div className="w-2 lg:w-4 shrink-0"></div>
-                                    </div>
+                                    </DraggableScroll>
                                 </div>
 
                                 {/* 피드 목록 */}
@@ -272,14 +319,14 @@ export default function ResponsiveApp({ initialPlaces }) {
                                             <div className="text-center py-20 text-[#8B95A1]">
                                                 데이터가 없습니다. 백엔드를 확인해주세요.
                                             </div>
-                                        ) : placesData.map((place) => (
+                                        ) : placesData.map((place: any) => (
                                             <article key={place.id} onClick={() => handlePlaceClick(place)} className="group cursor-pointer active:scale-[0.98] lg:active:scale-100 transition-transform relative">
                                                 <div className={`relative w-full ${place.aspectRatio} rounded-[28px] lg:rounded-[32px] overflow-hidden bg-[#F2F4F6] shadow-sm`}>
                                                     <img src={place.imageUrl} alt={place.name} className="w-full h-full object-cover lg:group-hover:scale-[1.02] transition-transform duration-700" loading="lazy" />
                                                     <div className="absolute bottom-0 left-0 w-full pt-20 lg:pt-28 pb-6 px-6 lg:pb-8 lg:px-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                                                         <h2 className="font-bold text-[24px] lg:text-[28px] text-white mb-2.5 lg:mb-3 tracking-tight drop-shadow-md">{place.name}</h2>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {place.tags.map(tag => (
+                                                            {place.tags.map((tag: string) => (
                                                                 <span key={tag} className="px-2.5 py-1.5 lg:px-3 lg:py-1.5 rounded-[8px] lg:rounded-[10px] bg-white/20 backdrop-blur-md text-[12px] lg:text-[13px] font-bold text-white border border-white/10 shadow-sm">
                                                                     #{tag}
                                                                 </span>
@@ -290,7 +337,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                                                 {place.isHiddenGem && (
                                                     <div className="absolute top-4 right-4 lg:top-6 lg:right-6 bg-blue-500/90 backdrop-blur-md text-white text-[12px] lg:text-[13px] font-bold px-3 py-1.5 lg:px-4 lg:py-2 rounded-[10px] lg:rounded-[12px] shadow-lg flex items-center gap-1.5 border border-white/20">
                                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                                                        Secret{typeof window !== 'undefined' && window.innerWidth >= 1024 ? ' Spot' : ''}
+                                                        Secret<span className="hidden lg:inline"> Spot</span>
                                                     </div>
                                                 )}
                                             </article>
@@ -314,7 +361,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                                 <div className="bg-white rounded-[28px] p-7 shadow-sm border border-[#F2F4F6]">
                                     <h3 className="font-bold text-[18px] text-[#191F28] mb-6 tracking-tight">실시간 인기 무드 🔥</h3>
                                     <div className="flex flex-col gap-6">
-                                        {[{ rank: 1, name: '코지한', up: true }, { rank: 2, name: '햇살맛집', up: true }, { rank: 3, name: '노트북하기좋은', up: false }, { rank: 4, name: '힙한/인더스트리얼', up: true }, { rank: 5, name: '조용한', up: false }].map((tag) => (
+                                        {[{ rank: 1, name: '코지한', up: true }, { rank: 2, name: '햇살맛집', up: true }, { rank: 3, name: '노트북하기좋은', up: false }, { rank: 4, name: '힙한/인더스트리얼', up: true }, { rank: 5, name: '조용한', up: false }].map((tag: any) => (
                                             <div key={tag.rank} className="flex items-center justify-between cursor-pointer group">
                                                 <div className="flex items-center gap-4">
                                                     <span className={`font-bold text-[16px] w-4 text-center ${tag.rank <= 3 ? 'text-orange-500' : 'text-[#8B95A1]'}`}>{tag.rank}</span>
@@ -343,10 +390,10 @@ export default function ResponsiveApp({ initialPlaces }) {
                             
                             {/* 모바일 헤더 */}
                             <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-[#F2F4F6] px-2 py-4 flex items-center w-full">
-                                <button onClick={() => setActiveView('home')} className="w-12 h-12 flex items-center justify-center text-[#191F28] active:scale-90">
+                                <button onClick={() => setActiveView('home')} className="w-12 h-12 flex items-center justify-center text-[#191F28] active:scale-90 relative z-50">
                                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                                 </button>
-                                <h1 className="font-bold text-[18px] flex-1 text-center -ml-12 tracking-tight">공간 탐색</h1>
+                                <h1 className="font-bold text-[18px] flex-1 text-center -ml-12 tracking-tight pointer-events-none">Pick<span className="text-orange-500 text-[1em]">Pl</span></h1>
                             </header>
 
                             <div className="w-full lg:max-w-[880px] lg:px-8 lg:py-12 flex-1 flex flex-col">
@@ -356,20 +403,20 @@ export default function ResponsiveApp({ initialPlaces }) {
                                 </header>
 
                                 {/* 다중 태그 필터 영역 */}
-                                <div className="bg-white pt-6 pb-7 lg:p-8 rounded-b-[32px] lg:rounded-[32px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] lg:shadow-sm border-b lg:border border-[#F2F4F6] lg:mb-6 sticky lg:static top-[73px] z-30 lg:z-auto">
+                                <div className="bg-white pt-6 pb-7 lg:p-8 rounded-b-[32px] lg:rounded-[32px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] lg:shadow-sm border-b lg:border border-[#F2F4F6] lg:mb-6 relative">
                                     <h2 className="text-[20px] font-bold mb-5 lg:mb-8 tracking-tight text-[#191F28] px-6 lg:px-0">어떤 무드를 찾으시나요?</h2>
                                     <div className="flex flex-col gap-6 lg:gap-8">
-                                        {TAG_CATEGORIES.map(category => (
+                                        {TAG_CATEGORIES.map((category: any) => (
                                             <div key={category.id} className="pl-6 lg:pl-0">
                                                 <h3 className="text-[13px] lg:text-[14px] font-bold text-[#8B95A1] mb-3 lg:mb-4">{category.title}</h3>
-                                                <div className="flex flex-nowrap lg:flex-wrap gap-2 lg:gap-3 overflow-x-auto lg:overflow-visible no-scrollbar pr-6 lg:pr-0 pb-1 lg:pb-0 fade-edges lg:fade-none">
-                                                    {category.tags.map(tag => (
-                                                        <button key={tag} onClick={() => toggleTag(tag)} className={`px-4 py-2.5 lg:px-5 lg:py-2.5 rounded-[14px] text-[14px] lg:text-[15px] font-semibold transition-all active:scale-95 border whitespace-nowrap shrink-0 lg:shrink ${selectedTags.includes(tag) ? 'bg-[#191F28] text-white border-[#191F28] shadow-md' : 'bg-white text-[#4E5968] border-[#E5E8EB] hover:bg-[#F9FAFB] lg:hover:bg-[#F2F4F6]'}`}>
+                                                <DraggableScroll className="flex flex-nowrap gap-2 lg:gap-3 overflow-x-auto no-scrollbar pr-6 pb-1">
+                                                    {category.tags.map((tag: string) => (
+                                                        <button key={tag} onClick={() => toggleTag(tag)} className={`px-4 py-2.5 lg:px-5 lg:py-2.5 rounded-[14px] text-[14px] lg:text-[15px] font-semibold transition-all active:scale-95 border whitespace-nowrap shrink-0 ${selectedTags.includes(tag) ? 'bg-[#191F28] text-white border-[#191F28] shadow-md' : 'bg-white text-[#4E5968] border-[#E5E8EB] hover:bg-[#F9FAFB] lg:hover:bg-[#F2F4F6]'}`}>
                                                             {tag}
                                                         </button>
                                                     ))}
                                                     <div className="w-2 shrink-0 lg:hidden"></div>
-                                                </div>
+                                                </DraggableScroll>
                                             </div>
                                         ))}
                                     </div>
@@ -383,28 +430,28 @@ export default function ResponsiveApp({ initialPlaces }) {
                                 </div>
 
                                 {/* PC 컴팩트 티커 */}
-                                <div className="hidden lg:flex items-center gap-4 bg-white px-6 py-4 rounded-[20px] border border-[#F2F4F6] shadow-sm mb-10 overflow-x-auto no-scrollbar fade-edges mt-4">
+                                <DraggableScroll className="hidden lg:flex items-center gap-4 bg-white px-6 py-4 rounded-[20px] border border-[#F2F4F6] shadow-sm mb-10 overflow-x-auto no-scrollbar fade-edges mt-4">
                                     <div className="flex items-center gap-2 shrink-0">
                                         <span className="text-[18px]">🔥</span>
                                         <span className="font-bold text-[14px] text-[#191F28]">실시간 인기 무드</span>
                                         <div className="w-[1px] h-4 bg-[#E5E8EB] ml-2"></div>
                                     </div>
                                     <div className="flex items-center gap-8 shrink-0">
-                                        {[{ rank: 1, name: '코지한' }, { rank: 2, name: '햇살맛집' }].map((tag) => (
+                                        {[{ rank: 1, name: '코지한' }, { rank: 2, name: '햇살맛집' }].map((tag: any) => (
                                             <div key={tag.rank} className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => toggleTag(tag.name)}>
                                                 <span className={`font-bold text-[14px] ${tag.rank <= 2 ? 'text-orange-500' : 'text-[#8B95A1]'}`}>{tag.rank}</span>
                                                 <span className="font-medium text-[14px] text-[#4E5968]">#{tag.name}</span>
                                             </div>
                                         ))}
                                     </div>
-                                </div>
+                                </DraggableScroll>
 
                                 {/* 검색 결과 */}
                                 <div className="px-5 lg:px-0 pt-8 lg:pt-0 pb-[100px] lg:pb-24 flex-1">
                                     <h3 className="font-bold text-[18px] lg:text-[20px] mb-5 lg:mb-6 tracking-tight text-[#191F28] px-1 lg:px-0">검색 결과 <span className="text-orange-500">{filteredPlaces.length}</span>곳</h3>
                                     
                                     <div className="flex flex-col gap-6">
-                                        {filteredPlaces.map((place) => (
+                                        {filteredPlaces.map((place: any) => (
                                             <article key={place.id} onClick={() => handlePlaceClick(place)} className="flex flex-col lg:flex-row bg-white lg:rounded-[28px] lg:shadow-sm lg:border lg:border-[#F2F4F6] cursor-pointer hover:shadow-md transition-all group overflow-hidden lg:h-[260px] relative">
                                                 
                                                 {/* 모바일: 썸네일 위, PC: 썸네일 좌측 */}
@@ -415,8 +462,8 @@ export default function ResponsiveApp({ initialPlaces }) {
                                                     <div className="lg:hidden absolute bottom-0 left-0 w-full pt-16 pb-6 px-6 bg-gradient-to-t from-black/80 to-transparent">
                                                         <h2 className="font-bold text-[22px] text-white mb-2 tracking-tight">{place.name}</h2>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {place.tags.filter(t => selectedTags.length === 0 || selectedTags.includes(t)).slice(0, 3).map(tag => (
-                                                                <span key={tag} className="px-2.5 py-1.5 rounded-[8px] bg-orange-500/90 backdrop-blur-md text-[12px] font-bold text-white shadow-sm border border-white/10">
+                                                            {place.tags.filter((t: string) => selectedTags.length === 0 || selectedTags.includes(t)).slice(0, 3).map((tag: string) => (
+                                                                <span key={tag} className="px-2.5 py-1.5 rounded-[8px] bg-white/20 backdrop-blur-md text-[12px] font-bold text-white shadow-sm border border-white/10">
                                                                     #{tag}
                                                                 </span>
                                                             ))}
@@ -447,7 +494,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-wrap gap-2 mt-5">
-                                                        {place.tags.map(tag => (
+                                                        {place.tags.map((tag: string) => (
                                                             <span key={tag} className={`px-3 py-1.5 rounded-[8px] text-[13px] font-semibold ${selectedTags.includes(tag) ? 'bg-orange-50 text-orange-600 border border-orange-100' : 'bg-[#F2F4F6] text-[#4E5968]'}`}>
                                                                 #{tag}
                                                             </span>
@@ -503,7 +550,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                                             {selectedPlace.location}
                                         </p>
                                         <div className="flex flex-wrap gap-2">
-                                            {selectedPlace.tags.map(tag => <span key={tag} className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] text-[#4E5968] text-[13px] font-semibold">#{tag}</span>)}
+                                            {selectedPlace.tags.map((tag: string) => <span key={tag} className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] text-[#4E5968] text-[13px] font-semibold">#{tag}</span>)}
                                         </div>
                                         <p className="text-[15px] text-[#4E5968] leading-relaxed mt-6">{selectedPlace.description}</p>
                                     </div>
@@ -578,7 +625,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                                                 {selectedPlace.location} · {selectedPlace.distance}
                                             </p>
                                             <div className="flex flex-wrap gap-2 mb-8">
-                                                {selectedPlace.tags.map(tag => <span key={tag} className="px-4 py-2 rounded-[12px] bg-[#F2F4F6] text-[#4E5968] text-[14px] font-semibold">#{tag}</span>)}
+                                                {selectedPlace.tags.map((tag: string) => <span key={tag} className="px-4 py-2 rounded-[12px] bg-[#F2F4F6] text-[#4E5968] text-[14px] font-semibold">#{tag}</span>)}
                                             </div>
                                             <p className="text-[16px] text-[#4E5968] leading-[1.7] mb-10 bg-[#F9FAFB] p-6 rounded-[24px] border border-[#F2F4F6]">
                                                 {selectedPlace.description}
@@ -586,7 +633,7 @@ export default function ResponsiveApp({ initialPlaces }) {
                                             <div className="w-full h-[1px] bg-[#F2F4F6] mb-10"></div>
                                             <h3 className="font-bold text-[20px] mb-5 tracking-tight text-[#191F28]">이 공간의 특징</h3>
                                             <div className="flex flex-col gap-5 mb-10">
-                                                {selectedPlace.features.map((feat, idx) => (
+                                                {selectedPlace.features.map((feat: any, idx: number) => (
                                                     <div key={idx} className="flex items-center gap-4">
                                                         <div className="w-14 h-14 rounded-[16px] bg-[#F9FAFB] border border-[#F2F4F6] flex items-center justify-center text-gray-500 shadow-sm">
                                                             {feat.icon}
