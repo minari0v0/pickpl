@@ -27,7 +27,7 @@ interface Place {
 // ── SSR Data Fetch ─────────────────────────────────────────────────
 async function getPlaces(): Promise<Place[]> {
   try {
-    const res = await fetch("http://localhost:8080/api/places", {
+    const res = await fetch("http://localhost:8080/api/v1/places", {
       cache: "no-store",
     });
     if (!res.ok) {

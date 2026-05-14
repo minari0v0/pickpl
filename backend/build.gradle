@@ -47,8 +47,13 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
 // bootRun 태스크 설정
 tasks.named('bootRun') {
+    systemProperty 'file.encoding', 'UTF-8'
     // .env 파일을 읽어서 환경변수로 주입
     def envFile = rootProject.file('../.env')
     if (envFile.exists()) {

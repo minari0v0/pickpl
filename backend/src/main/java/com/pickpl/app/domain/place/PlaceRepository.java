@@ -20,14 +20,16 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
     List<Place> findByCategory(String category);
 
     /**
-     * 태그 이름으로 연결된 공간 목록 조회 (N+1 방지용 fetch join).
-     * PlaceTagMap → Tag 경로를 통해 태그명이 일치하는 Place를 반환합니다.
+     * 지정된 모든 태그를 포함하는(교집합) 공간 목록 조회.
+     * IN 조건으로 조회 후, 매칭된 태그 개수가 요청한 태그 개수와 일치하는 Place만 필터링합니다.
      */
     @Query("""
-            SELECT DISTINCT p FROM Place p
+            SELECT p FROM Place p
             JOIN p.placeTagMaps ptm
             JOIN ptm.tag t
-            WHERE t.name = :tagName
+            WHERE t.name IN :tagNames
+            GROUP BY p.id
+            HAVING COUNT(DISTINCT t.name) = :tagCount
             """)
-    List<Place> findByTagName(String tagName);
+    List<Place> findPlacesMatchingAllTags(@org.springframework.data.repository.query.Param("tagNames") List<String> tagNames, @org.springframework.data.repository.query.Param("tagCount") long tagCount);
 }

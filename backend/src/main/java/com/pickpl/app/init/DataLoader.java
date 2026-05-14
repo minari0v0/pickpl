@@ -81,8 +81,10 @@ public class DataLoader implements CommandLineRunner {
                 "바"
         );
         bar1.setAiMoodSummary("빈티지 레코드판과 은은한 조명이 가득한 소울 바. 금요일 밤 분위기 만점.");
+        Tag moodSecret = saveTag("나만아는", TagType.MOOD);
         bar1.addTag(moodVintage);
         bar1.addTag(moodCozy);
+        bar1.addTag(moodSecret);
         placeRepository.save(bar1);
 
         // 장소 3 : 연남동 플랜테리어 브런치

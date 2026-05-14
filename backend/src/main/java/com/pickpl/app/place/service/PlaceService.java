@@ -30,4 +30,28 @@ public class PlaceService {
                 .map(PlaceSummaryResponse::from)
                 .toList();
     }
+
+    /**
+     * 특정 태그 리스트를 모두 포함하는 공간 목록을 반환합니다.
+     */
+    /**
+     * 특정 태그 리스트를 모두 포함하는 공간 목록을 반환합니다.
+     */
+    public List<PlaceSummaryResponse> findPlacesByTags(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return findAllPlaces();
+        }
+        return placeRepository.findPlacesMatchingAllTags(tags, tags.size()).stream()
+                .map(PlaceSummaryResponse::from)
+                .toList();
+    }
+
+    /**
+     * ID로 단건 공간 상세 조회.
+     */
+    public com.pickpl.app.place.dto.PlaceDetailResponse findPlaceById(Long id) {
+        return placeRepository.findById(id)
+                .map(com.pickpl.app.place.dto.PlaceDetailResponse::from)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공간입니다: " + id));
+    }
 }

@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 // --- 1. 태그 카테고리 ---
 const TAG_CATEGORIES = [
     { id: 'popular', title: "요즘 뜨는 취향", tags: ["대형카페", "노트북하기좋은", "햇살맛집", "디저트맛집", "뷰맛집", "데이트코스"] },
@@ -58,8 +62,20 @@ function DraggableScroll({ children, className }: { children: React.ReactNode, c
 export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] }) {
     const [activeView, setActiveView] = useState<string>('home');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    
+    const queryString = selectedTags.length > 0 
+        ? `?tags=${selectedTags.map(encodeURIComponent).join(',')}` 
+        : '';
+        
+    const { data: fetchedPlaces } = useSWR(`http://localhost:8080/api/v1/places${queryString}`, fetcher, {
+        fallbackData: selectedTags.length === 0 ? initialPlaces : undefined,
+        keepPreviousData: true
+    });
+    
+    const currentPlaces = fetchedPlaces || initialPlaces;
 
     const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
+    const [hiddenGemPlace, setHiddenGemPlace] = useState<any | null>(null);
     const [showHiddenGemPopup, setShowHiddenGemPopup] = useState<boolean>(false);
     const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
     const [vibeStats, setVibeStats] = useState<{ quiet: number; chatty: number }>({ quiet: 50, chatty: 50 });
@@ -69,11 +85,11 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
     // API 데이터와 디자인에 필요한 더미 속성 매핑
     const placesData = useMemo(() => {
-        return initialPlaces.map((place: any) => {
+        return currentPlaces.map((place: any) => {
             // 태그 배열 문자열 추출
             const tags = place.tags ? place.tags.map((t: any) => t.name) : [];
-            // 임의의 더미 데이터 생성 (API에 없는 필드 보완)
-            const isHiddenGem = tags.includes("나만아는");
+            // 시크릿 장소 기능 임시 비활성화
+            const isHiddenGem = false; // tags.includes("나만아는");
             const initialVibe = tags.includes("조용한") ? { quiet: 80, chatty: 20 } : { quiet: 30, chatty: 70 };
             
             return {
@@ -91,25 +107,18 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 bestReview: "정말 분위기가 좋았어요. 강력 추천합니다!"
             };
         });
-    }, [initialPlaces]);
+    }, [currentPlaces]);
 
     const toggleTag = (tag: string) => {
         setSelectedTags(prev => prev.includes(tag) ? prev.filter((t: string) => t !== tag) : [...prev, tag]);
     };
 
-    const filteredPlaces = useMemo(() => {
-        if (selectedTags.length === 0) return placesData;
-        return placesData.filter((place: any) => selectedTags.every((st: string) => place.tags.includes(st)));
-    }, [selectedTags, placesData]);
+    const filteredPlaces = placesData; // 이제 필터링은 백엔드에서 수행하므로そのまま 반환
 
     const handlePlaceClick = (place: any) => {
         if (place.isHiddenGem) {
+            setHiddenGemPlace(place);
             setShowHiddenGemPopup(true);
-            setTimeout(() => {
-                setShowHiddenGemPopup(false);
-                setSelectedPlace(place);
-                setVibeStats(place.initialVibe);
-            }, 2500);
         } else {
             setSelectedPlace(place);
             setVibeStats(place.initialVibe);
@@ -188,29 +197,44 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             <div className="w-full max-w-[480px] lg:max-w-[1440px] bg-white h-full relative shadow-2xl flex flex-col lg:flex-row border-x border-gray-200 overflow-hidden">
 
                 {/* ========================================================
-                    [기능 1] 시크릿 스팟 전체 오버레이
+                    [기능 1] 시크릿 스팟 전체 오버레이 (Toss Style)
                 ======================================================== */}
                 {showHiddenGemPopup && (
-                    <div className="absolute inset-0 z-[100] bg-black/85 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in text-white">
-                        <div className="relative w-64 h-64 flex items-center justify-center mb-6">
-                            <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-[40px] animate-[glow-pulse_2s_ease-in-out_infinite]"></div>
-                            <svg viewBox="0 0 100 100" className="w-32 h-32 lg:w-40 lg:h-40 z-10 drop-shadow-[0_0_30px_rgba(96,165,250,0.6)] animate-[gem-float_3s_ease-in-out_infinite]">
-                                <polygon points="50,10 90,40 70,90 30,90 10,40" fill="url(#gemGrad)" stroke="#E0F2FE" strokeWidth="1.5" strokeLinejoin="round" />
-                                <polygon points="50,10 50,45 10,40" fill="url(#gemLeft)" opacity="0.9" />
-                                <polygon points="50,10 90,40 50,45" fill="url(#gemRight)" opacity="0.9" />
-                                <polygon points="10,40 50,45 30,90" fill="url(#gemBottomLeft)" opacity="0.95" />
-                                <polygon points="90,40 70,90 50,45" fill="url(#gemBottomRight)" opacity="0.95" />
-                                <defs>
-                                    <linearGradient id="gemGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#93C5FD" /><stop offset="100%" stopColor="#3B82F6" /></linearGradient>
-                                    <linearGradient id="gemLeft" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#EFF6FF" /><stop offset="100%" stopColor="#60A5FA" /></linearGradient>
-                                    <linearGradient id="gemRight" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#DBEAFE" /><stop offset="100%" stopColor="#2563EB" /></linearGradient>
-                                    <linearGradient id="gemBottomLeft" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#3B82F6" /><stop offset="100%" stopColor="#1E40AF" /></linearGradient>
-                                    <linearGradient id="gemBottomRight" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#2563EB" /><stop offset="100%" stopColor="#1E3A8A" /></linearGradient>
-                                </defs>
-                            </svg>
+                    <div className="absolute inset-0 z-[100] bg-[#0F1423] flex flex-col items-center justify-center animate-fade-in text-white px-6">
+                        <div className="flex-1 flex flex-col items-center justify-center w-full mt-10">
+                            <div className="relative w-64 h-64 flex items-center justify-center mb-8">
+                                <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-[50px] animate-[glow-pulse_2s_ease-in-out_infinite]"></div>
+                                {/* 3D 보석 / 선물 큐브 */}
+                                <svg viewBox="0 0 100 100" className="w-40 h-40 z-10 drop-shadow-[0_0_40px_rgba(96,165,250,0.8)] animate-[gem-float_3s_ease-in-out_infinite]">
+                                    <polygon points="50,10 90,40 70,90 30,90 10,40" fill="url(#gemGrad)" stroke="#E0F2FE" strokeWidth="1.5" strokeLinejoin="round" />
+                                    <polygon points="50,10 50,45 10,40" fill="url(#gemLeft)" opacity="0.9" />
+                                    <polygon points="50,10 90,40 50,45" fill="url(#gemRight)" opacity="0.9" />
+                                    <polygon points="10,40 50,45 30,90" fill="url(#gemBottomLeft)" opacity="0.95" />
+                                    <polygon points="90,40 70,90 50,45" fill="url(#gemBottomRight)" opacity="0.95" />
+                                    <defs>
+                                        <linearGradient id="gemGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#93C5FD" /><stop offset="100%" stopColor="#3B82F6" /></linearGradient>
+                                        <linearGradient id="gemLeft" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#EFF6FF" /><stop offset="100%" stopColor="#60A5FA" /></linearGradient>
+                                        <linearGradient id="gemRight" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#DBEAFE" /><stop offset="100%" stopColor="#2563EB" /></linearGradient>
+                                        <linearGradient id="gemBottomLeft" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#3B82F6" /><stop offset="100%" stopColor="#1E40AF" /></linearGradient>
+                                        <linearGradient id="gemBottomRight" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#2563EB" /><stop offset="100%" stopColor="#1E3A8A" /></linearGradient>
+                                    </defs>
+                                </svg>
+                            </div>
+                            <h2 className="text-[28px] lg:text-[34px] font-bold text-center leading-[1.3] tracking-tight mb-4">
+                                <span className="text-[#60A5FA]">미나리</span>님이 발견한<br />
+                                비밀 공간이 도착했어요
+                            </h2>
                         </div>
-                        <h2 className="text-[26px] lg:text-[32px] font-bold text-center leading-snug mb-3">나만 아는 특별한 공간을<br /><span className="text-blue-400">발견했어요!</span></h2>
-                        <p className="text-[14px] lg:text-[16px] text-gray-300 font-medium">취향 분석을 통해 숨겨진 보석을 찾았습니다.</p>
+                        <div className="w-full lg:max-w-[400px] pb-10 pt-4">
+                            <button 
+                                onClick={() => {
+                                    setShowHiddenGemPopup(false);
+                                    setSelectedPlace(hiddenGemPlace);
+                                }}
+                                className="w-full bg-[#3182F6] hover:bg-[#2272EB] text-white font-bold text-[18px] py-5 rounded-[16px] transition-all active:scale-[0.98] shadow-[0_8px_20px_rgba(49,130,246,0.3)]">
+                                비밀 공간 열어보기
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -270,7 +294,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 <main className="flex-1 flex flex-col lg:flex-row h-full overflow-hidden bg-white relative">
 
                     {/* --- A. HOME VIEW --- */}
-                    {activeView === 'home' && !selectedPlace && (
+                    {activeView === 'home' && (
                         <>
                             {/* 스크롤 가능한 메인 피드 */}
                             <div className="flex-1 w-full lg:max-w-[720px] h-full overflow-y-auto no-scrollbar flex flex-col bg-white animate-fade-in relative lg:border-r lg:border-[#F2F4F6]">
@@ -385,7 +409,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                     )}
 
                     {/* --- B. EXPLORE VIEW --- */}
-                    {activeView === 'explore' && !selectedPlace && (
+                    {activeView === 'explore' && (
                         <div className="flex-1 h-full w-full overflow-y-auto no-scrollbar bg-[#F9FAFB] animate-slide-in-right lg:animate-fade-in flex flex-col absolute lg:relative inset-0 z-30 lg:z-auto items-center">
                             
                             {/* 모바일 헤더 */}
