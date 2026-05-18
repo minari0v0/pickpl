@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
 import useSWR from 'swr';
+import { useRouter } from 'next/navigation';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -60,8 +61,38 @@ function DraggableScroll({ children, className }: { children: React.ReactNode, c
 }
 
 export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] }) {
+    const router = useRouter();
     const [activeView, setActiveView] = useState<string>('home');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [nickname, setNickname] = useState("미나리");
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+    const showToast = (message: string) => {
+        setToastMessage(message);
+        setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsLoggedIn(!!localStorage.getItem("accessToken"));
+            const storedNickname = localStorage.getItem("nickname");
+            if (storedNickname) setNickname(storedNickname);
+
+            if (sessionStorage.getItem("showLoginToast")) {
+                showToast("로그인 되었습니다.");
+                sessionStorage.removeItem("showLoginToast");
+            }
+        }
+    }, []);
+
+    const handleLogout = () => {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("nickname");
+        setIsLoggedIn(false);
+        showToast("로그아웃 되었습니다.");
+    };
     
     const queryString = selectedTags.length > 0 
         ? `?tags=${selectedTags.map(encodeURIComponent).join(',')}` 
@@ -276,15 +307,24 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                     </div>
 
                     <div className="mt-auto pt-8 border-t border-[#F2F4F6] shrink-0">
-                        <button className="flex items-center gap-4 w-full p-4 rounded-[16px] hover:bg-[#F9FAFB] transition-colors group">
-                            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden shrink-0 border border-gray-100">
-                                <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Felix" alt="profile" />
+                        {isLoggedIn ? (
+                            <div className="flex flex-col gap-2">
+                                <button className="flex items-center gap-4 w-full p-4 rounded-[16px] hover:bg-[#F9FAFB] active:bg-[#F2F4F6] transition-colors group">
+                                    <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden shrink-0 border border-gray-100">
+                                        <img src="/profile_cat.png" alt="profile" />
+                                    </div>
+                                    <div className="text-left flex-1">
+                                        <p className="font-bold text-[14px] text-[#191F28]">{nickname}</p>
+                                        <p className="font-medium text-[12px] text-[#8B95A1]">마이페이지</p>
+                                    </div>
+                                </button>
+                                <button onClick={handleLogout} className="text-[#8B95A1] text-[13px] font-bold text-center mt-2 hover:text-[#4E5968] active:scale-95 transition-all">로그아웃</button>
                             </div>
-                            <div className="text-left flex-1">
-                                <p className="font-bold text-[14px] text-[#191F28]">미나리</p>
-                                <p className="font-medium text-[12px] text-[#8B95A1]">마이페이지</p>
-                            </div>
-                        </button>
+                        ) : (
+                            <button onClick={() => router.push('/login')} className="w-full bg-[#191F28] hover:bg-[#333D4B] active:bg-black active:scale-[0.98] text-white font-bold py-3.5 rounded-[16px] transition-all duration-200 shadow-sm">
+                                로그인 / 회원가입
+                            </button>
+                        )}
                     </div>
                 </aside>
 
@@ -734,15 +774,24 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                                 <span className="text-[10px] font-bold">컬렉션</span>
                             </button>
-                            <button className="flex flex-col items-center gap-1 text-[#8B95A1] active:scale-95">
+                            <button onClick={() => isLoggedIn ? alert('마이페이지 준비중') : router.push('/login')} className="flex flex-col items-center gap-1 text-[#8B95A1] active:scale-95">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                <span className="text-[10px] font-bold">마이</span>
+                                <span className="text-[10px] font-bold">{isLoggedIn ? '마이' : '로그인'}</span>
                             </button>
                         </nav>
                     )}
-
                 </main>
             </div>
+
+            {/* Toast Notification */}
+            {toastMessage && (
+                <div className="fixed top-16 left-1/2 z-50 bg-[#191F28] text-white px-6 py-3 rounded-full text-[14px] font-bold shadow-lg animate-[toastInOut_3s_ease-in-out_forwards] flex items-center gap-2.5">
+                    <svg className="w-5 h-5 text-[#22C55E]" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>{toastMessage}</span>
+                </div>
+            )}
         </div>
     );
 }
