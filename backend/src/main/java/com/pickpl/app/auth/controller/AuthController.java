@@ -34,4 +34,29 @@ public class AuthController {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
+
+    @Operation(summary = "토큰 재발급", description = "만료된 Access Token을 Refresh Token을 사용해 재발급 받습니다.")
+    @PostMapping("/reissue")
+    public ResponseEntity<AuthResponse> reissue(@RequestBody com.pickpl.app.auth.dto.ReissueRequest request) {
+        AuthResponse response = authService.reissue(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "닉네임 중복 확인", description = "닉네임의 중복 여부를 확인합니다. 사용 가능하면 true를 반환합니다.")
+    @org.springframework.web.bind.annotation.GetMapping("/check-nickname")
+    public ResponseEntity<Boolean> checkNickname(@org.springframework.web.bind.annotation.RequestParam String nickname) {
+        boolean isAvailable = authService.checkNickname(nickname);
+        return ResponseEntity.ok(isAvailable);
+    }
+
+    @Operation(summary = "소셜 로그인 최초 가입", description = "GUEST 유저가 닉네임을 설정하여 USER로 전환합니다.")
+    @PostMapping("/oauth-signup")
+    public ResponseEntity<AuthResponse> oauthSignup(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails,
+            @RequestBody com.pickpl.app.auth.dto.OAuthSignupRequest request) {
+        // JwtAuthenticationFilter를 통해 SecurityContext에 저장된 UserDetails의 username은 유저 ID입니다.
+        String userId = userDetails.getUsername();
+        AuthResponse response = authService.oauthSignup(userId, request);
+        return ResponseEntity.ok(response);
+    }
 }

@@ -23,13 +23,16 @@ public class JwtTokenProvider {
 
     private final Key key;
     private final long accessTokenValidityTime;
+    private final long refreshTokenValidityTime;
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secretKey,
-            @Value("${jwt.access-token-validity-in-seconds}") long accessTokenValidityTime) {
+            @Value("${jwt.access-token-validity-in-seconds}") long accessTokenValidityTime,
+            @Value("${jwt.refresh-token-validity-in-seconds}") long refreshTokenValidityTime) {
         byte[] keyBytes = secretKey.getBytes();
         this.key = Keys.hmacShaKeyFor(keyBytes);
         this.accessTokenValidityTime = accessTokenValidityTime * 1000;
+        this.refreshTokenValidityTime = refreshTokenValidityTime * 1000;
     }
 
     public String createToken(Authentication authentication) {
@@ -56,6 +59,17 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setSubject(userId)
                 .claim("auth", "ROLE_" + role)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .setExpiration(validity)
+                .compact();
+    }
+
+    // Refresh Token 생성 (권한 정보 없이 발급)
+    public String createRefreshToken() {
+        long now = (new Date()).getTime();
+        Date validity = new Date(now + this.refreshTokenValidityTime);
+
+        return Jwts.builder()
                 .signWith(key, SignatureAlgorithm.HS256)
                 .setExpiration(validity)
                 .compact();
