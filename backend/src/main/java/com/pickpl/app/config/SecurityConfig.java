@@ -2,6 +2,8 @@ package com.pickpl.app.config;
 
 import com.pickpl.app.security.jwt.JwtAuthenticationFilter;
 import com.pickpl.app.security.jwt.JwtTokenProvider;
+import com.pickpl.app.security.oauth2.CustomOAuth2UserService;
+import com.pickpl.app.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,14 +22,22 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 // REST API 이므로 기본 인증, CSRF, 세션 비활성화
-                .httpBasic(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer::disable)
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                        })
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                 
                 // 엔드포인트 권한 설정
                 .authorizeHttpRequests(auth -> auth
@@ -41,16 +51,16 @@ public class SecurityConfig {
                 // JWT 필터 추가
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
                 
-                // OAuth2 설정 (이후 CustomOAuth2UserService 연동 시 주석 해제/수정)
-                /*
+                // OAuth2 설정
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
                         .successHandler(oAuth2AuthenticationSuccessHandler)
-                )
-                */
-                ;
+                        .failureHandler((request, response, exception) -> {
+                            response.sendRedirect("http://localhost:3000/login?error=" + java.net.URLEncoder.encode(exception.getMessage(), "UTF-8"));
+                        })
+                );
 
         return http.build();
     }
