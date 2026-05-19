@@ -42,7 +42,7 @@ public class SecurityConfig {
                 // 엔드포인트 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         // 공개 허용 API
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/places/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**", "/api/v1/places/**", "/api/v1/internal/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()

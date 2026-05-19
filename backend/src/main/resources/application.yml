@@ -65,3 +65,8 @@ jwt:
   secret: ${JWT_SECRET:vibe_coding_hackathon_pickpl_secret_key_needs_to_be_long_enough}
   access-token-validity-in-seconds: 3600      # 1시간
   refresh-token-validity-in-seconds: 1209600  # 14일
+
+app:
+  admin:
+    secret-key: ${ADMIN_SECRET_KEY}
+

@@ -15,9 +15,11 @@ import java.util.List;
 public class PlaceService {
 
     private final PlaceRepository placeRepository;
+    private final com.pickpl.app.domain.tag.TagRepository tagRepository;
 
-    public PlaceService(PlaceRepository placeRepository) {
+    public PlaceService(PlaceRepository placeRepository, com.pickpl.app.domain.tag.TagRepository tagRepository) {
         this.placeRepository = placeRepository;
+        this.tagRepository = tagRepository;
     }
 
     /**
@@ -53,5 +55,44 @@ public class PlaceService {
         return placeRepository.findById(id)
                 .map(com.pickpl.app.place.dto.PlaceDetailResponse::from)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공간입니다: " + id));
+    }
+
+    /**
+     * Python 크롤러가 전송한 장소 데이터를 일괄 저장합니다.
+     */
+    @Transactional
+    public int saveBatch(com.pickpl.app.place.dto.PlaceBatchRequest request) {
+        int count = 0;
+        for (com.pickpl.app.place.dto.PlaceBatchRequest.PlaceData data : request.places()) {
+            // 이미 존재하는 장소(externalId 기준)는 건너뛰거나 업데이트 (여기선 건너뜀)
+            if (placeRepository.findByExternalId(data.externalId()).isPresent()) {
+                continue;
+            }
+
+            com.pickpl.app.domain.place.Place place = new com.pickpl.app.domain.place.Place(
+                    data.name(),
+                    data.thumbnailUrl() != null ? data.thumbnailUrl() : "",
+                    data.externalId(),
+                    data.address(),
+                    data.latitude(),
+                    data.longitude(),
+                    data.category()
+            );
+            place.setImageUrls(data.imageUrls());
+            place.setAiMoodSummary(data.aiMoodSummary());
+
+            // 태그 처리
+            if (data.tags() != null) {
+                for (String tagName : data.tags()) {
+                    com.pickpl.app.domain.tag.Tag tag = tagRepository.findByNameAndType(tagName, com.pickpl.app.domain.tag.TagType.MOOD)
+                            .orElseGet(() -> tagRepository.save(new com.pickpl.app.domain.tag.Tag(tagName, com.pickpl.app.domain.tag.TagType.MOOD)));
+                    place.addTag(tag);
+                }
+            }
+
+            placeRepository.save(place);
+            count++;
+        }
+        return count;
     }
 }
