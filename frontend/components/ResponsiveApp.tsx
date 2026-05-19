@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '../store/authStore';
+import axiosInstance from '../api/axios';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -64,8 +66,16 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const router = useRouter();
     const [activeView, setActiveView] = useState<string>('home');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const authStore = useAuthStore();
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [nickname, setNickname] = useState("미나리");
+
+    useEffect(() => {
+        // Hydration mismatch 방지를 위해 클라이언트 마운트 후 Zustand 상태 동기화
+        setIsLoggedIn(authStore.isLoggedIn || !!localStorage.getItem("accessToken"));
+        setNickname(authStore.nickname || localStorage.getItem("nickname") || "미나리");
+    }, [authStore.isLoggedIn, authStore.nickname]);
+
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     const showToast = (message: string) => {
@@ -75,10 +85,6 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            setIsLoggedIn(!!localStorage.getItem("accessToken"));
-            const storedNickname = localStorage.getItem("nickname");
-            if (storedNickname) setNickname(storedNickname);
-
             if (sessionStorage.getItem("showLoginToast")) {
                 showToast("로그인 되었습니다.");
                 sessionStorage.removeItem("showLoginToast");
@@ -86,12 +92,15 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         }
     }, []);
 
-    const handleLogout = () => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("nickname");
-        setIsLoggedIn(false);
-        showToast("로그아웃 되었습니다.");
+    const handleLogout = async () => {
+        try {
+            await axiosInstance.post('/auth/logout');
+        } catch (error) {
+            console.error('로그아웃 요청 실패:', error);
+        } finally {
+            authStore.logout();
+            showToast("로그아웃 되었습니다.");
+        }
     };
     
     const queryString = selectedTags.length > 0 

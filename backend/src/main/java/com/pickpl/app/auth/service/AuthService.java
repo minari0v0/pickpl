@@ -142,4 +142,8 @@ public class AuthService {
     public boolean checkNickname(String nickname) {
         return !userRepository.existsByNickname(nickname); // true면 사용 가능(중복 아님)
     }
+
+    public void logout(String userId) {
+        redisTemplate.delete("RT:" + userId);
+    }
 }

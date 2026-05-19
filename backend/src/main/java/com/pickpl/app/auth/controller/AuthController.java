@@ -59,4 +59,14 @@ public class AuthController {
         AuthResponse response = authService.oauthSignup(userId, request);
         return ResponseEntity.ok(response);
     }
+
+    @Operation(summary = "로그아웃", description = "Redis에 저장된 Refresh Token을 삭제합니다.")
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails != null) {
+            String userId = userDetails.getUsername();
+            authService.logout(userId);
+        }
+        return ResponseEntity.ok().build();
+    }
 }

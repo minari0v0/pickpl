@@ -2,6 +2,7 @@
 
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuthStore } from "../../store/authStore";
 
 function AuthSuccessHandler() {
     const searchParams = useSearchParams();
@@ -10,15 +11,26 @@ function AuthSuccessHandler() {
     useEffect(() => {
         const accessToken = searchParams.get("accessToken");
         const refreshToken = searchParams.get("refreshToken");
+        const nickname = searchParams.get("nickname");
 
-        if (accessToken && refreshToken) {
+        if (accessToken && refreshToken && nickname) {
             localStorage.setItem("accessToken", accessToken);
             localStorage.setItem("refreshToken", refreshToken);
-            // 메인 페이지로 이동
-            router.push("/");
+            localStorage.setItem("nickname", nickname);
+
+            useAuthStore.getState().login(nickname);
+
+            // GUEST 사용자인 경우 oauth-signup 페이지로 리다이렉트
+            const isGuest = isGuestToken(accessToken);
+            if (isGuest) {
+                router.replace("/oauth-signup");
+            } else {
+                sessionStorage.setItem("showLoginToast", "true");
+                router.replace("/");
+            }
         } else {
-            alert("로그인 처리에 실패했습니다.");
-            router.push("/login");
+            // 실패 시 로그인 페이지로
+            router.replace("/login?error=true");
         }
     }, [searchParams, router]);
 

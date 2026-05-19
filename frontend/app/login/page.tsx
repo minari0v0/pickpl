@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, Variants } from "framer-motion";
+import axiosInstance from "../../api/axios";
+import { useAuthStore } from "../../store/authStore";
 
 function AuthForm() {
     const [mode, setMode] = useState<'login' | 'signup'>('login');
     const router = useRouter();
     const searchParams = useSearchParams();
+    const loginStore = useAuthStore((state) => state.login);
 
     // Login States
     const [loginEmail, setLoginEmail] = useState("");
@@ -43,25 +46,24 @@ function AuthForm() {
         e.preventDefault();
         setLoginError("");
         try {
-            const res = await fetch("http://localhost:8080/api/v1/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+            const res = await axiosInstance.post("/auth/login", {
+                email: loginEmail,
+                password: loginPassword,
             });
-            if (res.ok) {
-                const data = await res.json();
-                localStorage.setItem("accessToken", data.accessToken);
-                localStorage.setItem("refreshToken", data.refreshToken);
-                localStorage.setItem("nickname", data.nickname || "PickPl 유저");
-                sessionStorage.setItem("showLoginToast", "true");
-                router.push("/");
-            } else if (res.status === 400) {
-                setLoginError("일치하는 정보가 없습니다.");
+            const data = res.data;
+            localStorage.setItem("accessToken", data.accessToken);
+            localStorage.setItem("refreshToken", data.refreshToken);
+            const userNickname = data.nickname || "PickPl 유저";
+            localStorage.setItem("nickname", userNickname);
+            loginStore(userNickname);
+            sessionStorage.setItem("showLoginToast", "true");
+            router.push("/");
+        } catch (error: any) {
+            if (error.response?.status === 400) {
+                setLoginError(error.response.data || "일치하는 정보가 없습니다.");
             } else {
-                setLoginError("서버 상태가 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
+                setLoginError("서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.");
             }
-        } catch (error) {
-            setLoginError("서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.");
         }
     };
 
@@ -72,16 +74,11 @@ function AuthForm() {
             return;
         }
         try {
-            const res = await fetch(`http://localhost:8080/api/v1/auth/check-nickname?nickname=${encodeURIComponent(nickname)}`);
-            if (res.ok) {
-                const available = await res.json();
-                setIsAvailable(available);
-                setIsNicknameChecked(true);
-                setNicknameMessage(available ? "사용 가능한 닉네임입니다." : "이미 사용 중인 닉네임입니다.");
-            } else {
-                setNicknameMessage("중복 확인에 실패했습니다.");
-                setIsAvailable(false);
-            }
+            const res = await axiosInstance.get(`/auth/check-nickname?nickname=${encodeURIComponent(nickname)}`);
+            const available = res.data;
+            setIsAvailable(available);
+            setIsNicknameChecked(true);
+            setNicknameMessage(available ? "사용 가능한 닉네임입니다." : "이미 사용 중인 닉네임입니다.");
         } catch (error) {
             setNicknameMessage("서버 연결에 실패했습니다.");
             setIsAvailable(false);
@@ -111,27 +108,26 @@ function AuthForm() {
         }
 
         try {
-            const res = await fetch("http://localhost:8080/api/v1/auth/signup", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ nickname, email: signupEmail, password: signupPassword }),
+            await axiosInstance.post("/auth/signup", {
+                nickname,
+                email: signupEmail,
+                password: signupPassword,
             });
-            if (res.ok) {
-                showToast("회원가입이 완료되었습니다! 로그인해주세요.");
-                setMode('login'); // Switch back to login mode smoothly
-                setSignupEmail("");
-                setSignupPassword("");
-                setPasswordConfirm("");
-                setNickname("");
-                setIsNicknameChecked(false);
-                setNicknameMessage("");
-                setSignupError("");
+            showToast("회원가입이 완료되었습니다! 로그인해주세요.");
+            setMode('login'); // Switch back to login mode smoothly
+            setSignupEmail("");
+            setSignupPassword("");
+            setPasswordConfirm("");
+            setNickname("");
+            setIsNicknameChecked(false);
+            setNicknameMessage("");
+            setSignupError("");
+        } catch (error: any) {
+            if (error.response?.status === 400) {
+                setSignupError(error.response.data || "이미 사용중인 이메일이거나 닉네임입니다.");
             } else {
-                const errorMsg = await res.text();
-                setSignupError(errorMsg || "이미 사용중인 이메일이거나 회원가입에 실패했습니다.");
+                setSignupError("서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.");
             }
-        } catch (error) {
-            setSignupError("서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.");
         }
     };
 
