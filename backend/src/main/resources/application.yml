@@ -10,10 +10,9 @@ spring:
     hibernate:
       ddl-auto: update
     properties:
-      hibernate:
-        format_sql: true
-        show_sql: true
-        dialect: org.hibernate.dialect.MySQLDialect
+      "[hibernate.format_sql]": true
+      "[hibernate.show_sql]": true
+      "[hibernate.dialect]": org.hibernate.dialect.MySQLDialect
 
   data:
     redis:
