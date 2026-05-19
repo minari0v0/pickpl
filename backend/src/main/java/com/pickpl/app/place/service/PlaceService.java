@@ -81,6 +81,8 @@ public class PlaceService {
             place.setImageUrls(data.imageUrls());
             place.setAiMoodSummary(data.aiMoodSummary());
 
+            placeRepository.save(place);
+
             // 태그 처리
             if (data.tags() != null) {
                 for (String tagName : data.tags()) {
@@ -90,7 +92,6 @@ public class PlaceService {
                 }
             }
 
-            placeRepository.save(place);
             count++;
         }
         return count;

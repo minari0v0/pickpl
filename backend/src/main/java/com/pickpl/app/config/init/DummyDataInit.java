@@ -17,7 +17,6 @@ import java.util.List;
  */
 @Slf4j
 @RequiredArgsConstructor
-@Component
 @Profile("!prod") // 운영 환경에서는 실행되지 않도록 보호
 public class DummyDataInit implements CommandLineRunner {
 
@@ -26,12 +25,7 @@ public class DummyDataInit implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (placeRepository.count() > 0) {
-            log.info("이미 장소 데이터가 존재하여 더미 데이터를 주입하지 않습니다.");
-            return;
-        }
-
-        log.info("데이터베이스가 비어있습니다. 고퀄리티 가짜 장소 데이터를 주입합니다...");
+        log.info("고퀄리티 가짜 장소 데이터를 주입/업데이트 합니다...");
 
         PlaceBatchRequest request = new PlaceBatchRequest(List.of(
                 new PlaceBatchRequest.PlaceData(
@@ -59,33 +53,33 @@ public class DummyDataInit implements CommandLineRunner {
                 new PlaceBatchRequest.PlaceData(
                         "무드라운지 성수",
                         "서울 성동구 성수이로 88",
-                        "dummy_kakao_3",
+                        "dummy_v2_3",
                         37.542, 127.056,
                         "바",
-                        "https://images.unsplash.com/photo-1514933651103-005eec06c04b",
-                        "[\"https://images.unsplash.com/photo-1574096079513-d8259312b78a\"]",
+                        "https://images.unsplash.com/photo-1514933651103-005eec06c04b?q=80&w=800&auto=format&fit=crop",
+                        "[\"https://images.unsplash.com/photo-1574096079513-d8259312b78a?q=80&w=800\"]",
                         "어두운 조명과 세련된 인테리어, 트렌디한 음악이 어우러져 데이트나 친구들과의 모임에 제격인 라운지 바입니다.",
                         List.of("어두운", "힙한", "데이트", "음악이좋은")
                 ),
                 new PlaceBatchRequest.PlaceData(
-                        "어반플랜트 합정",
+                        "어반플랜트 합정 (업데이트)",
                         "서울 마포구 독막로 12",
-                        "dummy_kakao_4",
+                        "dummy_v2_4",
                         37.548, 126.915,
                         "브런치",
-                        "https://images.unsplash.com/photo-1498837167169-46e4fe4ec122",
-                        "[\"https://images.unsplash.com/photo-1512621776951-a57141f2eefd\"]",
+                        "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=800&auto=format&fit=crop",
+                        "[\"https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=800\"]",
                         "도심 속 숲속에 온 듯한 플랜테리어 카페로, 햇살이 가득 들어오는 테라스에서 브런치를 즐기기 좋습니다.",
                         List.of("플랜테리어", "햇살맛집", "테라스", "브런치")
                 ),
                 new PlaceBatchRequest.PlaceData(
-                        "로우키 커피 연남",
+                        "로우키 커피 연남 (업데이트)",
                         "서울 마포구 연희로 1",
-                        "dummy_kakao_5",
+                        "dummy_v2_5",
                         37.561, 126.924,
                         "카페",
-                        "https://images.unsplash.com/photo-1495474472205-16284618a011",
-                        "[\"https://images.unsplash.com/photo-1507133750076-458cb99dc017\"]",
+                        "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop",
+                        "[\"https://images.unsplash.com/photo-1507133750076-458cb99dc017?q=80&w=800\"]",
                         "미니멀한 디자인과 탁 트인 통창이 매력적이며, 드립 커피가 특히 맛있는 공간입니다.",
                         List.of("미니멀", "커피맛집", "모던", "채광좋은")
                 )
