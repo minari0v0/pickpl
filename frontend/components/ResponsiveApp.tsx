@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
@@ -117,7 +117,6 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
     const [hiddenGemPlace, setHiddenGemPlace] = useState<any | null>(null);
     const [showHiddenGemPopup, setShowHiddenGemPopup] = useState<boolean>(false);
-    const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
     const [vibeStats, setVibeStats] = useState<{ quiet: number; chatty: number }>({ quiet: 50, chatty: 50 });
     const [userVotedVibe, setUserVotedVibe] = useState<string | null>(null);
     const [isSaved, setIsSaved] = useState(false);
@@ -167,7 +166,6 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
     const handleCloseDetail = () => {
         setSelectedPlace(null);
-        setIsPlayingAudio(false);
         setUserVotedVibe(null);
         setIsSaved(false);
     };
@@ -605,14 +603,6 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                         <button onClick={handleCloseDetail} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform">
                                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                                         </button>
-                                        <button onClick={() => setIsPlayingAudio(!isPlayingAudio)} className={`px-4 h-10 rounded-full backdrop-blur-md flex items-center gap-2 transition-all active:scale-95 border ${isPlayingAudio ? 'bg-orange-500/90 border-orange-400 text-white shadow-[0_0_15px_rgba(249,115,22,0.4)]' : 'bg-black/30 border-white/20 text-white'}`}>
-                                            {isPlayingAudio ? (
-                                                <div className="flex items-center gap-[3px] h-4 text-white"><div className="wave-bar"></div><div className="wave-bar"></div><div className="wave-bar"></div><div className="wave-bar"></div></div>
-                                            ) : (
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-                                            )}
-                                            <span className="text-[13px] font-bold">{isPlayingAudio ? '무드 재생 중' : '무드 듣기'}</span>
-                                        </button>
                                     </div>
                                 </div>
                                 <div className="flex-1 bg-white -mt-8 rounded-t-[32px] relative z-10 overflow-y-auto no-scrollbar pb-[100px] shadow-[0_-10px_30px_rgba(0,0,0,0.1)]">
@@ -680,14 +670,6 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                         <img src={selectedPlace.imageUrl} className="w-full h-full object-cover" alt="" />
                                         <button onClick={handleCloseDetail} className="absolute top-6 left-6 w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/40 transition-colors shadow-lg">
                                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                                        </button>
-                                        <button onClick={() => setIsPlayingAudio(!isPlayingAudio)} className={`absolute top-6 right-6 px-5 h-12 rounded-full backdrop-blur-md flex items-center gap-3 transition-all border ${isPlayingAudio ? 'bg-orange-500/90 border-orange-400 text-white shadow-[0_0_20px_rgba(249,115,22,0.4)]' : 'bg-black/30 border-white/20 text-white hover:bg-black/50'}`}>
-                                            {isPlayingAudio ? (
-                                                <div className="flex items-center gap-[4px] h-5 text-white"><div className="wave-bar"></div><div className="wave-bar"></div><div className="wave-bar"></div><div className="wave-bar"></div></div>
-                                            ) : (
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-                                            )}
-                                            <span className="text-[14px] font-bold">{isPlayingAudio ? '무드 재생 중' : '무드 듣기'}</span>
                                         </button>
                                     </div>
                                     <div className="w-[45%] h-full flex flex-col bg-white">
