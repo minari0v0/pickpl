@@ -29,6 +29,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 // REST API 이므로 기본 인증, CSRF, 세션 비활성화
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer::disable)
@@ -42,7 +43,7 @@ public class SecurityConfig {
                 // 엔드포인트 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         // 공개 허용 API
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/places/**", "/api/v1/internal/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**", "/api/v1/places/**", "/api/v1/internal/**", "/error").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()

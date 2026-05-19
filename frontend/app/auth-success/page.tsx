@@ -20,14 +20,8 @@ function AuthSuccessHandler() {
 
             useAuthStore.getState().login(nickname);
 
-            // GUEST 사용자인 경우 oauth-signup 페이지로 리다이렉트
-            const isGuest = isGuestToken(accessToken);
-            if (isGuest) {
-                router.replace("/oauth-signup");
-            } else {
-                sessionStorage.setItem("showLoginToast", "true");
-                router.replace("/");
-            }
+            sessionStorage.setItem("showLoginToast", "true");
+            router.replace("/");
         } else {
             // 실패 시 로그인 페이지로
             router.replace("/login?error=true");

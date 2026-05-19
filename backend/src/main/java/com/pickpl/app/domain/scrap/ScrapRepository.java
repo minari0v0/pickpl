@@ -20,4 +20,8 @@ public interface ScrapRepository extends JpaRepository<Scrap, Long> {
 
     /** 특정 유저가 특정 공간을 스크랩했는지 여부 */
     boolean existsByUserIdAndPlaceId(Long userId, Long placeId);
+
+    /** 특정 유저가 스크랩한 모든 공간의 ID 목록 조회 */
+    @org.springframework.data.jpa.repository.Query("SELECT s.place.id FROM Scrap s WHERE s.userId = :userId")
+    List<Long> findScrappedPlaceIdsByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

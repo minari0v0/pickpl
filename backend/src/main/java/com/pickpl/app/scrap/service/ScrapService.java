@@ -20,20 +20,23 @@ public class ScrapService {
     }
 
     /**
-     * 장소 스크랩 토글. 이미 존재하면 삭제, 없으면 생성.
-     * @return true if created, false if deleted
+     * 장소 스크랩 추가
      */
-    public boolean toggleScrap(Long userId, Long placeId) {
-        return scrapRepository.findByUserIdAndPlaceId(userId, placeId)
-                .map(scrap -> {
-                    scrapRepository.delete(scrap);
-                    return false;
-                })
-                .orElseGet(() -> {
-                    Place place = placeRepository.findById(placeId)
-                            .orElseThrow(() -> new IllegalArgumentException("Place not found"));
-                    scrapRepository.save(Scrap.of(userId, place));
-                    return true;
-                });
+    public void addScrap(Long userId, Long placeId, String folderName) {
+        if (scrapRepository.findByUserIdAndPlaceId(userId, placeId).isPresent()) {
+            throw new IllegalStateException("이미 스크랩한 공간입니다.");
+        }
+        Place place = placeRepository.findById(placeId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공간입니다."));
+        scrapRepository.save(Scrap.of(userId, place, folderName));
+    }
+
+    /**
+     * 장소 스크랩 취소
+     */
+    public void removeScrap(Long userId, Long placeId) {
+        Scrap scrap = scrapRepository.findByUserIdAndPlaceId(userId, placeId)
+                .orElseThrow(() -> new IllegalStateException("스크랩되어 있지 않은 공간입니다."));
+        scrapRepository.delete(scrap);
     }
 }

@@ -43,6 +43,12 @@ public class Scrap extends BaseTimeEntity {
     @JoinColumn(name = "place_id", nullable = false)
     private Place place;
 
+    /**
+     * 스크랩 폴더명. 기본값은 "기본 저장소"
+     */
+    @Column(name = "folder_name", nullable = false)
+    private String folderName = "기본 저장소";
+
     // --- 생성자 ---
 
     protected Scrap() {}
@@ -50,6 +56,13 @@ public class Scrap extends BaseTimeEntity {
     public Scrap(Long userId, Place place) {
         this.userId = userId;
         this.place = place;
+        this.folderName = "기본 저장소";
+    }
+
+    public Scrap(Long userId, Place place, String folderName) {
+        this.userId = userId;
+        this.place = place;
+        this.folderName = folderName != null && !folderName.isBlank() ? folderName : "기본 저장소";
     }
 
     // --- 연관관계 편의 메서드 ---
@@ -60,6 +73,12 @@ public class Scrap extends BaseTimeEntity {
      */
     public static Scrap of(Long userId, Place place) {
         Scrap scrap = new Scrap(userId, place);
+        place.getScraps().add(scrap);
+        return scrap;
+    }
+
+    public static Scrap of(Long userId, Place place, String folderName) {
+        Scrap scrap = new Scrap(userId, place, folderName);
         place.getScraps().add(scrap);
         return scrap;
     }
