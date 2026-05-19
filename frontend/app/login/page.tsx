@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 
 function AuthForm() {
     const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -135,7 +135,7 @@ function AuthForm() {
         }
     };
 
-    const slideVariants = {
+    const slideVariants: Variants = {
         hidden: (isLogin: boolean) => ({ opacity: 0, x: isLogin ? -15 : 15 }),
         visible: { opacity: 1, x: 0, transition: { duration: 0.25, ease: "easeOut" } },
         exit: (isLogin: boolean) => ({ opacity: 0, x: isLogin ? 15 : -15, transition: { duration: 0.15, ease: "easeIn" } }),
