@@ -2,12 +2,18 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/authStore';
 import axiosInstance from '../api/axios';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = async (url: string) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return res.json();
+};
 
 // --- 1. 태그 카테고리 ---
 const TAG_CATEGORIES = [
@@ -76,11 +82,11 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         setNickname(authStore.nickname || localStorage.getItem("nickname") || "미나리");
     }, [authStore.isLoggedIn, authStore.nickname]);
 
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 
-    const showToast = (message: string) => {
-        setToastMessage(message);
-        setTimeout(() => setToastMessage(null), 3000);
+    const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000); // 3초 후 사라짐
     };
 
     useEffect(() => {
@@ -129,7 +135,8 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             const tags = place.tags ? place.tags.map((t: any) => t.name) : [];
             // 시크릿 장소 기능 임시 비활성화
             const isHiddenGem = false; // tags.includes("나만아는");
-            const initialVibe = tags.includes("조용한") ? { quiet: 80, chatty: 20 } : { quiet: 30, chatty: 70 };
+            // 백엔드에서 받은 vibeStats (없으면 0, 0)
+            const initialVibe = place.vibeStats || { quiet: 0, chatty: 0 };
             
             return {
                 id: place.id,
@@ -143,7 +150,9 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 initialVibe: initialVibe,
                 description: place.aiMoodSummary || place.category || "공간에 대한 설명이 없습니다.",
                 features: [{ icon: "✨", title: "특징", desc: place.category || "매력적인 공간" }],
-                bestReview: "정말 분위기가 좋았어요. 강력 추천합니다!"
+                bestReview: "정말 분위기가 좋았어요. 강력 추천합니다!",
+                isScrapped: place.isScrapped,
+                userVotedVibe: place.userVotedVibe ? place.userVotedVibe.toLowerCase() : null
             };
         });
     }, [currentPlaces]);
@@ -161,29 +170,108 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         } else {
             setSelectedPlace(place);
             setVibeStats(place.initialVibe);
+            setIsSaved(!!place.isScrapped); // 백엔드에서 받은 스크랩 상태로 초기화
+            setUserVotedVibe(place.userVotedVibe || null); // 유저의 기존 투표 상태 초기화
         }
     };
 
     const handleCloseDetail = () => {
         setSelectedPlace(null);
         setUserVotedVibe(null);
-        setIsSaved(false);
+        // setIsSaved(false); // 닫을 때 초기화하지 않음 (다시 열 때 동기화됨)
     };
 
-    const handleVibeVote = (type: string) => {
+    const handleVibeVote = async (type: string) => {
+        if (!isLoggedIn) {
+            showToast("로그인이 필요한 기능입니다.", "warning");
+            return;
+        }
+        if (!selectedPlace) return;
+        
+        // 이미 같은 것에 투표했다면 무시 (UI에서 시각적으로 표시)
         if (userVotedVibe === type) return;
-        setUserVotedVibe(type);
-        setVibeStats(prev => {
-            if (type === 'quiet') return { quiet: prev.quiet + 15, chatty: Math.max(0, prev.chatty - 5) };
-            return { quiet: Math.max(0, prev.quiet - 5), chatty: prev.chatty + 15 };
-        });
+        
+        try {
+            const apiType = type === 'quiet' ? 'QUIET' : 'CHATTY';
+            await axiosInstance.post(`/places/${selectedPlace.id}/vibe?type=${apiType}`);
+            
+            const previousVote = userVotedVibe;
+            setUserVotedVibe(type);
+            
+            // 로컬 상태 즉시 업데이트 (사용자 경험 향상)
+            setVibeStats(prev => {
+                if (previousVote) {
+                    return {
+                        quiet: type === 'quiet' ? prev.quiet + 1 : prev.quiet - 1,
+                        chatty: type === 'chatty' ? prev.chatty + 1 : prev.chatty - 1
+                    };
+                }
+                if (type === 'quiet') return { ...prev, quiet: prev.quiet + 1 };
+                return { ...prev, chatty: prev.chatty + 1 };
+            });
+            
+            // 서버 데이터 동기화
+            mutate((key: any) => typeof key === 'string' && key.includes('/places'));
+        } catch (error: any) {
+            console.error("투표 처리 실패:", error);
+            if (error.response?.status === 400) {
+                showToast("투표 처리 중 문제가 발생했습니다.", "warning");
+            } else if (error.response?.status === 401) {
+                showToast("로그인이 필요한 기능입니다.", "warning");
+            } else {
+                showToast("투표 처리 중 오류가 발생했습니다.", "error");
+            }
+        }
     };
+
+    const [showFolderModal, setShowFolderModal] = useState(false);
+    const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+    const [newFolderName, setNewFolderName] = useState("");
 
     const handleSaveClick = () => {
-        setIsSaved(!isSaved);
-        if (!isSaved) {
-            setShowSaveAnim(true);
-            setTimeout(() => setShowSaveAnim(false), 1000);
+        if (!selectedPlace) return;
+        if (!isLoggedIn) {
+            showToast("로그인이 필요한 기능입니다.", "warning");
+            return;
+        }
+
+        if (isSaved) {
+            // 이미 스크랩된 상태면 바로 취소
+            executeScrap(null, true);
+        } else {
+            // 스크랩 안된 상태면 폴더 선택 모달 띄우기
+            setIsCreatingFolder(false);
+            setNewFolderName("");
+            setShowFolderModal(true);
+        }
+    };
+
+    const executeScrap = async (folderName: string | null = "기본 저장소", isDelete: boolean = false) => {
+        try {
+            if (isDelete) {
+                await axiosInstance.delete(`/scraps/${selectedPlace.id}`);
+                setIsSaved(false);
+            } else {
+                const encodedFolder = encodeURIComponent(folderName || "기본 저장소");
+                await axiosInstance.post(`/scraps/${selectedPlace.id}?folderName=${encodedFolder}`);
+                setIsSaved(true);
+                setShowSaveAnim(true);
+                setShowFolderModal(false);
+                setTimeout(() => setShowSaveAnim(false), 1000);
+            }
+            mutate((key: any) => typeof key === 'string' && key.includes('/places'));
+        } catch (error: any) {
+            console.error("스크랩 처리 실패:", error);
+            if (error.response?.status === 401) {
+                showToast("로그인이 필요한 기능입니다.", "warning");
+            } else if (error.response?.status === 400) {
+                showToast("이미 처리된 요청입니다.", "warning");
+                setIsSaved(true);
+                mutate((key: any) => typeof key === 'string' && key.includes('/places'));
+                setShowFolderModal(false);
+            } else {
+                showToast("스크랩 처리 중 오류가 발생했습니다.", "error");
+            }
         }
     };
 
@@ -228,6 +316,13 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         .fade-edges {
           -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
           mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+        }
+
+        @keyframes toastInOut {
+          0% { transform: translate(-50%, -100%); opacity: 0; }
+          10% { transform: translate(-50%, 0); opacity: 1; }
+          90% { transform: translate(-50%, 0); opacity: 1; }
+          100% { transform: translate(-50%, -100%); opacity: 0; }
         }
       `}} />
 
@@ -774,13 +869,93 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 </main>
             </div>
 
+            {/* Scrap Folder Bottom Sheet Modal */}
+            {showFolderModal && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowFolderModal(false)}>
+                    <div className="bg-white w-full max-w-[480px] rounded-t-[28px] p-6 pb-safe animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-[20px] text-[#191F28]">저장 위치 선택</h3>
+                            <button onClick={() => setShowFolderModal(false)} className="p-2 text-[#8B95A1] hover:text-[#191F28] transition-colors rounded-full hover:bg-[#F2F4F6]">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        
+                        <div className="flex flex-col gap-3">
+                            {!isCreatingFolder ? (
+                                <>
+                                    <button onClick={() => executeScrap("기본 저장소", false)} className="flex items-center justify-between w-full p-4 rounded-[20px] bg-[#F9FAFB] hover:bg-[#F2F4F6] transition-colors group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-[14px] bg-[#E5E8EB] flex items-center justify-center text-[#8B95A1] group-hover:text-[#4E5968] transition-colors">
+                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                                            </div>
+                                            <div className="flex flex-col items-start">
+                                                <span className="font-bold text-[16px] text-[#191F28]">기본 저장소</span>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    
+                                    <button onClick={() => setIsCreatingFolder(true)} className="flex items-center justify-between w-full p-4 rounded-[20px] bg-white border border-[#F2F4F6] hover:border-blue-200 hover:bg-blue-50 transition-colors group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-[14px] bg-blue-100 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                            </div>
+                                            <span className="font-bold text-[16px] text-blue-500 group-hover:text-blue-600">새 폴더 만들기</span>
+                                        </div>
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="flex flex-col gap-4 animate-fade-in">
+                                    <input 
+                                        type="text" 
+                                        autoFocus
+                                        placeholder="새 폴더 이름 입력" 
+                                        value={newFolderName} 
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && newFolderName.trim()) {
+                                                executeScrap(newFolderName.trim(), false);
+                                            }
+                                        }}
+                                        className="w-full bg-[#F9FAFB] border border-[#E5E8EB] rounded-[16px] px-5 py-4 text-[16px] font-medium focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setIsCreatingFolder(false)} className="flex-1 py-4 rounded-[16px] bg-[#F2F4F6] text-[#4E5968] font-bold text-[15px] hover:bg-[#E5E8EB] transition-colors">
+                                            취소
+                                        </button>
+                                        <button 
+                                            onClick={() => newFolderName.trim() && executeScrap(newFolderName.trim(), false)} 
+                                            disabled={!newFolderName.trim()}
+                                            className={`flex-1 py-4 rounded-[16px] font-bold text-[15px] transition-colors ${newFolderName.trim() ? 'bg-[#191F28] text-white hover:bg-black' : 'bg-[#E5E8EB] text-[#B0B8C1] cursor-not-allowed'}`}
+                                        >
+                                            만들기
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Toast Notification */}
-            {toastMessage && (
+            {toast && (
                 <div className="fixed top-16 left-1/2 z-50 bg-[#191F28] text-white px-6 py-3 rounded-full text-[14px] font-bold shadow-lg animate-[toastInOut_3s_ease-in-out_forwards] flex items-center gap-2.5">
-                    <svg className="w-5 h-5 text-[#22C55E]" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>{toastMessage}</span>
+                    {toast.type === 'success' && (
+                        <svg className="w-5 h-5 text-[#22C55E]" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                    )}
+                    {toast.type === 'warning' && (
+                        <svg className="w-5 h-5 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                    )}
+                    {toast.type === 'error' && (
+                        <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                    )}
+                    <span>{toast.message}</span>
                 </div>
             )}
         </div>

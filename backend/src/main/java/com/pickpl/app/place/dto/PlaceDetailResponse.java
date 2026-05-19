@@ -15,9 +15,12 @@ public record PlaceDetailResponse(
         String category,
         String aiMoodSummary,
         boolean isHiddenGem,
-        List<PlaceSummaryResponse.TagInfo> tags
+        boolean isScrapped,
+        List<PlaceSummaryResponse.TagInfo> tags,
+        PlaceSummaryResponse.VibeStats vibeStats,
+        String userVotedVibe
 ) {
-    public static PlaceDetailResponse from(Place place) {
+    public static PlaceDetailResponse from(Place place, boolean isScrapped, String userVotedVibe) {
         List<PlaceSummaryResponse.TagInfo> tagInfos = place.getPlaceTagMaps().stream()
                 .map(PlaceTagMap::getTag)
                 .map(t -> new PlaceSummaryResponse.TagInfo(t.getId(), t.getName(), t.getType().name()))
@@ -28,9 +31,6 @@ public record PlaceDetailResponse(
                 ? Arrays.asList(place.getImageUrls().split(",")) 
                 : List.of(place.getThumbnailUrl());
 
-        // Dummy logic for hidden gem for MVP
-        boolean isHiddenGem = place.getId() % 3 == 0;
-
         return new PlaceDetailResponse(
                 place.getId(),
                 place.getName(),
@@ -39,8 +39,11 @@ public record PlaceDetailResponse(
                 place.getAddress(),
                 place.getCategory(),
                 place.getAiMoodSummary(),
-                isHiddenGem,
-                tagInfos
+                false, // isHiddenGem
+                isScrapped,
+                tagInfos,
+                new PlaceSummaryResponse.VibeStats(place.getQuietVoteCount(), place.getChattyVoteCount()),
+                userVotedVibe
         );
     }
 }

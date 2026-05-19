@@ -20,14 +20,19 @@ public record PlaceSummaryResponse(
         String address,
         String category,
         String aiMoodSummary,
-        List<TagInfo> tags
+        boolean isScrapped,
+        List<TagInfo> tags,
+        VibeStats vibeStats,
+        String userVotedVibe
 ) {
+
+    public record VibeStats(int quiet, int chatty) {}
 
     /** 태그 정보 내부 레코드 */
     public record TagInfo(Long id, String name, String type) {}
 
     /** Place 엔티티 → DTO 변환 정적 팩토리 메서드 */
-    public static PlaceSummaryResponse from(Place place) {
+    public static PlaceSummaryResponse from(Place place, boolean isScrapped, String userVotedVibe) {
         List<TagInfo> tagInfos = place.getPlaceTagMaps().stream()
                 .map(PlaceTagMap::getTag)
                 .map(t -> new TagInfo(t.getId(), t.getName(), t.getType().name()))
@@ -40,7 +45,10 @@ public record PlaceSummaryResponse(
                 place.getAddress(),
                 place.getCategory(),
                 place.getAiMoodSummary(),
-                tagInfos
+                isScrapped,
+                tagInfos,
+                new VibeStats(place.getQuietVoteCount(), place.getChattyVoteCount()),
+                userVotedVibe
         );
     }
 }

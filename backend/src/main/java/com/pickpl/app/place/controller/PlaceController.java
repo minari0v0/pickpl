@@ -15,6 +15,9 @@ import java.util.List;
  * 공간(Place) 관련 REST API 컨트롤러.
  * Base URL: /api/places
  */
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
+
 @Tag(name = "Place", description = "공간(장소) 조회 API")
 @RestController
 @RequestMapping("/api/v1/places")
@@ -26,23 +29,30 @@ public class PlaceController {
         this.placeService = placeService;
     }
 
-    /**
-     * 전체 공간 목록 또는 태그 기반 필터링 결과를 조회합니다.
-     *
-     * @param tags 필터링할 태그 리스트 (선택사항)
-     * @return 공간 요약 정보 JSON 배열
-     */
+    private Long getUserIdOrNull(User user) {
+        if (user == null || user.getUsername() == null || user.getUsername().equals("anonymousUser")) {
+            return null;
+        }
+        try {
+            return Long.parseLong(user.getUsername());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     @Operation(summary = "공간 목록 조회", description = "태그 교집합 필터링을 지원하는 공간 목록 조회 API입니다.")
     @GetMapping
     public ResponseEntity<List<PlaceSummaryResponse>> getPlaces(
-            @org.springframework.web.bind.annotation.RequestParam(required = false) List<String> tags) {
-        return ResponseEntity.ok(placeService.findPlacesByTags(tags));
+            @org.springframework.web.bind.annotation.RequestParam(required = false) List<String> tags,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(placeService.findPlacesByTags(tags, getUserIdOrNull(user)));
     }
 
     @Operation(summary = "공간 상세 조회", description = "특정 공간의 상세 정보를 조회합니다.")
     @GetMapping("/{id}")
     public ResponseEntity<com.pickpl.app.place.dto.PlaceDetailResponse> getPlace(
-            @org.springframework.web.bind.annotation.PathVariable Long id) {
-        return ResponseEntity.ok(placeService.findPlaceById(id));
+            @org.springframework.web.bind.annotation.PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(placeService.findPlaceById(id, getUserIdOrNull(user)));
     }
 }

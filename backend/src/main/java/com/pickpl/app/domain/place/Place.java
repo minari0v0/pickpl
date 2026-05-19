@@ -66,6 +66,14 @@ public class Place extends BaseTimeEntity {
     @Column(name = "ai_mood_summary", columnDefinition = "TEXT")
     private String aiMoodSummary;
 
+    /** 조용함 투표 수 */
+    @Column(name = "quiet_vote_count", nullable = false)
+    private int quietVoteCount = 0;
+
+    /** 대화하기 좋음 투표 수 */
+    @Column(name = "chatty_vote_count", nullable = false)
+    private int chattyVoteCount = 0;
+
     // --- 연관관계 ---
 
     /** Place-Tag 다대다 매핑 (연관관계 주인: PlaceTagMap) */
@@ -126,8 +134,29 @@ public class Place extends BaseTimeEntity {
     public List<PlaceTagMap> getPlaceTagMaps() { return placeTagMaps; }
     public List<com.pickpl.app.domain.scrap.Scrap> getScraps() { return scraps; }
 
+    public int getQuietVoteCount() { return quietVoteCount; }
+    public int getChattyVoteCount() { return chattyVoteCount; }
+
     // --- Setters (AI 파이프라인이 사용) ---
 
     public void setImageUrls(String imageUrls) { this.imageUrls = imageUrls; }
     public void setAiMoodSummary(String aiMoodSummary) { this.aiMoodSummary = aiMoodSummary; }
+
+    // --- 비즈니스 로직 ---
+    
+    public void incrementVibeVote(com.pickpl.app.domain.vibe.VibeType type) {
+        if (type == com.pickpl.app.domain.vibe.VibeType.QUIET) {
+            this.quietVoteCount++;
+        } else if (type == com.pickpl.app.domain.vibe.VibeType.CHATTY) {
+            this.chattyVoteCount++;
+        }
+    }
+
+    public void decrementVibeVote(com.pickpl.app.domain.vibe.VibeType type) {
+        if (type == com.pickpl.app.domain.vibe.VibeType.QUIET && this.quietVoteCount > 0) {
+            this.quietVoteCount--;
+        } else if (type == com.pickpl.app.domain.vibe.VibeType.CHATTY && this.chattyVoteCount > 0) {
+            this.chattyVoteCount--;
+        }
+    }
 }
