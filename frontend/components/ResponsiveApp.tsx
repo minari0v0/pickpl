@@ -128,6 +128,73 @@ const renderFolderCover = (scraps: any[]) => {
     );
 };
 
+// --- 프리미엄 수제 듀오톤 SVG 아이콘 정의 ---
+const CafeIcon = () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z" fill="currentColor" fillOpacity="0.15" />
+        <line x1="6" y1="2" x2="6" y2="4" />
+        <line x1="10" y1="2" x2="10" y2="4" />
+        <line x1="14" y1="2" x2="14" y2="4" />
+    </svg>
+);
+
+const RestaurantIcon = () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 17h20" />
+        <path d="M20 17c0-4.418-3.582-8-8-8s-8 3.582-8 8" fill="currentColor" fillOpacity="0.15" />
+        <path d="M12 9V6" />
+        <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+        <path d="M4 17v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1" />
+    </svg>
+);
+
+const StudyIcon = () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="4" width="20" height="12" rx="2" fill="currentColor" fillOpacity="0.15" />
+        <path d="M2 16h20v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2z" />
+        <path d="M12 16v4" />
+    </svg>
+);
+
+const CocktailIcon = () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 3h18l-9 9z" fill="currentColor" fillOpacity="0.15" />
+        <path d="M12 12v9" />
+        <path d="M8 21h8" />
+        <circle cx="12" cy="7" r="1.5" fill="currentColor" />
+    </svg>
+);
+
+const SparkleIcon = () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3c.132 4.318 1.562 6.84 5.3 7.7 0 0-4.312 1.34-5.3 7.7-.09-6.36-5.3-7.7-5.3-7.7 3.738-.86 5.168-3.382 5.3-7.7z" fill="currentColor" fillOpacity="0.15" />
+    </svg>
+);
+
+// --- 토스 스타일 업종/태그 분석 카테고리 아이콘 헬퍼 ---
+const getCategoryIcon = (category: string = '', name: string = '') => {
+    const combined = `${category} ${name}`.toLowerCase();
+    if (combined.includes('카페') || combined.includes('디저트') || combined.includes('커피') || combined.includes('베이커리')) {
+        return { icon: <CafeIcon />, bg: "bg-[#FFF4EE]", text: "text-[#E65C00]" }; // Warm Terracotta/Peach
+    }
+    if (combined.includes('식당') || combined.includes('맛집') || combined.includes('레스토랑') || combined.includes('푸드') || combined.includes('음식점') || combined.includes('한식') || combined.includes('양식') || combined.includes('일식') || combined.includes('중식') || combined.includes('키친') || combined.includes('테이블')) {
+        return { icon: <RestaurantIcon />, bg: "bg-[#FFF0F0]", text: "text-[#E63939]" }; // Warm Coral/Rose
+    }
+    if (combined.includes('작업') || combined.includes('노트북') || combined.includes('공부') || combined.includes('스터디') || combined.includes('오피스') || combined.includes('서재') || combined.includes('라운지')) {
+        return { icon: <StudyIcon />, bg: "bg-[#F0F6F5]", text: "text-[#2E7D7A]" }; // Cozy Sage/Teal
+    }
+    if (combined.includes('술집') || combined.includes('바') || combined.includes('펍') || combined.includes('와인') || combined.includes('맥주') || combined.includes('이자카야') || combined.includes('주점')) {
+        return { icon: <CocktailIcon />, bg: "bg-[#FFF9E6]", text: "text-[#B38000]" }; // Warm Muted Gold
+    }
+    return { icon: <SparkleIcon />, bg: "bg-[#F7F6F3]", text: "text-[#7F776F]" }; // Warm Sand/Beige
+};
+
+const isSpecialTag = (tag: string) => {
+    const specialTags = ['노트북하기좋은', '콘센트석', '조용한', '대형카페', '단체석', '공부'];
+    return specialTags.includes(tag);
+};
+
 export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] }) {
     const router = useRouter();
     const [activeView, setActiveView] = useState<string>('home');
@@ -168,6 +235,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             id: place.id,
             name: place.name,
             location: place.address,
+            category: place.category,
             distance: "내 위치에서 " + ((place.id % 10) + 1) + "km",
             imageUrl: place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800",
             aspectRatio: "aspect-[4/5]",
@@ -221,6 +289,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const currentPlaces = fetchedPlaces || initialPlaces;
 
     const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [hiddenGemPlace, setHiddenGemPlace] = useState<any | null>(null);
     const [showHiddenGemPopup, setShowHiddenGemPopup] = useState<boolean>(false);
     const [vibeStats, setVibeStats] = useState<{ quiet: number; chatty: number }>({ quiet: 50, chatty: 50 });
@@ -231,6 +300,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [showRenameModal, setShowRenameModal] = useState(false);
     const [renameInputVal, setRenameInputVal] = useState("");
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+    const [searchKeyword, setSearchKeyword] = useState("");
 
     // API 데이터와 디자인에 필요한 더미 속성 매핑
     const placesData = useMemo(() => {
@@ -246,6 +316,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 id: place.id,
                 name: place.name,
                 location: place.address,
+                category: place.category,
                 distance: "내 위치에서 " + ((place.id % 10) + 1) + "km",
                 imageUrl: place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800",
                 aspectRatio: "aspect-[4/5]",
@@ -265,7 +336,19 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         setSelectedTags(prev => prev.includes(tag) ? prev.filter((t: string) => t !== tag) : [...prev, tag]);
     };
 
-    const filteredPlaces = placesData; // 이제 필터링은 백엔드에서 수행하므로そのまま 반환
+    const filteredPlaces = useMemo(() => {
+        let result = placesData;
+        if (searchKeyword.trim() !== "") {
+            const k = searchKeyword.toLowerCase();
+            result = result.filter((p: any) => 
+                p.name.toLowerCase().includes(k) || 
+                p.description.toLowerCase().includes(k) || 
+                p.tags.some((t: string) => t.toLowerCase().includes(k)) ||
+                (p.location && p.location.toLowerCase().includes(k))
+            );
+        }
+        return result;
+    }, [placesData, searchKeyword]);
 
     const handlePlaceClick = (place: any) => {
         if (place.isHiddenGem) {
@@ -276,13 +359,43 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             setVibeStats(place.initialVibe);
             setIsSaved(!!place.isScrapped); // 백엔드에서 받은 스크랩 상태로 초기화
             setUserVotedVibe(place.userVotedVibe || null); // 유저의 기존 투표 상태 초기화
+            setIsDetailOpen(true);
         }
     };
 
     const handleCloseDetail = () => {
         setSelectedPlace(null);
         setUserVotedVibe(null);
-        // setIsSaved(false); // 닫을 때 초기화하지 않음 (다시 열 때 동기화됨)
+        setIsDetailOpen(false);
+    };
+
+    const handleCardSaveClick = async (place: any, e: React.MouseEvent) => {
+        e.stopPropagation(); // 카드 클릭(상세 열기) 방지!
+        if (!isLoggedIn) {
+            showToast("로그인이 필요한 기능입니다.", "warning");
+            return;
+        }
+        
+        setSelectedPlace(place);
+        setIsDetailOpen(false); // 상세 모달은 닫아둠
+        setIsSaved(!!place.isScrapped);
+
+        if (place.isScrapped) {
+            // 이미 스크랩된 상태면 바로 취소
+            try {
+                await axiosInstance.delete(`/scraps/${place.id}`);
+                setIsSaved(false);
+                showToast("북마크가 해제되었습니다.");
+                mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
+            } catch (err) {
+                console.error(err);
+                showToast("북마크 해제 중 오류가 발생했습니다.", "error");
+            }
+        } else {
+            setIsCreatingFolder(false);
+            setNewFolderName("");
+            setShowFolderModal(true); // 폴더 선택 모달 오픈
+        }
     };
 
     const handleVibeVote = async (type: string) => {
@@ -332,6 +445,13 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
 
+    const closeFolderModal = () => {
+        setShowFolderModal(false);
+        if (!isDetailOpen) {
+            setSelectedPlace(null);
+        }
+    };
+
     const handleSaveClick = () => {
         if (!selectedPlace) return;
         if (!isLoggedIn) {
@@ -361,7 +481,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 await axiosInstance.post(`/scraps/${selectedPlace.id}?folderName=${encodedFolder}`);
                 setIsSaved(true);
                 setIsBookmarkPopping(true);
-                setShowFolderModal(false);
+                closeFolderModal();
                 showToast(`"${folderName || '기본 저장소'}"에 저장되었습니다.`);
                 setTimeout(() => setIsBookmarkPopping(false), 500);
             }
@@ -374,7 +494,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 showToast("이미 처리된 요청입니다.", "warning");
                 setIsSaved(true);
                 mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
-                setShowFolderModal(false);
+                closeFolderModal();
             } else {
                 showToast("스크랩 처리 중 오류가 발생했습니다.", "error");
             }
@@ -585,7 +705,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                     {activeView === 'home' && (
                         <>
                             {/* 스크롤 가능한 메인 피드 */}
-                            <div className="flex-1 w-full lg:max-w-[720px] h-full overflow-y-auto no-scrollbar flex flex-col bg-white animate-fade-in relative lg:border-r lg:border-[#F2F4F6]">
+                            <div className="flex-1 w-full lg:max-w-[720px] h-full overflow-y-auto no-scrollbar flex flex-col bg-[#F9FAFB] animate-fade-in relative lg:border-r lg:border-[#F2F4F6]">
 
                                 {/* 헤더 (모바일/PC) */}
                                 <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-xl px-6 py-4 lg:px-10 lg:py-8 flex items-center justify-between border-b lg:border-b border-[#F2F4F6]/50">
@@ -631,29 +751,67 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                             <div className="text-center py-20 text-[#8B95A1]">
                                                 데이터가 없습니다. 백엔드를 확인해주세요.
                                             </div>
-                                        ) : placesData.map((place: any) => (
-                                            <article key={place.id} onClick={() => handlePlaceClick(place)} className="group cursor-pointer active:scale-[0.98] lg:active:scale-100 transition-transform relative">
-                                                <div className={`relative w-full ${place.aspectRatio} rounded-[28px] lg:rounded-[32px] overflow-hidden bg-[#F2F4F6] shadow-sm`}>
-                                                    <img src={place.imageUrl} alt={place.name} className="w-full h-full object-cover lg:group-hover:scale-[1.02] transition-transform duration-700" loading="lazy" />
-                                                    <div className="absolute bottom-0 left-0 w-full pt-20 lg:pt-28 pb-6 px-6 lg:pb-8 lg:px-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-                                                        <h2 className="font-bold text-[24px] lg:text-[28px] text-white mb-2.5 lg:mb-3 tracking-tight drop-shadow-md">{place.name}</h2>
-                                                        <div className="flex flex-wrap gap-2">
+                                        ) : placesData.map((place: any) => {
+                                            const iconData = getCategoryIcon(place.category || place.features?.[0]?.desc || '', place.name);
+                                            return (
+                                                <article 
+                                                    key={place.id} 
+                                                    onClick={() => handlePlaceClick(place)} 
+                                                    className="group cursor-pointer active:scale-[0.99] lg:active:scale-100 transition-all duration-300 relative bg-white border border-[#E5E8EB] shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.05)] rounded-[28px] lg:rounded-[32px] p-5 lg:p-6 flex flex-col gap-4"
+                                                >
+                                                    {/* 카드 헤더 */}
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border border-[#F2F4F6] shadow-sm ${iconData.bg} ${iconData.text}`}>
+                                                            {iconData.icon}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="font-bold text-[16px] text-[#191F28] tracking-tight truncate group-hover:text-orange-500 transition-colors">{place.name}</h3>
+                                                            <p className="text-[12px] font-semibold text-[#8B95A1] mt-0.5 truncate">
+                                                                {place.location ? place.location.split(' ').slice(0, 2).join(' ') : '서울'} · {place.distance}
+                                                            </p>
+                                                        </div>
+                                                        <button 
+                                                            onClick={(e) => handleCardSaveClick(place, e)}
+                                                            className="w-9 h-9 rounded-full bg-[#F2F4F6] hover:bg-[#E5E8EB] active:scale-90 transition-all flex items-center justify-center text-[#8B95A1] hover:text-orange-500 shrink-0"
+                                                        >
+                                                            <svg className={`w-[18px] h-[18px] ${place.isScrapped ? 'text-orange-500 fill-current' : 'text-[#8B95A1]'}`} fill={place.isScrapped ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+
+                                                    {/* 카드 이미지 */}
+                                                    <div className="relative w-full aspect-[4/3] rounded-[20px] lg:rounded-[24px] overflow-hidden bg-[#F2F4F6] shadow-inner">
+                                                        <img 
+                                                            src={place.imageUrl} 
+                                                            alt={place.name} 
+                                                            className="w-full h-full object-cover lg:group-hover:scale-[1.02] transition-transform duration-700" 
+                                                            loading="lazy" 
+                                                        />
+                                                        {place.isHiddenGem && (
+                                                            <div className="absolute top-3 right-3 bg-blue-500/90 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-[8px] shadow-md flex items-center gap-1 border border-white/20">
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                                                                Secret
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* 카드 바디 */}
+                                                    <div className="flex flex-col gap-2.5">
+                                                        <p className="text-[14px] text-[#4E5968] leading-relaxed font-medium line-clamp-2">
+                                                            {place.description}
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-1.5 mt-0.5">
                                                             {place.tags.map((tag: string) => (
-                                                                <span key={tag} className="px-2.5 py-1.5 lg:px-3 lg:py-1.5 rounded-[8px] lg:rounded-[10px] bg-white/20 backdrop-blur-md text-[12px] lg:text-[13px] font-bold text-white border border-white/10 shadow-sm">
+                                                                <span key={tag} className="px-2.5 py-1 rounded-[8px] bg-[#F2F4F6] text-[#4E5968] text-[12px] font-bold tracking-tight">
                                                                     #{tag}
                                                                 </span>
                                                             ))}
                                                         </div>
                                                     </div>
-                                                </div>
-                                                {place.isHiddenGem && (
-                                                    <div className="absolute top-4 right-4 lg:top-6 lg:right-6 bg-blue-500/90 backdrop-blur-md text-white text-[12px] lg:text-[13px] font-bold px-3 py-1.5 lg:px-4 lg:py-2 rounded-[10px] lg:rounded-[12px] shadow-lg flex items-center gap-1.5 border border-white/20">
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                                                        Secret<span className="hidden lg:inline"> Spot</span>
-                                                    </div>
-                                                )}
-                                            </article>
-                                        ))}
+                                                </article>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -701,55 +859,119 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         <div className="flex-1 h-full w-full overflow-y-auto no-scrollbar bg-[#F9FAFB] animate-slide-in-right lg:animate-fade-in flex flex-col absolute lg:relative inset-0 z-30 lg:z-auto items-center">
                             
                             {/* 모바일 헤더 */}
-                            <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-[#F2F4F6] px-2 py-4 flex items-center w-full">
+                            <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#F2F4F6] px-2 py-4 flex items-center w-full shadow-sm">
                                 <button onClick={() => setActiveView('home')} className="w-12 h-12 flex items-center justify-center text-[#191F28] active:scale-90 relative z-50">
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                                 </button>
-                                <h1 className="font-bold text-[18px] flex-1 text-center -ml-12 tracking-tight pointer-events-none">Pick<span className="text-orange-500 text-[1em]">Pl</span></h1>
+                                <h1 className="font-logo font-extrabold text-[22px] flex-1 text-center -ml-12 tracking-tight text-[#191F28]">Pick<span className="text-orange-500 font-logo">Pl</span></h1>
                             </header>
 
-                            <div className="w-full lg:max-w-[880px] lg:px-8 lg:py-12 flex-1 flex flex-col">
-                                {/* PC 헤더 */}
-                                <header className="hidden lg:flex mb-8 items-center gap-4">
-                                    <h1 className="font-bold text-[32px] tracking-tight text-[#191F28]">공간 탐색</h1>
+                            <div className="w-full lg:max-w-[880px] px-5 lg:px-8 py-6 lg:py-12 flex-1 flex flex-col">
+                                {/* PC 헤더: 비주얼 배너 */}
+                                <header className="hidden lg:flex flex-col gap-2 mb-10">
+                                    <span className="text-orange-500 font-extrabold text-[13px] tracking-widest uppercase">Mood & Space Curation</span>
+                                    <h1 className="font-bold text-[34px] tracking-tight text-[#191F28] leading-tight">
+                                        나만의 감성 공간을 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">픽(Pick)하다</span>
+                                    </h1>
+                                    <p className="text-[15px] font-medium text-[#8B95A1]">
+                                        당신의 일상과 감성에 어우러지는 최적의 분위기를 찾아보세요.
+                                    </p>
                                 </header>
 
                                 {/* 다중 태그 필터 영역 */}
-                                <div className="bg-white pt-6 pb-7 lg:p-8 rounded-b-[32px] lg:rounded-[32px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] lg:shadow-sm border-b lg:border border-[#F2F4F6] lg:mb-6 relative">
-                                    <h2 className="text-[20px] font-bold mb-5 lg:mb-8 tracking-tight text-[#191F28] px-6 lg:px-0">어떤 무드를 찾으시나요?</h2>
+                                <div className="bg-white pt-6 pb-7 lg:p-8 rounded-[28px] lg:rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.015)] border border-[#F2F4F6] lg:mb-6 relative">
+                                    {/* 검색 인풋 추가 */}
+                                    <div className="px-1 lg:px-0">
+                                        <div className="relative w-full mb-6 lg:mb-8 group">
+                                            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-rose-500/5 rounded-[20px] blur-md transition-all duration-300 group-focus-within:blur-lg"></div>
+                                            <div className="relative flex items-center bg-white border border-[#E5E8EB] focus-within:border-orange-500/60 focus-within:shadow-[0_8px_30px_rgba(230,92,0,0.06)] rounded-[18px] px-5 py-3.5 transition-all duration-300">
+                                                <svg className="w-5 h-5 text-[#8B95A1] mr-3 shrink-0 transition-colors group-focus-within:text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="공간 이름, 분위기 태그, 지역 등으로 검색해보세요..." 
+                                                    value={searchKeyword}
+                                                    onChange={(e) => setSearchKeyword(e.target.value)}
+                                                    className="w-full bg-transparent border-none outline-none text-[15.5px] font-medium text-[#191F28] placeholder-[#B0B8C1]"
+                                                />
+                                                {searchKeyword && (
+                                                    <button 
+                                                        onClick={() => setSearchKeyword("")}
+                                                        className="w-5.5 h-5.5 rounded-full bg-[#E5E8EB] hover:bg-[#D1D6DB] flex items-center justify-center text-[#8B95A1] hover:text-[#4E5968] active:scale-95 transition-all"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <h2 className="text-[18px] lg:text-[20px] font-bold mb-6 tracking-tight text-[#191F28] px-1 lg:px-0 flex items-center gap-2">
+                                        <span>어떤 무드를 찾으시나요?</span>
+                                        <span className="text-[13px] font-normal text-[#8B95A1]">(다중 선택 가능)</span>
+                                    </h2>
                                     <div className="flex flex-col gap-6 lg:gap-8">
                                         {TAG_CATEGORIES.map((category: any) => (
-                                            <div key={category.id} className="pl-6 lg:pl-0">
+                                            <div key={category.id} className="pl-1 lg:pl-0">
                                                 <h3 className="text-[13px] lg:text-[14px] font-bold text-[#8B95A1] mb-3 lg:mb-4">{category.title}</h3>
-                                                <DraggableScroll className="flex flex-nowrap gap-2 lg:gap-3 overflow-x-auto no-scrollbar pr-6 pb-1">
-                                                    {category.tags.map((tag: string) => (
-                                                        <button key={tag} onClick={() => toggleTag(tag)} className={`px-4 py-2.5 lg:px-5 lg:py-2.5 rounded-[14px] text-[14px] lg:text-[15px] font-semibold transition-all active:scale-95 border whitespace-nowrap shrink-0 ${selectedTags.includes(tag) ? 'bg-[#191F28] text-white border-[#191F28] shadow-md' : 'bg-white text-[#4E5968] border-[#E5E8EB] hover:bg-[#F9FAFB] lg:hover:bg-[#F2F4F6]'}`}>
-                                                            {tag}
-                                                        </button>
-                                                    ))}
+                                                <DraggableScroll className="flex flex-nowrap gap-2.5 lg:gap-3 overflow-x-auto no-scrollbar pr-6 pb-1">
+                                                    {category.tags.map((tag: string) => {
+                                                        const isSelected = selectedTags.includes(tag);
+                                                        let chipStyle = "";
+                                                        if (category.id === 'popular') {
+                                                            chipStyle = isSelected 
+                                                                ? "bg-[#E65C00] text-white border-[#E65C00] shadow-[0_8px_20px_rgba(230,92,0,0.18)] scale-[1.03]" 
+                                                                : "bg-[#FFF4EE]/70 text-[#E65C00] border-[#FFD2B8] hover:bg-[#FFF4EE]";
+                                                        } else if (category.id === 'mood') {
+                                                            chipStyle = isSelected 
+                                                                ? "bg-[#2E7D7A] text-white border-[#2E7D7A] shadow-[0_8px_20px_rgba(46,125,122,0.18)] scale-[1.03]" 
+                                                                : "bg-[#F0F6F5]/70 text-[#2E7D7A] border-[#D1E6E4] hover:bg-[#F0F6F5]";
+                                                        } else {
+                                                            chipStyle = isSelected 
+                                                                ? "bg-[#B38000] text-white border-[#B38000] shadow-[0_8px_20px_rgba(179,128,0,0.18)] scale-[1.03]" 
+                                                                : "bg-[#FFF9E6]/70 text-[#B38000] border-[#FFE9A3] hover:bg-[#FFF9E6]";
+                                                        }
+                                                        return (
+                                                            <button 
+                                                                key={tag} 
+                                                                onClick={() => toggleTag(tag)} 
+                                                                className={`px-4 py-2.5 lg:px-5 lg:py-2.5 rounded-[12px] text-[14px] lg:text-[15px] font-semibold transition-all active:scale-95 border whitespace-nowrap shrink-0 ${chipStyle}`}
+                                                            >
+                                                                {tag}
+                                                            </button>
+                                                        );
+                                                    })}
                                                     <div className="w-2 shrink-0 lg:hidden"></div>
                                                 </DraggableScroll>
                                             </div>
                                         ))}
                                     </div>
 
-                                    {selectedTags.length > 0 && (
-                                        <div className="mt-6 lg:mt-8 pt-5 lg:pt-6 border-t border-[#F2F4F6] flex justify-between items-center animate-fade-in px-6 lg:px-0">
-                                            <p className="text-[14px] lg:text-[15px] font-bold text-[#8B95A1]"><span className="text-orange-500">{filteredPlaces.length}</span>개의 공간이 필터링 되었습니다.</p>
-                                            <button onClick={() => setSelectedTags([])} className="px-4 py-2 lg:px-5 lg:py-2.5 bg-[#F2F4F6] text-[#4E5968] rounded-[12px] font-bold text-[13px] lg:text-[14px] hover:bg-[#E5E8EB]">초기화</button>
+                                    {(selectedTags.length > 0 || searchKeyword) && (
+                                        <div className="mt-6 lg:mt-8 pt-5 lg:pt-6 border-t border-[#F2F4F6] flex justify-between items-center animate-fade-in px-1 lg:px-0">
+                                            <p className="text-[14px] lg:text-[15px] font-bold text-[#4E5968]">
+                                                <span className="text-orange-500 font-extrabold">{filteredPlaces.length}</span>개의 감성 공간을 발견했습니다.
+                                            </p>
+                                            <button 
+                                                onClick={() => { setSelectedTags([]); setSearchKeyword(""); }} 
+                                                className="px-4 py-2 lg:px-5 lg:py-2 bg-[#F2F4F6] text-[#4E5968] rounded-[10px] font-bold text-[13px] lg:text-[14px] hover:bg-[#E5E8EB] active:scale-95 transition-all"
+                                            >
+                                                초기화
+                                            </button>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* PC 컴팩트 티커 */}
-                                <DraggableScroll className="hidden lg:flex items-center gap-4 bg-white px-6 py-4 rounded-[20px] border border-[#F2F4F6] shadow-sm mb-10 overflow-x-auto no-scrollbar fade-edges mt-4">
+                                <DraggableScroll className="hidden lg:flex items-center gap-4 bg-white px-6 py-4 rounded-[20px] border border-[#F2F4F6] shadow-sm mb-8 overflow-x-auto no-scrollbar fade-edges mt-6">
                                     <div className="flex items-center gap-2 shrink-0">
                                         <span className="text-[18px]">🔥</span>
                                         <span className="font-bold text-[14px] text-[#191F28]">실시간 인기 무드</span>
                                         <div className="w-[1px] h-4 bg-[#E5E8EB] ml-2"></div>
                                     </div>
                                     <div className="flex items-center gap-8 shrink-0">
-                                        {[{ rank: 1, name: '코지한' }, { rank: 2, name: '햇살맛집' }].map((tag: any) => (
+                                        {[{ rank: 1, name: '코지한' }, { rank: 2, name: '햇살맛집' }, { rank: 3, name: '노트북하기좋은' }].map((tag: any) => (
                                             <div key={tag.rank} className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => toggleTag(tag.name)}>
                                                 <span className={`font-bold text-[14px] ${tag.rank <= 2 ? 'text-orange-500' : 'text-[#8B95A1]'}`}>{tag.rank}</span>
                                                 <span className="font-medium text-[14px] text-[#4E5968]">#{tag.name}</span>
@@ -758,30 +980,24 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                     </div>
                                 </DraggableScroll>
 
-                                {/* 검색 결과 */}
-                                <div className="px-5 lg:px-0 pt-8 lg:pt-0 pb-[100px] lg:pb-24 flex-1">
-                                    <h3 className="font-bold text-[18px] lg:text-[20px] mb-5 lg:mb-6 tracking-tight text-[#191F28] px-1 lg:px-0">검색 결과 <span className="text-orange-500">{filteredPlaces.length}</span>곳</h3>
+                                {/* 검색 결과 리스트 */}
+                                <div className="pt-8 lg:pt-4 pb-[100px] lg:pb-24 flex-1">
+                                    <h3 className="font-bold text-[18px] lg:text-[22px] mb-5 lg:mb-6 tracking-tight text-[#191F28] px-1 lg:px-0 flex items-center gap-2">
+                                        <span>공간 리스트</span>
+                                        <span className="text-[15px] font-semibold text-[#8B95A1] bg-[#F2F4F6] px-2.5 py-1 rounded-[8px]">{filteredPlaces.length}곳</span>
+                                    </h3>
                                     
-                                    <div className="flex flex-col gap-6">
+                                    <div className="flex flex-col gap-6 lg:gap-8">
                                         {filteredPlaces.map((place: any) => (
-                                            <article key={place.id} onClick={() => handlePlaceClick(place)} className="flex flex-col lg:flex-row bg-white lg:rounded-[28px] lg:shadow-sm lg:border lg:border-[#F2F4F6] cursor-pointer hover:shadow-md transition-all group overflow-hidden lg:h-[260px] relative">
+                                            <article 
+                                                key={place.id} 
+                                                onClick={() => handlePlaceClick(place)} 
+                                                className="flex flex-col lg:flex-row bg-white rounded-[28px] lg:rounded-[32px] border border-[#E5E8EB] lg:border-[#F2F4F6] cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.015)] hover:shadow-[0_20px_50px_rgba(230,92,0,0.05)] hover:border-orange-200/50 transition-all duration-500 group overflow-hidden relative"
+                                            >
                                                 
-                                                {/* 모바일: 썸네일 위, PC: 썸네일 좌측 */}
-                                                <div className={`relative w-full lg:w-[260px] ${place.aspectRatio} lg:aspect-auto shrink-0 overflow-hidden bg-[#E5E8EB] lg:bg-[#F2F4F6] rounded-[28px] lg:rounded-none`}>
-                                                    <img src={place.imageUrl} alt={place.name} className="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-700" />
-                                                    
-                                                    {/* 모바일 텍스트 오버레이 */}
-                                                    <div className="lg:hidden absolute bottom-0 left-0 w-full pt-16 pb-6 px-6 bg-gradient-to-t from-black/80 to-transparent">
-                                                        <h2 className="font-bold text-[22px] text-white mb-2 tracking-tight">{place.name}</h2>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {place.tags.filter((t: string) => selectedTags.length === 0 || selectedTags.includes(t)).slice(0, 3).map((tag: string) => (
-                                                                <span key={tag} className="px-2.5 py-1.5 rounded-[8px] bg-white/20 backdrop-blur-md text-[12px] font-bold text-white shadow-sm border border-white/10">
-                                                                    #{tag}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    
+                                                {/* 썸네일 영역 */}
+                                                <div className="relative w-full lg:w-[260px] aspect-[16/10] lg:aspect-square shrink-0 overflow-hidden bg-[#F2F4F6]">
+                                                    <img src={place.imageUrl} alt={place.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                                     {place.isHiddenGem && (
                                                         <div className="absolute top-4 left-4 bg-blue-500/90 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1.5 rounded-[8px] flex items-center gap-1 shadow-md border border-white/20">
                                                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
@@ -790,41 +1006,87 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                                     )}
                                                 </div>
 
-                                                {/* PC 전용 우측 컨텐츠 */}
-                                                <div className="hidden lg:flex flex-1 p-8 flex-col">
+                                                {/* 모바일용 세세한 설명 레이아웃 (lg:hidden) */}
+                                                <div className="lg:hidden p-5 flex flex-col gap-3">
                                                     <div className="flex justify-between items-start">
                                                         <div>
-                                                            <h2 className="text-[22px] font-bold text-[#191F28] tracking-tight">{place.name}</h2>
-                                                            <p className="text-[#8B95A1] text-[14px] mt-1 font-medium flex items-center gap-1">
-                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                                {place.location} · {place.distance}
+                                                            <h2 className="text-[20px] font-bold text-[#191F28] tracking-tight group-hover:text-orange-500 transition-colors">{place.name}</h2>
+                                                            <p className="text-[#8B95A1] text-[13px] mt-0.5 font-medium">
+                                                                {place.location ? place.location.split(' ').slice(0, 2).join(' ') : '서울'} · {place.distance}
                                                             </p>
                                                         </div>
-                                                        <div className="bg-[#F9FAFB] px-3 py-1.5 rounded-[10px] flex items-center gap-1.5 border border-[#F2F4F6]">
+                                                        <div className={`px-2.5 py-1 rounded-[8px] flex items-center gap-1 border ${place.initialVibe.quiet >= 50 ? 'bg-blue-50/80 text-blue-600 border-blue-100' : 'bg-orange-50/80 text-orange-600 border-orange-100'}`}>
                                                             <div className={`w-1.5 h-1.5 rounded-full ${place.initialVibe.quiet >= 50 ? 'bg-blue-500' : 'bg-orange-500'}`}></div>
-                                                            <span className="text-[12px] font-bold text-[#4E5968]">{place.initialVibe.quiet >= 50 ? '조용히 집중' : '대화하기 좋은'}</span>
+                                                            <span className="text-[11px] font-bold">{place.initialVibe.quiet >= 50 ? '조용히 집중' : '대화하기 좋은'}</span>
                                                         </div>
                                                     </div>
-                                                    <div className="flex flex-wrap gap-2 mt-5">
-                                                        {place.tags.map((tag: string) => (
-                                                            <span key={tag} className={`px-3 py-1.5 rounded-[8px] text-[13px] font-semibold ${selectedTags.includes(tag) ? 'bg-orange-50 text-orange-600 border border-orange-100' : 'bg-[#F2F4F6] text-[#4E5968]'}`}>
+                                                    
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {place.tags.slice(0, 3).map((tag: string) => (
+                                                            <span key={tag} className="px-2.5 py-1 rounded-[8px] text-[12px] font-bold tracking-tight bg-[#F2F4F6] text-[#4E5968]">
                                                                 #{tag}
                                                             </span>
                                                         ))}
                                                     </div>
-                                                    <div className="mt-auto bg-[#F9FAFB] p-4 rounded-[16px] text-[14px] text-[#4E5968] flex items-center gap-3 border border-[#F2F4F6]">
-                                                        <span className="text-[18px]">💬</span>
-                                                        <span className="line-clamp-1 font-medium">"{place.bestReview}"</span>
+                                                    
+                                                    <div className="bg-[#F9FAFB] p-3.5 rounded-[16px] text-[13px] text-[#4E5968] flex items-center gap-2 border border-[#F2F4F6]">
+                                                        <span className="text-[16px] text-orange-400 font-serif shrink-0">“</span>
+                                                        <span className="line-clamp-1 font-medium text-[#4E5968]">{place.bestReview}</span>
+                                                        <span className="text-[16px] text-orange-400 font-serif shrink-0">”</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* PC용 전용 상세 레이아웃 (hidden lg:flex) */}
+                                                <div className="hidden lg:flex flex-1 p-8 flex-col">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <h2 className="text-[23px] font-bold text-[#191F28] tracking-tight group-hover:text-orange-500 transition-colors duration-300">{place.name}</h2>
+                                                            <p className="text-[#8B95A1] text-[14px] mt-1 font-medium flex items-center gap-1">
+                                                                <svg className="w-4 h-4 text-[#8B95A1]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                                {place.location} · {place.distance}
+                                                            </p>
+                                                        </div>
+                                                        <div className={`px-3 py-1.5 rounded-[10px] flex items-center gap-1.5 border ${place.initialVibe.quiet >= 50 ? 'bg-blue-50/80 text-blue-600 border-blue-100' : 'bg-orange-50/80 text-orange-600 border-orange-100'}`}>
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${place.initialVibe.quiet >= 50 ? 'bg-blue-500' : 'bg-orange-500'}`}></div>
+                                                            <span className="text-[12px] font-bold">{place.initialVibe.quiet >= 50 ? '조용히 집중' : '대화하기 좋은'}</span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex flex-wrap gap-1.5 mt-5">
+                                                        {place.tags.map((tag: string) => {
+                                                            let activeStyle = "bg-[#F2F4F6] text-[#4E5968] border-transparent";
+                                                            if (selectedTags.includes(tag)) {
+                                                                const category = TAG_CATEGORIES.find(c => c.tags.includes(tag));
+                                                                if (category?.id === 'popular') {
+                                                                    activeStyle = "bg-orange-50 text-orange-600 border-orange-100";
+                                                                } else if (category?.id === 'mood') {
+                                                                    activeStyle = "bg-[#F0F6F5] text-[#2E7D7A] border-[#DCEBE9]";
+                                                                } else {
+                                                                    activeStyle = "bg-[#FFF9E6] text-[#B38000] border-[#FFF0C2]";
+                                                                }
+                                                            }
+                                                            return (
+                                                                <span key={tag} className={`px-3 py-1.5 rounded-[10px] text-[13px] font-bold tracking-tight border transition-colors ${activeStyle}`}>
+                                                                    #{tag}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    
+                                                    <div className="mt-auto bg-[#FDFDFD] px-5 py-3.5 rounded-[18px] text-[13.5px] text-[#4E5968] flex items-center gap-3 border-l-4 border-[#E65C00] shadow-[0_2px_10px_rgba(0,0,0,0.015)] bg-gradient-to-r from-orange-50/20 to-transparent">
+                                                        <span className="text-[16px] text-orange-400 shrink-0 font-serif">“</span>
+                                                        <span className="line-clamp-1 font-medium text-[#333D4B]">{place.bestReview}</span>
+                                                        <span className="text-[16px] text-orange-400 shrink-0 font-serif">”</span>
                                                     </div>
                                                 </div>
                                             </article>
                                         ))}
 
                                         {filteredPlaces.length === 0 && (
-                                            <div className="text-center py-20 lg:py-24 bg-transparent lg:bg-white lg:rounded-[32px] lg:border border-[#F2F4F6] mt-4">
+                                            <div className="text-center py-20 lg:py-24 bg-white lg:rounded-[32px] lg:border border-[#F2F4F6] mt-4 shadow-sm">
                                                 <svg className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 lg:mb-6 text-[#D1D6DB]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                <p className="font-medium text-[15px] lg:text-[16px] text-[#4E5968]">선택하신 무드의 조합이 너무 뾰족해요.</p>
-                                                <button onClick={() => setSelectedTags([])} className="mt-4 lg:mt-6 px-5 py-2.5 lg:px-6 lg:py-3 bg-[#F2F4F6] lg:bg-[#191F28] text-[#4E5968] lg:text-white rounded-full lg:rounded-[14px] font-bold text-[13px] lg:text-[14px]">초기화하기</button>
+                                                <p className="font-medium text-[15px] lg:text-[16px] text-[#4E5968]">선택하신 조건의 공간이 없습니다.</p>
+                                                <button onClick={() => { setSelectedTags([]); setSearchKeyword(""); }} className="mt-4 lg:mt-6 px-5 py-2.5 lg:px-6 lg:py-3 bg-[#191F28] text-white rounded-[12px] font-bold text-[13px] lg:text-[14px] hover:bg-black transition-colors shadow-sm">초기화하기</button>
                                             </div>
                                         )}
                                     </div>
@@ -1046,7 +1308,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                                         {placeData.tags.length > 0 && (
                                                             <div className="flex flex-wrap gap-1.5 mt-3">
                                                                 {placeData.tags.slice(0, 2).map((t: string) => (
-                                                                    <span key={t} className="px-2 py-0.5 rounded-[6px] bg-[#F2F4F6] text-[#4E5968] text-[11px] font-bold">
+                                                                    <span key={t} className="px-2.5 py-1 rounded-[8px] bg-[#F2F4F6] text-[#4E5968] text-[11.5px] font-bold tracking-tight">
                                                                         #{t}
                                                                     </span>
                                                                 ))}
@@ -1063,7 +1325,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                     )}
 
                     {/* --- C. DETAIL PAGE VIEW --- */}
-                    {selectedPlace && !showHiddenGemPopup && (
+                    {selectedPlace && isDetailOpen && !showHiddenGemPopup && (
                         <>
                             {/* 모바일 슬라이드업 모달 */}
                             <div className="lg:hidden absolute inset-0 z-40 bg-white flex flex-col animate-slide-up">
@@ -1082,8 +1344,8 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                             {selectedPlace.location}
                                         </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedPlace.tags.map((tag: string) => <span key={tag} className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] text-[#4E5968] text-[13px] font-semibold">#{tag}</span>)}
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {selectedPlace.tags.map((tag: string) => <span key={tag} className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] text-[#4E5968] text-[12px] font-bold tracking-tight">#{tag}</span>)}
                                         </div>
                                         <p className="text-[15px] text-[#4E5968] leading-relaxed mt-6">{selectedPlace.description}</p>
                                     </div>
@@ -1147,8 +1409,8 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                 {selectedPlace.location} · {selectedPlace.distance}
                                             </p>
-                                            <div className="flex flex-wrap gap-2 mb-8">
-                                                {selectedPlace.tags.map((tag: string) => <span key={tag} className="px-4 py-2 rounded-[12px] bg-[#F2F4F6] text-[#4E5968] text-[14px] font-semibold">#{tag}</span>)}
+                                            <div className="flex flex-wrap gap-1.5 mb-8">
+                                                {selectedPlace.tags.map((tag: string) => <span key={tag} className="px-3.5 py-2 rounded-[12px] bg-[#F2F4F6] text-[#4E5968] text-[13px] font-bold tracking-tight">#{tag}</span>)}
                                             </div>
                                             <p className="text-[16px] text-[#4E5968] leading-[1.7] mb-10 bg-[#F9FAFB] p-6 rounded-[24px] border border-[#F2F4F6]">
                                                 {selectedPlace.description}
@@ -1217,7 +1479,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                     {/* ========================================================
                         모바일 하단 네비게이션
                     ======================================================== */}
-                    {!selectedPlace && (
+                    {!isDetailOpen && (
                         <nav className="lg:hidden absolute bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-[#F2F4F6] px-6 py-2.5 pb-safe flex justify-between items-center z-20">
                             <button onClick={() => setActiveView('home')} className={`flex flex-col items-center gap-1 active:scale-95 ${activeView === 'home' ? 'text-[#191F28]' : 'text-[#8B95A1]'}`}>
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
@@ -1242,11 +1504,11 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
             {/* Scrap Folder Bottom Sheet Modal */}
             {showFolderModal && (
-                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowFolderModal(false)}>
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={closeFolderModal}>
                     <div className="bg-white w-full max-w-[480px] rounded-t-[28px] p-6 pb-safe animate-slide-up" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-[20px] text-[#191F28]">저장 위치 선택</h3>
-                            <button onClick={() => setShowFolderModal(false)} className="p-2 text-[#8B95A1] hover:text-[#191F28] transition-colors rounded-full hover:bg-[#F2F4F6]">
+                            <button onClick={closeFolderModal} className="p-2 text-[#8B95A1] hover:text-[#191F28] transition-colors rounded-full hover:bg-[#F2F4F6]">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>

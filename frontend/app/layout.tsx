@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PickPl – 공간을 쇼핑하다",
+  title: "PickPl – 공간을 픽하다",
   description: "AI 기반 무드 큐레이션 공간 룩북 플랫폼. 당신의 감성에 딱 맞는 공간을 발견하세요.",
   keywords: ["공간 큐레이션", "무드 태그", "카페", "감성 공간", "PickPl"],
 };
