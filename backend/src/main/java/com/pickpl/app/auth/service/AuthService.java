@@ -146,4 +146,26 @@ public class AuthService {
     public void logout(String userId) {
         redisTemplate.delete("RT:" + userId);
     }
+
+    @Transactional(readOnly = true)
+    public com.pickpl.app.auth.dto.UserResponse getProfile(String userId) {
+        User user = userRepository.findById(Long.valueOf(userId))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+        return com.pickpl.app.auth.dto.UserResponse.of(user);
+    }
+
+    @Transactional
+    public com.pickpl.app.auth.dto.UserResponse updateProfile(String userId, com.pickpl.app.auth.dto.UpdateProfileRequest request) {
+        User user = userRepository.findById(Long.valueOf(userId))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+
+        if (request.nickname() != null && !request.nickname().isBlank() && !request.nickname().equals(user.getNickname())) {
+            if (userRepository.existsByNickname(request.nickname())) {
+                throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+            }
+        }
+
+        user.updateProfile(request.nickname(), request.profileImageUrl());
+        return com.pickpl.app.auth.dto.UserResponse.of(user);
+    }
 }

@@ -69,4 +69,29 @@ public class AuthController {
         }
         return ResponseEntity.ok().build();
     }
+
+    @Operation(summary = "내 프로필 조회")
+    @org.springframework.web.bind.annotation.GetMapping("/me")
+    public ResponseEntity<com.pickpl.app.auth.dto.UserResponse> getProfile(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        com.pickpl.app.auth.dto.UserResponse response = authService.getProfile(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "내 프로필 수정")
+    @org.springframework.web.bind.annotation.PostMapping("/me")
+    public ResponseEntity<com.pickpl.app.auth.dto.UserResponse> updateProfile(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails,
+            @RequestBody com.pickpl.app.auth.dto.UpdateProfileRequest request) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        com.pickpl.app.auth.dto.UserResponse response = authService.updateProfile(userId, request);
+        return ResponseEntity.ok(response);
+    }
 }
