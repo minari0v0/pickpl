@@ -68,6 +68,66 @@ function DraggableScroll({ children, className }: { children: React.ReactNode, c
     );
 }
 
+// --- 썸네일 콜라주 (Collage) 생성 함수 ---
+const renderFolderCover = (scraps: any[]) => {
+    if (!scraps || scraps.length === 0) {
+        return (
+            <div className="w-full h-full bg-[#F2F4F6] flex items-center justify-center text-[#8B95A1]">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            </div>
+        );
+    }
+    
+    const imageUrls = scraps.map(s => s.place?.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800");
+    
+    if (imageUrls.length === 1) {
+        return (
+            <img 
+                src={imageUrls[0]} 
+                alt="cover" 
+                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" 
+            />
+        );
+    }
+    
+    if (imageUrls.length === 2) {
+        return (
+            <div className="w-full h-full flex gap-[2px]">
+                <img src={imageUrls[0]} className="w-1/2 h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 1" />
+                <img src={imageUrls[1]} className="w-1/2 h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 2" />
+            </div>
+        );
+    }
+    
+    if (imageUrls.length === 3) {
+        return (
+            <div className="w-full h-full flex gap-[2px]">
+                <div className="w-[60%] h-full overflow-hidden">
+                    <img src={imageUrls[0]} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 1" />
+                </div>
+                <div className="w-[40%] h-full flex flex-col gap-[2px]">
+                    <div className="h-1/2 overflow-hidden">
+                        <img src={imageUrls[1]} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 2" />
+                    </div>
+                    <div className="h-1/2 overflow-hidden">
+                        <img src={imageUrls[2]} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 3" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    
+    // 4 or more
+    return (
+        <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-[2px]">
+            <img src={imageUrls[0]} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 1" />
+            <img src={imageUrls[1]} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 2" />
+            <img src={imageUrls[2]} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 3" />
+            <img src={imageUrls[3]} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 animate-fade-in" alt="cover 4" />
+        </div>
+    );
+};
+
 export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] }) {
     const router = useRouter();
     const [activeView, setActiveView] = useState<string>('home');
@@ -81,6 +141,46 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         setIsLoggedIn(authStore.isLoggedIn || !!localStorage.getItem("accessToken"));
         setNickname(authStore.nickname || localStorage.getItem("nickname") || "미나리");
     }, [authStore.isLoggedIn, authStore.nickname]);
+
+    const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+
+    const { data: scrapsData, mutate: mutateScraps } = useSWR(
+        isLoggedIn ? 'http://localhost:8080/api/v1/scraps' : null,
+        fetcher
+    );
+
+    const foldersMap = useMemo(() => {
+        if (!scrapsData || !Array.isArray(scrapsData)) return {};
+        const map: { [key: string]: any[] } = {};
+        scrapsData.forEach((scrap: any) => {
+            const folder = scrap.folderName || "기본 저장소";
+            if (!map[folder]) map[folder] = [];
+            map[folder].push(scrap);
+        });
+        return map;
+    }, [scrapsData]);
+
+    const mapPlaceToData = (place: any) => {
+        const tags = place.tags ? place.tags.map((t: any) => t.name) : [];
+        const isHiddenGem = false;
+        const initialVibe = place.vibeStats || { quiet: 0, chatty: 0 };
+        return {
+            id: place.id,
+            name: place.name,
+            location: place.address,
+            distance: "내 위치에서 " + ((place.id % 10) + 1) + "km",
+            imageUrl: place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800",
+            aspectRatio: "aspect-[4/5]",
+            tags: tags,
+            isHiddenGem: isHiddenGem,
+            initialVibe: initialVibe,
+            description: place.aiMoodSummary || place.category || "공간에 대한 설명이 없습니다.",
+            features: [{ icon: "✨", title: "특징", desc: place.category || "매력적인 공간" }],
+            bestReview: "정말 분위기가 좋았어요. 강력 추천합니다!",
+            isScrapped: place.isScrapped,
+            userVotedVibe: place.userVotedVibe ? place.userVotedVibe.toLowerCase() : null
+        };
+    };
 
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 
@@ -126,7 +226,11 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [vibeStats, setVibeStats] = useState<{ quiet: number; chatty: number }>({ quiet: 50, chatty: 50 });
     const [userVotedVibe, setUserVotedVibe] = useState<string | null>(null);
     const [isSaved, setIsSaved] = useState(false);
-    const [showSaveAnim, setShowSaveAnim] = useState(false);
+    const [isBookmarkPopping, setIsBookmarkPopping] = useState(false);
+    const [showFolderSettings, setShowFolderSettings] = useState(false);
+    const [showRenameModal, setShowRenameModal] = useState(false);
+    const [renameInputVal, setRenameInputVal] = useState("");
+    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
 
     // API 데이터와 디자인에 필요한 더미 속성 매핑
     const placesData = useMemo(() => {
@@ -251,15 +355,17 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             if (isDelete) {
                 await axiosInstance.delete(`/scraps/${selectedPlace.id}`);
                 setIsSaved(false);
+                showToast("북마크가 해제되었습니다.");
             } else {
                 const encodedFolder = encodeURIComponent(folderName || "기본 저장소");
                 await axiosInstance.post(`/scraps/${selectedPlace.id}?folderName=${encodedFolder}`);
                 setIsSaved(true);
-                setShowSaveAnim(true);
+                setIsBookmarkPopping(true);
                 setShowFolderModal(false);
-                setTimeout(() => setShowSaveAnim(false), 1000);
+                showToast(`"${folderName || '기본 저장소'}"에 저장되었습니다.`);
+                setTimeout(() => setIsBookmarkPopping(false), 500);
             }
-            mutate((key: any) => typeof key === 'string' && key.includes('/places'));
+            mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
         } catch (error: any) {
             console.error("스크랩 처리 실패:", error);
             if (error.response?.status === 401) {
@@ -267,11 +373,48 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             } else if (error.response?.status === 400) {
                 showToast("이미 처리된 요청입니다.", "warning");
                 setIsSaved(true);
-                mutate((key: any) => typeof key === 'string' && key.includes('/places'));
+                mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
                 setShowFolderModal(false);
             } else {
                 showToast("스크랩 처리 중 오류가 발생했습니다.", "error");
             }
+        }
+    };
+
+    const handleRenameFolder = async () => {
+        if (!selectedFolder || !renameInputVal.trim()) return;
+        if (renameInputVal.trim() === selectedFolder) {
+            setShowRenameModal(false);
+            return;
+        }
+        try {
+            const oldFolder = encodeURIComponent(selectedFolder);
+            const newFolder = encodeURIComponent(renameInputVal.trim());
+            await axiosInstance.put(`/scraps/folders?oldFolderName=${oldFolder}&newFolderName=${newFolder}`);
+            showToast("폴더 이름이 변경되었습니다.");
+            setSelectedFolder(renameInputVal.trim());
+            setShowRenameModal(false);
+            mutateScraps();
+            mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
+        } catch (error: any) {
+            console.error("폴더 이름 변경 실패:", error);
+            showToast("폴더 이름 변경 중 오류가 발생했습니다.", "error");
+        }
+    };
+
+    const handleDeleteFolder = async () => {
+        if (!selectedFolder) return;
+        try {
+            const folder = encodeURIComponent(selectedFolder);
+            await axiosInstance.delete(`/scraps/folders?folderName=${folder}`);
+            showToast("폴더가 삭제되었습니다.");
+            setSelectedFolder(null);
+            setShowDeleteConfirmModal(false);
+            mutateScraps();
+            mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
+        } catch (error: any) {
+            console.error("폴더 삭제 실패:", error);
+            showToast("폴더 삭제 중 오류가 발생했습니다.", "error");
         }
     };
 
@@ -306,12 +449,15 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         .wave-bar:nth-child(3) { animation-delay: 0.4s; }
         .wave-bar:nth-child(4) { animation-delay: 0.1s; }
 
-        @keyframes fly-to-collection {
-          0% { transform: scale(0.5) translate(0, 0); opacity: 0; }
-          20% { transform: scale(1.5) translate(0, -30px); opacity: 1; }
-          100% { transform: scale(0.2) translate(-200px, 300px); opacity: 0; }
+        @keyframes bookmark-pop {
+          0% { transform: scale(1); }
+          40% { transform: scale(1.3) rotate(-8deg); }
+          70% { transform: scale(0.95) rotate(3deg); }
+          100% { transform: scale(1) rotate(0); }
         }
-        .animate-fly { animation: fly-to-collection 0.8s cubic-bezier(0.5, 0, 0.2, 1) forwards; pointer-events: none; }
+        .animate-bookmark-pop {
+          animation: bookmark-pop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
         
         .fade-edges {
           -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
@@ -391,7 +537,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                             공간 탐색
                         </button>
-                        <button className="flex items-center gap-4 px-5 py-4 rounded-[16px] transition-colors font-bold text-[16px] text-[#6B7684] hover:bg-[#F9FAFB] hover:text-[#191F28]">
+                        <button onClick={() => { setActiveView('collection'); setSelectedFolder(null); setSelectedPlace(null); }} className={`flex items-center gap-4 px-5 py-4 rounded-[16px] transition-colors font-bold text-[16px] ${activeView === 'collection' ? 'bg-[#F2F4F6] text-[#191F28]' : 'text-[#6B7684] hover:bg-[#F9FAFB] hover:text-[#191F28]'}`}>
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                             내 컬렉션
                         </button>
@@ -687,6 +833,235 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         </div>
                     )}
 
+                    {/* --- D. COLLECTION VIEW --- */}
+                    {activeView === 'collection' && (
+                        <div className="flex-1 h-full w-full overflow-y-auto no-scrollbar bg-[#F9FAFB] animate-slide-in-right lg:animate-fade-in flex flex-col absolute lg:relative inset-0 z-30 lg:z-auto items-center">
+                            
+                            {/* 헤더 */}
+                            <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]/50 px-6 py-4 lg:px-10 lg:py-8 flex items-center w-full justify-between shrink-0">
+                                <div className="flex items-center gap-3">
+                                    {selectedFolder && (
+                                        <button 
+                                            onClick={() => setSelectedFolder(null)}
+                                            className="w-10 h-10 rounded-full bg-[#F2F4F6] hover:bg-[#E5E8EB] flex items-center justify-center text-[#4E5968] active:scale-95 transition-all mr-1"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                    <div className="flex flex-col">
+                                        {selectedFolder ? (
+                                            <>
+                                                <div className="hidden lg:flex items-center gap-1.5 text-[13px] font-bold text-[#8B95A1] mb-1">
+                                                    <span>내 컬렉션</span>
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                                                    <span className="text-[#4E5968]">{selectedFolder}</span>
+                                                </div>
+                                                <h1 className="font-bold text-[20px] lg:text-[28px] tracking-tight text-[#191F28]">{selectedFolder}</h1>
+                                            </>
+                                        ) : (
+                                            <h1 className="font-bold text-[20px] lg:text-[28px] tracking-tight text-[#191F28]">내 컬렉션</h1>
+                                        )}
+                                    </div>
+                                </div>
+                                {isLoggedIn && !selectedFolder && scrapsData && Array.isArray(scrapsData) && Object.keys(foldersMap).length > 0 && (
+                                    <span className="text-[13px] lg:text-[14px] font-bold text-orange-500 bg-orange-50 border border-orange-100 px-3.5 py-1.5 rounded-[10px]">
+                                        총 {Object.keys(foldersMap).length}개의 폴더
+                                    </span>
+                                )}
+                                {selectedFolder && foldersMap[selectedFolder] && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[13px] lg:text-[14px] font-bold text-orange-500 bg-orange-50 border border-orange-100 px-3.5 py-1.5 rounded-[10px]">
+                                            공간 {foldersMap[selectedFolder].length}개
+                                        </span>
+                                        {selectedFolder !== "기본 저장소" && (
+                                            <div className="relative">
+                                                <button 
+                                                    onClick={() => setShowFolderSettings(!showFolderSettings)}
+                                                    className="w-10 h-10 rounded-full flex items-center justify-center text-[#8B95A1] hover:text-[#191F28] hover:bg-[#F2F4F6] transition-colors"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                                    </svg>
+                                                </button>
+                                                
+                                                {showFolderSettings && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-30" onClick={() => setShowFolderSettings(false)}></div>
+                                                        <div className="absolute right-0 mt-2 w-40 bg-white border border-[#E5E8EB] rounded-[16px] shadow-lg py-2 z-40 animate-scale-up">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setShowFolderSettings(false);
+                                                                    setRenameInputVal(selectedFolder);
+                                                                    setShowRenameModal(true);
+                                                                }}
+                                                                className="flex items-center gap-2.5 w-full px-4 py-3 text-left font-bold text-[14px] text-[#4E5968] hover:bg-[#F9FAFB] hover:text-[#191F28] transition-colors"
+                                                            >
+                                                                ✏️ 이름 변경
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setShowFolderSettings(false);
+                                                                    setShowDeleteConfirmModal(true);
+                                                                }}
+                                                                className="flex items-center gap-2.5 w-full px-4 py-3 text-left font-bold text-[14px] text-red-500 hover:bg-red-50 transition-colors"
+                                                            >
+                                                                🗑️ 폴더 삭제
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </header>
+
+                            <div className="w-full lg:max-w-[880px] px-5 py-6 lg:px-8 lg:py-10 flex-1 flex flex-col pb-[100px] lg:pb-24">
+                                {!isLoggedIn ? (
+                                    /* 비로그인 유도 CTA */
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center py-10 lg:py-20 animate-fade-in">
+                                        <div className="relative w-36 h-36 flex items-center justify-center mb-8">
+                                            <div className="absolute inset-0 bg-orange-500/10 rounded-full blur-[30px] animate-[glow-pulse_3s_ease-in-out_infinite]"></div>
+                                            <svg className="w-16 h-16 text-orange-500/90 drop-shadow-[0_0_12px_rgba(249,115,22,0.35)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                            </svg>
+                                        </div>
+                                        <h2 className="text-[22px] lg:text-[26px] font-bold tracking-tight text-[#191F28] mb-3">나만의 감성 공간을 채워보세요</h2>
+                                        <p className="text-[14px] lg:text-[15px] text-[#8B95A1] font-medium leading-relaxed max-w-[320px] mb-8">
+                                            로그인하고 마음에 드는 공간들을<br />나만의 폴더로 간직할 수 있습니다.
+                                        </p>
+                                        <button onClick={() => router.push('/login')} className="bg-[#191F28] hover:bg-black text-white font-bold text-[15px] px-7 py-4 rounded-[16px] transition-all active:scale-[0.98] shadow-md">
+                                            로그인하고 시작하기
+                                        </button>
+                                    </div>
+                                ) : !scrapsData ? (
+                                    /* 로딩 스켈레톤 */
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                                        {[1, 2, 3].map((n) => (
+                                            <div key={n} className="flex flex-col">
+                                                <div className="aspect-[4/3] rounded-[24px] bg-[#E5E8EB]"></div>
+                                                <div className="h-5 bg-[#E5E8EB] w-2/3 rounded-md mt-4"></div>
+                                                <div className="h-4 bg-[#E5E8EB] w-1/3 rounded-md mt-2"></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : Object.keys(foldersMap).length === 0 ? (
+                                    /* 저장된 공간 없음 Empty State */
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center py-12 lg:py-24 animate-fade-in">
+                                        <div className="w-20 h-20 rounded-full bg-[#F2F4F6] flex items-center justify-center text-[#D1D6DB] mb-6">
+                                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="font-bold text-[18px] text-[#191F28] mb-2">저장한 공간이 아직 없습니다</h3>
+                                        <p className="text-[13.5px] text-[#8B95A1] font-medium leading-relaxed max-w-[280px] mb-6">
+                                            발견 피드에서 마음에 드는 공간에<br />북마크를 눌러 폴더를 채워보세요.
+                                        </p>
+                                        <button onClick={() => setActiveView('home')} className="bg-[#191F28] hover:bg-black text-white font-bold text-[14px] px-6 py-3 rounded-[12px] transition-colors shadow-sm">
+                                            피드 보러 가기
+                                        </button>
+                                    </div>
+                                ) : !selectedFolder ? (
+                                    /* 폴더 리스트 메인 뷰 */
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 animate-fade-in">
+                                        {Object.keys(foldersMap)
+                                            .sort((a, b) => {
+                                                if (a === "기본 저장소") return -1;
+                                                if (b === "기본 저장소") return 1;
+                                                return a.localeCompare(b);
+                                            })
+                                            .map((folderName) => {
+                                                const scrapsInFolder = foldersMap[folderName];
+                                                
+                                                return (
+                                                    <div 
+                                                        key={folderName} 
+                                                        onClick={() => setSelectedFolder(folderName)}
+                                                        className="group cursor-pointer flex flex-col animate-scale-up"
+                                                    >
+                                                        <div className="relative aspect-[4/3] rounded-[24px] overflow-hidden bg-[#F2F4F6] shadow-sm border border-[#F2F4F6]/50">
+                                                            {renderFolderCover(scrapsInFolder)}
+                                                            <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors"></div>
+                                                            
+                                                            {scrapsInFolder.length > 1 && (
+                                                                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-[10px] text-[11px] font-bold text-[#4E5968] shadow-sm border border-white/20">
+                                                                    +{scrapsInFolder.length - 1}개
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="mt-4 px-1">
+                                                            <h3 className="font-bold text-[16px] lg:text-[18px] text-[#191F28] tracking-tight group-hover:text-orange-500 transition-colors line-clamp-1">{folderName}</h3>
+                                                            <p className="text-[12.5px] text-[#8B95A1] font-semibold mt-0.5">{scrapsInFolder.length}개의 공간</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+                                ) : (
+                                    /* 폴더 상세 뷰 (Masonry grid 스타일) */
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 animate-fade-in">
+                                        {foldersMap[selectedFolder]?.map((scrap: any) => {
+                                            const placeData = mapPlaceToData(scrap.place);
+                                            return (
+                                                <article 
+                                                    key={scrap.scrapId} 
+                                                    onClick={() => handlePlaceClick(placeData)}
+                                                    className="group cursor-pointer relative flex flex-col bg-white rounded-[24px] border border-[#F2F4F6] overflow-hidden shadow-sm hover:shadow-md transition-all animate-scale-up"
+                                                >
+                                                    <div className="relative aspect-[4/5] overflow-hidden bg-[#F2F4F6]">
+                                                        <img 
+                                                            src={placeData.imageUrl} 
+                                                            alt={placeData.name} 
+                                                            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500" 
+                                                        />
+                                                        
+                                                        {/* Floating Unscrap Button */}
+                                                        <button 
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                try {
+                                                                    await axiosInstance.delete(`/scraps/${placeData.id}`);
+                                                                    showToast("북마크가 해제되었습니다.");
+                                                                    mutateScraps();
+                                                                    mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                    showToast("북마크 해제 중 오류가 발생했습니다.", "error");
+                                                                }
+                                                            }}
+                                                            className="absolute top-3.5 right-3.5 w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-[#F97316] shadow-sm border border-white/20 active:scale-90 hover:scale-105 transition-transform z-10"
+                                                        >
+                                                            <svg className="w-4 h-4 text-[#F97316]" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <div className="p-4 flex flex-col flex-1">
+                                                        <h4 className="font-bold text-[15px] lg:text-[16px] text-[#191F28] tracking-tight line-clamp-1 group-hover:text-orange-500 transition-colors">{placeData.name}</h4>
+                                                        <p className="text-[12px] text-[#8B95A1] font-semibold mt-1 line-clamp-1">{placeData.location}</p>
+                                                        
+                                                        {placeData.tags.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1.5 mt-3">
+                                                                {placeData.tags.slice(0, 2).map((t: string) => (
+                                                                    <span key={t} className="px-2 py-0.5 rounded-[6px] bg-[#F2F4F6] text-[#4E5968] text-[11px] font-bold">
+                                                                        #{t}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </article>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* --- C. DETAIL PAGE VIEW --- */}
                     {selectedPlace && !showHiddenGemPopup && (
                         <>
@@ -741,14 +1116,12 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                     </div>
                                 </div>
                                 <div className="absolute bottom-0 left-0 w-full bg-white border-t border-[#F2F4F6] px-5 py-4 pb-safe flex gap-3 z-50">
-                                    {showSaveAnim && (
-                                        <div className="absolute left-[35px] bottom-[30px] w-8 h-8 flex items-center justify-center text-red-500 animate-fly z-50">
-                                            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                                        </div>
-                                    )}
-                                    <button onClick={handleSaveClick} className={`w-[56px] h-[56px] rounded-[18px] flex items-center justify-center transition-all active:scale-90 shrink-0 border ${isSaved ? 'bg-red-50 border-red-100 text-red-500' : 'bg-[#F2F4F6] border-transparent text-[#8B95A1]'}`}>
+                                    <button 
+                                        onClick={handleSaveClick} 
+                                        className={`w-[56px] h-[56px] rounded-[18px] flex items-center justify-center transition-all active:scale-90 shrink-0 border ${isSaved ? 'bg-orange-50 border-orange-100 text-orange-500' : 'bg-[#F2F4F6] border-transparent text-[#8B95A1]'} ${isBookmarkPopping ? 'animate-bookmark-pop' : ''}`}
+                                    >
                                         <svg className="w-7 h-7" fill={isSaved ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isSaved ? 0 : 2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                         </svg>
                                     </button>
                                     <button className="flex-1 h-[56px] rounded-[18px] bg-[#191F28] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm">
@@ -823,14 +1196,12 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                             </div>
                                         </div>
                                         <div className="sticky bottom-0 bg-white/95 backdrop-blur-xl border-t border-[#F2F4F6] p-6 flex gap-4 z-50">
-                                            {showSaveAnim && (
-                                                <div className="absolute left-[35px] bottom-[30px] w-10 h-10 flex items-center justify-center text-red-500 animate-fly z-50">
-                                                    <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                                                </div>
-                                            )}
-                                            <button onClick={handleSaveClick} className={`w-[64px] h-[64px] rounded-[20px] flex items-center justify-center transition-all hover:scale-95 shrink-0 border ${isSaved ? 'bg-red-50 border-red-100 text-red-500' : 'bg-[#F9FAFB] border-[#E5E8EB] text-[#8B95A1] hover:bg-[#F2F4F6]'}`}>
+                                            <button 
+                                                onClick={handleSaveClick} 
+                                                className={`w-[64px] h-[64px] rounded-[20px] flex items-center justify-center transition-all hover:scale-95 shrink-0 border ${isSaved ? 'bg-orange-50 border-orange-100 text-orange-500' : 'bg-[#F9FAFB] border-[#E5E8EB] text-[#8B95A1] hover:bg-[#F2F4F6]'} ${isBookmarkPopping ? 'animate-bookmark-pop' : ''}`}
+                                            >
                                                 <svg className="w-8 h-8" fill={isSaved ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isSaved ? 0 : 2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                                 </svg>
                                             </button>
                                             <button className="flex-1 h-[64px] rounded-[20px] bg-[#191F28] hover:bg-black text-white font-bold text-[18px] transition-colors shadow-sm">
@@ -856,11 +1227,11 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 <span className="text-[10px] font-bold">탐색</span>
                             </button>
-                            <button className="flex flex-col items-center gap-1 text-[#8B95A1] active:scale-95 relative">
+                            <button onClick={() => { setActiveView('collection'); setSelectedFolder(null); setSelectedPlace(null); }} className={`flex flex-col items-center gap-1 active:scale-95 ${activeView === 'collection' ? 'text-[#191F28]' : 'text-[#8B95A1]'}`}>
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                                 <span className="text-[10px] font-bold">컬렉션</span>
                             </button>
-                            <button onClick={() => isLoggedIn ? alert('마이페이지 준비중') : router.push('/login')} className="flex flex-col items-center gap-1 text-[#8B95A1] active:scale-95">
+                            <button onClick={() => isLoggedIn ? setActiveView('collection') : router.push('/login')} className={`flex flex-col items-center gap-1 active:scale-95 ${isLoggedIn && activeView === 'collection' ? 'text-[#191F28]' : 'text-[#8B95A1]'}`}>
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                 <span className="text-[10px] font-bold">{isLoggedIn ? '마이' : '로그인'}</span>
                             </button>
@@ -883,16 +1254,44 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         <div className="flex flex-col gap-3">
                             {!isCreatingFolder ? (
                                 <>
-                                    <button onClick={() => executeScrap("기본 저장소", false)} className="flex items-center justify-between w-full p-4 rounded-[20px] bg-[#F9FAFB] hover:bg-[#F2F4F6] transition-colors group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-[14px] bg-[#E5E8EB] flex items-center justify-center text-[#8B95A1] group-hover:text-[#4E5968] transition-colors">
-                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                                    <div className="flex flex-col gap-3 overflow-y-auto no-scrollbar max-h-[260px] pr-0.5">
+                                        <button onClick={() => executeScrap("기본 저장소", false)} className="flex items-center justify-between w-full p-4 rounded-[20px] bg-[#F9FAFB] hover:bg-[#F2F4F6] transition-colors group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-[14px] bg-[#E5E8EB] flex items-center justify-center text-[#8B95A1] group-hover:text-[#4E5968] transition-colors">
+                                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                                                </div>
+                                                <div className="flex flex-col items-start">
+                                                    <span className="font-bold text-[16px] text-[#191F28]">기본 저장소</span>
+                                                    {foldersMap["기본 저장소"] && (
+                                                        <span className="text-[12px] text-[#8B95A1] font-semibold">{foldersMap["기본 저장소"].length}개의 공간</span>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col items-start">
-                                                <span className="font-bold text-[16px] text-[#191F28]">기본 저장소</span>
-                                            </div>
-                                        </div>
-                                    </button>
+                                        </button>
+                                        
+                                        {/* 기존 커스텀 폴더 목록 */}
+                                        {Object.keys(foldersMap)
+                                            .filter(name => name !== "기본 저장소")
+                                            .sort((a, b) => a.localeCompare(b))
+                                            .map(folderName => (
+                                                <button 
+                                                    key={folderName} 
+                                                    onClick={() => executeScrap(folderName, false)} 
+                                                    className="flex items-center justify-between w-full p-4 rounded-[20px] bg-[#F9FAFB] hover:bg-[#F2F4F6] transition-colors group"
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 rounded-[14px] bg-[#E5E8EB] flex items-center justify-center text-[#8B95A1] group-hover:text-[#4E5968] transition-colors">
+                                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                                                        </div>
+                                                        <div className="flex flex-col items-start text-left">
+                                                            <span className="font-bold text-[16px] text-[#191F28] line-clamp-1">{folderName}</span>
+                                                            <span className="text-[12px] text-[#8B95A1] font-semibold">{foldersMap[folderName].length}개의 공간</span>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))
+                                        }
+                                    </div>
                                     
                                     <button onClick={() => setIsCreatingFolder(true)} className="flex items-center justify-between w-full p-4 rounded-[20px] bg-white border border-[#F2F4F6] hover:border-blue-200 hover:bg-blue-50 transition-colors group">
                                         <div className="flex items-center gap-4">
@@ -932,6 +1331,69 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Folder Rename Modal */}
+            {showRenameModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowRenameModal(false)}>
+                    <div className="bg-white w-[90%] max-w-[400px] rounded-[28px] p-6 shadow-2xl animate-scale-up" onClick={e => e.stopPropagation()}>
+                        <h3 className="font-bold text-[20px] text-[#191F28] mb-4">폴더 이름 변경</h3>
+                        <p className="text-[14px] text-[#8B95A1] font-semibold mb-4">새로운 폴더 이름을 입력해주세요.</p>
+                        <input 
+                            type="text" 
+                            autoFocus
+                            placeholder="폴더 이름 입력" 
+                            value={renameInputVal} 
+                            onChange={(e) => setRenameInputVal(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && renameInputVal.trim()) {
+                                    handleRenameFolder();
+                                }
+                            }}
+                            className="w-full bg-[#F9FAFB] border border-[#E5E8EB] rounded-[16px] px-5 py-4 text-[16px] font-medium focus:outline-none focus:border-blue-500 focus:bg-white transition-colors mb-6"
+                        />
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowRenameModal(false)} className="flex-1 py-4 rounded-[16px] bg-[#F2F4F6] text-[#4E5968] font-bold text-[15px] hover:bg-[#E5E8EB] transition-colors">
+                                취소
+                            </button>
+                            <button 
+                                onClick={handleRenameFolder} 
+                                disabled={!renameInputVal.trim() || renameInputVal.trim() === selectedFolder}
+                                className={`flex-1 py-4 rounded-[16px] font-bold text-[15px] transition-colors ${renameInputVal.trim() && renameInputVal.trim() !== selectedFolder ? 'bg-[#191F28] text-white hover:bg-black' : 'bg-[#E5E8EB] text-[#B0B8C1] cursor-not-allowed'}`}
+                            >
+                                변경
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Folder Delete Confirmation Modal */}
+            {showDeleteConfirmModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowDeleteConfirmModal(false)}>
+                    <div className="bg-white w-[90%] max-w-[400px] rounded-[28px] p-6 shadow-2xl animate-scale-up" onClick={e => e.stopPropagation()}>
+                        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-4">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        <h3 className="font-bold text-[20px] text-[#191F28] mb-2">폴더를 삭제하시겠습니까?</h3>
+                        <p className="text-[14px] text-[#8B95A1] font-semibold leading-relaxed mb-6">
+                            폴더를 삭제하면 해당 폴더 안에 저장된 <span className="text-red-500 font-bold">{(selectedFolder && foldersMap[selectedFolder])?.length || 0}개</span>의 모든 공간 스크랩이 함께 삭제됩니다. 이 동작은 취소할 수 없습니다.
+                        </p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowDeleteConfirmModal(false)} className="flex-1 py-4 rounded-[16px] bg-[#F2F4F6] text-[#4E5968] font-bold text-[15px] hover:bg-[#E5E8EB] transition-colors">
+                                취소
+                            </button>
+                            <button 
+                                onClick={handleDeleteFolder} 
+                                className="flex-1 py-4 rounded-[16px] bg-red-500 text-white font-bold text-[15px] hover:bg-red-600 transition-colors shadow-sm"
+                            >
+                                삭제
+                            </button>
                         </div>
                     </div>
                 </div>

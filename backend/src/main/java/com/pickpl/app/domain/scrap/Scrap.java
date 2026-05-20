@@ -88,4 +88,5 @@ public class Scrap extends BaseTimeEntity {
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
     public Place getPlace() { return place; }
+    public String getFolderName() { return folderName; }
 }

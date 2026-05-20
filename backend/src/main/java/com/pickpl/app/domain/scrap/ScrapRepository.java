@@ -24,4 +24,15 @@ public interface ScrapRepository extends JpaRepository<Scrap, Long> {
     /** 특정 유저가 스크랩한 모든 공간의 ID 목록 조회 */
     @org.springframework.data.jpa.repository.Query("SELECT s.place.id FROM Scrap s WHERE s.userId = :userId")
     List<Long> findScrappedPlaceIdsByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Scrap s SET s.folderName = :newFolderName WHERE s.userId = :userId AND s.folderName = :oldFolderName")
+    void renameFolder(@org.springframework.data.repository.query.Param("userId") Long userId, 
+                      @org.springframework.data.repository.query.Param("oldFolderName") String oldFolderName, 
+                      @org.springframework.data.repository.query.Param("newFolderName") String newFolderName);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Scrap s WHERE s.userId = :userId AND s.folderName = :folderName")
+    void deleteFolder(@org.springframework.data.repository.query.Param("userId") Long userId, 
+                      @org.springframework.data.repository.query.Param("folderName") String folderName);
 }
