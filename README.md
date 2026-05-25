@@ -23,6 +23,8 @@
 바쁜 현대인들에게 카페나 식당, 스터디룸 등의 공간은 단순한 장소를 넘어 **'나만의 시간을 보내는 감성 영역'**입니다. 
 PickPl은 사용자들이 더 이상 텍스트 리뷰와 평점을 하나하나 분석하지 않고도, 직관적인 **비주얼 룩북 피드**와 **대칭성 높은 시그니처 무드 태그**를 통해 단 0.1초 만에 감성에 녹아드는 공간을 선택할 수 있는 프리미엄 경험을 제공합니다.
 
+![메인화면](https://private-user-images.githubusercontent.com/144759680/597458374-0668da9e-f812-42d5-a301-e61b48d60afe.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3Nzk2OTA4MTEsIm5iZiI6MTc3OTY5MDUxMSwicGF0aCI6Ii8xNDQ3NTk2ODAvNTk3NDU4Mzc0LTA2NjhkYTllLWY4MTItNDJkNS1hMzAxLWU2MWI0OGQ2MGFmZS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwNTI1JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDUyNVQwNjI4MzFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0wZDBiN2M5MzNkMWMxNWI1MDM3ZGQ2NzMyMjVkOGJjMWZkN2FkZjUxYjYyZWJmYmY1NGNjYTY1MDY0OTUyM2ViJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9aW1hZ2UlMkZwbmcifQ.-9KnkMlKs0c5eb_iZ66N6wiIFpPNEIXR2MiXU3pNU58)
+
 ### ✨ 주요 차별화 기능
 1. **📱 몰입형 룩북 피드 (Swipe Curation):**
    - 핀터레스트/인스타그램 스타일의 미려한 카드 레이아웃과 프로필 구조를 가진 모바일/PC 반응형 룩북 피드.
@@ -62,14 +64,19 @@ graph TD
             MySQL[🗄️ MySQL 8.0.35]
             Redis[⚡ Redis 7.x]
         end
-        
-        SpringBatch[⚙️ Spring Batch Crawler]
+    end
+    
+    subgraph "Data Pipeline Layer"
+        PythonCrawler[🐍 Python Crawler & Analyzer]
+        Web[Naver/Kakao Places]
+        Gemini[🤖 Gemini API]
     end
     
     Backend <-->|Read/Write / Connection Pool| MySQL
     Backend <-->|Fast Tag Cache & Token Store| Redis
-    SpringBatch -->|Web Scraper Engine| Web[Naver/Kakao Places]
-    SpringBatch -->|Image & Text Multimodal Analysis| Gemini[🤖 Gemini API]
+    PythonCrawler -->|Web Scraper Engine| Web
+    PythonCrawler -->|Image & Text Multimodal Analysis| Gemini
+    PythonCrawler -->|Batch API Push /api/v1/places/batch| Backend
 ```
 
 ### ⚙️ 시스템 구성의 핵심 기능:
@@ -79,8 +86,10 @@ graph TD
 * **Backend & DB (Docker Compose)**
   - Docker Compose 환경을 바탕으로 **Spring Boot 4.0.6**, **MySQL 8.0.35**, **Redis 7.x** 서버를 완전히 격리된 단일 네트워크 내에서 빠르고 안전하게 연속 구동.
   - Redis 메모리 캐싱 및 토큰 인증 서버 구동으로 무상태 API의 성능 최적화.
-* **AI Engine (Gemini API Multimodal)**
-  - 멀티모달(이미지 + 텍스트 동시 입력) 성능이 뛰어난 Gemini API를 로드하여, 수집된 대량의 크롤링 데이터를 기반으로 공간 감성 지표(Vibe)와 시그니처 카테고리 태그 분류 파이프라인 자동화 구현.
+* **Data Pipeline (Python & Gemini API)**
+  - 독립적으로 구성된 Python 크롤러가 포털 지도의 공간 사진과 리뷰 데이터를 수집합니다.
+  - 수집된 데이터를 Gemini API로 전달해 멀티모달(이미지+텍스트) 방식으로 공간의 감성 무드 지표와 카테고리 태그 분류 연산을 처리합니다.
+  - 가공 완료된 최종 데이터셋은 백엔드가 제공하는 `/api/v1/places/batch` 엔드포인트를 통해 DB에 안전하고 일괄적으로 주입(Injection)됩니다.
 
 ---
 
