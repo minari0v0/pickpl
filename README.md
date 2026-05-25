@@ -112,8 +112,15 @@ flowchart TD
     Onboard --> Feed[몰입형 룩북 피드 탐색]:::feed
     Guest --> Feed
     
-    Feed -->|Swipe Down/Up| ScrollPlace[세로 스와이프 공간 구경]:::feed
-    Feed -->|돋보기 버튼 / 탐색| SearchTab[공간 탐색 탭 진입]:::search
+    %% 추천 큐레이션 노출 흐름
+    Feed --> Curation[실시간 기상/날씨/계절 감성 큐레이션 노출]:::feed
+    Feed --> TasteRecommend[개인 취향 기반 AI 감성 추천 피드 노출]:::feed
+    
+    Curation --> ScrollPlace[세로 스와이프 공간 구경]:::feed
+    TasteRecommend --> ScrollPlace
+    Feed -->|Swipe Down/Up| ScrollPlace
+    
+    ScrollPlace -->|돋보기 버튼 / 탐색| SearchTab[공간 탐색 탭 진입]:::search
     
     SearchTab -->|마이크로 글래스모피즘 검색 바| KeywordSearch[키워드 & 장소 실시간 검색]:::search
     SearchTab -->|3대 카테고리 웜코지 칩 클릭| TagFilter[다중 태그 교집합 필터링]:::search
