@@ -37,6 +37,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [nickname, setNickname] = useState("미나리");
     const [userEmail, setUserEmail] = useState("");
     const [profileImage, setProfileImage] = useState("/profile_cat.png");
+    const [isMounted, setIsMounted] = useState(false);
     
     // 모달 표시 상태
     const [showAccountModal, setShowAccountModal] = useState(false);
@@ -61,6 +62,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
     // 폴더 편집 관련 상태들
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+    const [folderToEdit, setFolderToEdit] = useState<string | null>(null);
     const [showFolderSettings, setShowFolderSettings] = useState(false);
     const [showRenameModal, setShowRenameModal] = useState(false);
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
@@ -77,21 +79,33 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         setTimeout(() => setToast(null), 3000);
     };
 
-    // 로컬 스토리지 설정 동기화
+    // 로컬 스토리지 설정 및 로그인 상태 마운트 동기화
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setDefaultScrapFolder(localStorage.getItem("defaultScrapFolder") || "기본 저장소");
             setAppTheme(localStorage.getItem("appTheme") || "기본 테마");
             setNewThemeNotification(localStorage.getItem("newThemeNotification") !== "false");
             setPlannerNotification(localStorage.getItem("plannerNotification") !== "false");
+
+            // Zustand 스토어 로그인 상태 동기화
+            const token = localStorage.getItem("accessToken");
+            const nick = localStorage.getItem("nickname") || "미나리";
+            if (token) {
+                authStore.login(nick);
+            } else {
+                authStore.logout();
+            }
+            setIsMounted(true);
         }
     }, []);
 
     // 로그인 상태 마운트 동기화
     useEffect(() => {
-        const logged = authStore.isLoggedIn || !!localStorage.getItem("accessToken");
-        setIsLoggedIn(logged);
-        setNickname(authStore.nickname || localStorage.getItem("nickname") || "미나리");
+        if (typeof window !== 'undefined') {
+            const logged = authStore.isLoggedIn || !!localStorage.getItem("accessToken");
+            setIsLoggedIn(logged);
+            setNickname(authStore.nickname || localStorage.getItem("nickname") || "미나리");
+        }
     }, [authStore.isLoggedIn, authStore.nickname]);
 
     // 내 정보 로드
@@ -319,13 +333,18 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     };
 
     const handleRenameFolder = async (newName: string) => {
-        if (!selectedFolder || !newName) return;
+        if (!folderToEdit || !newName) return;
         try {
-            const oldFolder = encodeURIComponent(selectedFolder);
+            const oldFolder = encodeURIComponent(folderToEdit);
             const newFolder = encodeURIComponent(newName);
             await axiosInstance.put(`/scraps/folders?oldFolderName=${oldFolder}&newFolderName=${newFolder}`);
             showToast("폴더 이름이 변경되었습니다.");
-            setSelectedFolder(newName);
+            
+            if (selectedFolder === folderToEdit) {
+                setSelectedFolder(newName);
+            }
+            
+            setFolderToEdit(null);
             setShowRenameModal(false);
             mutateScraps();
             mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
@@ -336,12 +355,17 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     };
 
     const handleDeleteFolder = async () => {
-        if (!selectedFolder) return;
+        if (!folderToEdit) return;
         try {
-            const folder = encodeURIComponent(selectedFolder);
+            const folder = encodeURIComponent(folderToEdit);
             await axiosInstance.delete(`/scraps/folders?folderName=${folder}`);
             showToast("폴더가 삭제되었습니다.");
-            setSelectedFolder(null);
+            
+            if (selectedFolder === folderToEdit) {
+                setSelectedFolder(null);
+            }
+            
+            setFolderToEdit(null);
             setShowDeleteConfirmModal(false);
             mutateScraps();
             mutate((key: any) => typeof key === 'string' && (key.includes('/places') || key.includes('/scraps')));
@@ -539,8 +563,12 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         </div>
                     </div>
 
-                    <div className="mt-auto pt-8 border-t border-[#F2F4F6] shrink-0">
-                        {isLoggedIn ? (
+                    <div className="mt-auto pt-8 border-t border-[#F2F4F6] shrink-0 min-h-[90px]">
+                        {!isMounted ? (
+                            <div className="w-full h-[54px] bg-[#F9FAFB] border border-[#F2F4F6] animate-pulse rounded-[16px] flex items-center justify-center text-[13px] text-[#8B95A1] font-semibold">
+                                로딩 중...
+                            </div>
+                        ) : isLoggedIn ? (
                             <div className="flex flex-col gap-2">
                                 <button onClick={() => setActiveView('mypage')} className={`flex items-center gap-4 w-full p-4 rounded-[16px] hover:bg-[#F9FAFB] active:bg-[#F2F4F6] transition-colors group ${activeView === 'mypage' ? 'bg-[#F2F4F6]' : ''}`}>
                                     <div className={`w-10 h-10 rounded-full overflow-hidden shrink-0 border border-orange-100 transition-colors duration-300 ${getProfileBgClass(profileImage)}`}>
@@ -595,6 +623,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         foldersMap={foldersMap}
                         selectedFolder={selectedFolder}
                         setSelectedFolder={setSelectedFolder}
+                        setFolderToEdit={setFolderToEdit}
                         onPlaceClick={handlePlaceClick}
                         onViewChange={setActiveView}
                         showFolderSettings={showFolderSettings}
@@ -657,6 +686,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         {/* 마이페이지 */}
                         <button 
                             onClick={() => {
+                                if (!isMounted) return;
                                 if (isLoggedIn) {
                                     setActiveView('mypage');
                                 } else {
@@ -666,7 +696,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                             className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all relative ${activeView === 'mypage' ? 'text-[#191F28]' : 'text-[#8B95A1] hover:text-[#4E5968]'}`}
                         >
                             <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeView === 'mypage' ? 2.5 : 2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                            <span className="text-[10px] font-bold">{isLoggedIn ? '마이' : '로그인'}</span>
+                            <span className="text-[10px] font-bold">{!isMounted ? '...' : isLoggedIn ? '마이' : '로그인'}</span>
                             {activeView === 'mypage' && <span className="absolute bottom-[-3px] w-1.5 h-1.5 rounded-full bg-orange-500"></span>}
                         </button>
                     </nav>
@@ -712,17 +742,23 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             {/* 폴더 이름 변경 */}
             <FolderRenameModal 
                 isOpen={showRenameModal} 
-                onClose={() => setShowRenameModal(false)} 
-                selectedFolder={selectedFolder} 
+                onClose={() => {
+                    setShowRenameModal(false);
+                    setFolderToEdit(null);
+                }} 
+                selectedFolder={folderToEdit} 
                 onRename={handleRenameFolder} 
             />
 
             {/* 폴더 삭제 확인 */}
             <FolderDeleteConfirmModal 
                 isOpen={showDeleteConfirmModal} 
-                onClose={() => setShowDeleteConfirmModal(false)} 
-                selectedFolder={selectedFolder} 
-                folderScrapsCount={(selectedFolder && foldersMap[selectedFolder])?.length || 0} 
+                onClose={() => {
+                    setShowDeleteConfirmModal(false);
+                    setFolderToEdit(null);
+                }} 
+                selectedFolder={folderToEdit} 
+                folderScrapsCount={(folderToEdit && foldersMap[folderToEdit])?.length || 0} 
                 onDeleteConfirm={handleDeleteFolder} 
             />
 

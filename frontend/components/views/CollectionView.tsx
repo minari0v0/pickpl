@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { mutate } from 'swr';
 import axiosInstance from '../../api/axios';
@@ -11,6 +11,7 @@ interface CollectionViewProps {
     foldersMap: { [key: string]: any[] };
     selectedFolder: string | null;
     setSelectedFolder: (folder: string | null) => void;
+    setFolderToEdit: (folder: string | null) => void;
     onPlaceClick: (place: any) => void;
     onViewChange: (view: string) => void;
     showFolderSettings: boolean;
@@ -28,6 +29,7 @@ export default function CollectionView({
     foldersMap,
     selectedFolder,
     setSelectedFolder,
+    setFolderToEdit,
     onPlaceClick,
     onViewChange,
     showFolderSettings,
@@ -38,6 +40,20 @@ export default function CollectionView({
     showToast
 }: CollectionViewProps) {
     const router = useRouter();
+    const [activeMenuFolder, setActiveMenuFolder] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (!activeMenuFolder) return;
+        
+        const handleOutsideClick = () => {
+            setActiveMenuFolder(null);
+        };
+        
+        document.addEventListener('click', handleOutsideClick);
+        return () => {
+            document.removeEventListener('click', handleOutsideClick);
+        };
+    }, [activeMenuFolder]);
 
     return (
         <div 
@@ -106,25 +122,27 @@ export default function CollectionView({
                                 
                                 {showFolderSettings && (
                                     <>
-                                        <div className="fixed inset-0 z-30" onClick={() => setShowFolderSettings(false)}></div>
-                                        <div className="absolute right-0 mt-2 w-40 bg-white border border-[#E5E8EB] rounded-[16px] shadow-lg py-2 z-40 animate-scale-up">
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowFolderSettings(false)}></div>
+                                        <div className="absolute right-0 mt-2 w-40 bg-white border border-[#E5E8EB] rounded-[16px] shadow-lg py-2 z-50 animate-scale-up">
                                             <button 
                                                 onClick={() => {
                                                     setShowFolderSettings(false);
+                                                    setFolderToEdit(selectedFolder);
                                                     setShowRenameModal(true);
                                                 }}
                                                 className="flex items-center gap-2.5 w-full px-4 py-3 text-left font-bold text-[14px] text-[#4E5968] hover:bg-[#F9FAFB] hover:text-[#191F28] transition-colors"
                                             >
-                                                ✏️ 이름 변경
+                                                이름 변경
                                             </button>
                                             <button 
                                                 onClick={() => {
                                                     setShowFolderSettings(false);
+                                                    setFolderToEdit(selectedFolder);
                                                     setShowDeleteConfirmModal(true);
                                                 }}
                                                 className="flex items-center gap-2.5 w-full px-4 py-3 text-left font-bold text-[14px] text-red-500 hover:bg-red-50 transition-colors"
                                             >
-                                                🗑️ 폴더 삭제
+                                                폴더 삭제
                                             </button>
                                         </div>
                                     </>
@@ -196,7 +214,7 @@ export default function CollectionView({
                                     <div 
                                         key={folderName} 
                                         onClick={() => setSelectedFolder(folderName)}
-                                        className="group cursor-pointer flex flex-col animate-scale-up"
+                                        className="group cursor-pointer flex flex-col animate-scale-up relative"
                                     >
                                         <div className="relative aspect-[4/3] rounded-[24px] overflow-hidden bg-[#F2F4F6] shadow-sm border border-[#F2F4F6]/50">
                                             {renderFolderCover(scrapsInFolder)}
@@ -208,9 +226,56 @@ export default function CollectionView({
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="mt-4 px-1">
-                                            <h3 className="font-bold text-[16px] lg:text-[18px] text-[#191F28] tracking-tight group-hover:text-orange-500 transition-colors line-clamp-1">{folderName}</h3>
-                                            <p className="text-[12.5px] text-[#8B95A1] font-semibold mt-0.5">{scrapsInFolder.length}개의 공간</p>
+                                        <div className="mt-4 px-1 flex items-center justify-between relative">
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="font-bold text-[16px] lg:text-[18px] text-[#191F28] tracking-tight group-hover:text-orange-500 transition-colors line-clamp-1">{folderName}</h3>
+                                                <p className="text-[12.5px] text-[#8B95A1] font-semibold mt-0.5">{scrapsInFolder.length}개의 공간</p>
+                                            </div>
+
+                                            {/* 개별 폴더 설정 버튼 (기본 저장소 제외) */}
+                                            {folderName !== "기본 저장소" && (
+                                                <div className="relative ml-2">
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveMenuFolder(activeMenuFolder === folderName ? null : folderName);
+                                                        }}
+                                                        className="w-8 h-8 rounded-full flex items-center justify-center text-[#8B95A1] hover:text-[#191F28] hover:bg-[#F2F4F6] transition-all active:scale-90"
+                                                    >
+                                                        <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                                        </svg>
+                                                    </button>
+                                                    
+                                                    {activeMenuFolder === folderName && (
+                                                        <div 
+                                                            className="absolute right-0 mt-2 w-32 bg-white border border-[#E5E8EB] rounded-[16px] shadow-lg py-1.5 z-50 animate-scale-up cursor-default"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setActiveMenuFolder(null);
+                                                                    setFolderToEdit(folderName);
+                                                                    setShowRenameModal(true);
+                                                                }}
+                                                                className="flex items-center gap-2 w-full px-4 py-2.5 text-left font-bold text-[13px] text-[#4E5968] hover:bg-[#F9FAFB] hover:text-[#191F28] transition-colors"
+                                                            >
+                                                                이름 변경
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setActiveMenuFolder(null);
+                                                                    setFolderToEdit(folderName);
+                                                                    setShowDeleteConfirmModal(true);
+                                                                }}
+                                                                className="flex items-center gap-2 w-full px-4 py-2.5 text-left font-bold text-[13px] text-red-500 hover:bg-red-50 transition-colors"
+                                                            >
+                                                                폴더 삭제
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
