@@ -74,6 +74,14 @@ public class Place extends BaseTimeEntity {
     @Column(name = "chatty_vote_count", nullable = false)
     private int chattyVoteCount = 0;
 
+    /** 에디터의 한마디 */
+    @Column(name = "editors_comment", length = 255)
+    private String editorsComment;
+
+    /** 공개 여부 플래그 */
+    @Column(name = "is_published", nullable = false)
+    private boolean isPublished = false;
+
     // --- 연관관계 ---
 
     /** Place-Tag 다대다 매핑 (연관관계 주인: PlaceTagMap) */
@@ -136,11 +144,15 @@ public class Place extends BaseTimeEntity {
 
     public int getQuietVoteCount() { return quietVoteCount; }
     public int getChattyVoteCount() { return chattyVoteCount; }
+    public String getEditorsComment() { return editorsComment; }
+    public boolean isPublished() { return isPublished; }
 
-    // --- Setters (AI 파이프라인이 사용) ---
+    // --- Setters (AI 파이프라인 및 어드민이 사용) ---
 
     public void setImageUrls(String imageUrls) { this.imageUrls = imageUrls; }
     public void setAiMoodSummary(String aiMoodSummary) { this.aiMoodSummary = aiMoodSummary; }
+    public void setEditorsComment(String editorsComment) { this.editorsComment = editorsComment; }
+    public void setPublished(boolean published) { this.isPublished = published; }
 
     // --- 비즈니스 로직 ---
     

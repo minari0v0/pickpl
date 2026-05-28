@@ -23,7 +23,9 @@ public record PlaceSummaryResponse(
         boolean isScrapped,
         List<TagInfo> tags,
         VibeStats vibeStats,
-        String userVotedVibe
+        String userVotedVibe,
+        String editorsComment,
+        boolean isPublished
 ) {
 
     public record VibeStats(int quiet, int chatty) {}
@@ -48,7 +50,9 @@ public record PlaceSummaryResponse(
                 isScrapped,
                 tagInfos,
                 new VibeStats(place.getQuietVoteCount(), place.getChattyVoteCount()),
-                userVotedVibe
+                userVotedVibe,
+                place.getEditorsComment(),
+                place.isPublished()
         );
     }
 }

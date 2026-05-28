@@ -18,7 +18,8 @@ public record PlaceDetailResponse(
         boolean isScrapped,
         List<PlaceSummaryResponse.TagInfo> tags,
         PlaceSummaryResponse.VibeStats vibeStats,
-        String userVotedVibe
+        String userVotedVibe,
+        String editorsComment
 ) {
     public static PlaceDetailResponse from(Place place, boolean isScrapped, String userVotedVibe) {
         List<PlaceSummaryResponse.TagInfo> tagInfos = place.getPlaceTagMaps().stream()
@@ -43,7 +44,8 @@ public record PlaceDetailResponse(
                 isScrapped,
                 tagInfos,
                 new PlaceSummaryResponse.VibeStats(place.getQuietVoteCount(), place.getChattyVoteCount()),
-                userVotedVibe
+                userVotedVibe,
+                place.getEditorsComment()
         );
     }
 }

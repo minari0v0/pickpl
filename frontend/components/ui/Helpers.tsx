@@ -143,6 +143,7 @@ export const mapPlaceToData = (place: any) => {
         features: [{ icon: "✨", title: "특징", desc: place.category || "매력적인 공간" }],
         bestReview: "정말 분위기가 좋았어요. 강력 추천합니다!",
         isScrapped: place.isScrapped,
-        userVotedVibe: place.userVotedVibe ? place.userVotedVibe.toLowerCase() : null
+        userVotedVibe: place.userVotedVibe ? place.userVotedVibe.toLowerCase() : null,
+        editorsComment: place.editorsComment
     };
 };

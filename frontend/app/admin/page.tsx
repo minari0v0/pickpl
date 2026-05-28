@@ -1,0 +1,107 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import StagingDashboard from './components/StagingDashboard';
+import { useRouter } from 'next/navigation';
+
+export default function AdminPage() {
+    const router = useRouter();
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [passwordInput, setPasswordInput] = useState<string>('');
+    const [errorMsg, setErrorMsg] = useState<string>('');
+
+    useEffect(() => {
+        // 브라우저 탭 타이틀 설정
+        if (typeof window !== 'undefined') {
+            document.title = "PickPl | 공간 관리 센터";
+            const savedKey = sessionStorage.getItem('adminSecretKey');
+            if (savedKey) {
+                // 백엔드 시크릿 키가 설정되어 있을 때, 우선은 세션스토리지가 존재하면 로그인 상태로 간주
+                setIsAuthenticated(true);
+            }
+        }
+    }, []);
+
+    const handleLoginSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!passwordInput.trim()) {
+            setErrorMsg('비밀번호를 입력해 주세요.');
+            return;
+        }
+
+        // 우선 클라이언트 단에서 빈값 및 공백 가드
+        // 실제 API 요청 시 백엔드에서도 보안 헤더 검증이 이루어지므로
+        // 사용자가 입력한 키를 그대로 세션스토리지에 저장하여 통과시킵니다.
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('adminSecretKey', passwordInput.trim());
+            setIsAuthenticated(true);
+            setErrorMsg('');
+        }
+    };
+
+    const handleLogout = () => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('adminSecretKey');
+            setIsAuthenticated(false);
+            setPasswordInput('');
+            router.push('/');
+        }
+    };
+
+    if (isAuthenticated) {
+        return (
+            <StagingDashboard onLogout={handleLogout} />
+        );
+    }
+
+    return (
+        <div className="min-h-screen w-full bg-[#F2F4F6] flex items-center justify-center p-6 font-display">
+            <div className="w-full max-w-[420px] bg-white rounded-[32px] p-10 shadow-[0_12px_40px_rgba(0,0,0,0.04)] border border-[#E5E8EB]/70 flex flex-col items-center">
+                {/* Paperlogy 로고 */}
+                <h1 className="font-logo font-extrabold text-[42px] tracking-tight text-[#191F28] mb-1.5 mt-2">Pick<span className="text-orange-500">Pl</span></h1>
+                <span className="px-3 py-1 rounded-[8px] bg-[#F2F4F6] text-[#8B95A1] text-[12px] font-bold tracking-widest uppercase mb-10">
+                    Administrator
+                </span>
+
+                <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[13px] font-bold text-[#8B95A1] pl-1">관리자 비밀번호</label>
+                        <input
+                            type="password"
+                            placeholder="비밀번호를 입력하세요"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            className="w-full bg-[#F2F4F6] focus:bg-[#E5E8EB] focus:ring-2 focus:ring-orange-500/20 text-[#191F28] text-[15.5px] font-semibold rounded-[18px] px-5 py-4 border-none outline-none transition-all placeholder-[#B0B8C1]"
+                        />
+                    </div>
+
+                    {errorMsg && (
+                        <p className="text-red-500 text-[13px] font-semibold pl-1 animate-pulse">
+                            {errorMsg}
+                        </p>
+                    )}
+
+                    <button
+                        type="submit"
+                        className="w-full h-[56px] rounded-[18px] bg-[#191F28] hover:bg-black text-white font-bold text-[16px] transition-colors mt-4 active:scale-[0.98]"
+                    >
+                        로그인
+                    </button>
+                </form>
+                
+                <button
+                    type="button"
+                    onClick={() => router.push('/')}
+                    className="text-[13.5px] font-bold text-[#8B95A1] hover:text-[#4E5968] underline underline-offset-4 mt-6 transition-colors border-none bg-transparent cursor-pointer"
+                >
+                    일반 서비스 메인으로 돌아가기
+                </button>
+                
+                <p className="text-[12px] text-[#B0B8C1] mt-8 text-center font-medium">
+                    본 시스템은 허가된 관리자만 접근할 수 있습니다.<br />
+                    비인가 접근 시 법적 처벌을 받을 수 있습니다.
+                </p>
+            </div>
+        </div>
+    );
+}

@@ -19,6 +19,12 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
     /** 카테고리로 공간 목록 조회 */
     List<Place> findByCategory(String category);
 
+    /** 외부 ID 기등록 존재 여부 판단 */
+    boolean existsByExternalId(String externalId);
+
+    /** 공개 승인된 전체 장소 목록 조회 */
+    List<Place> findAllByIsPublishedTrue();
+
     /**
      * 지정된 모든 태그를 포함하는(교집합) 공간 목록 조회.
      * IN 조건으로 조회 후, 매칭된 태그 개수가 요청한 태그 개수와 일치하는 Place만 필터링합니다.
@@ -27,7 +33,7 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
             SELECT p FROM Place p
             JOIN p.placeTagMaps ptm
             JOIN ptm.tag t
-            WHERE t.name IN :tagNames
+            WHERE t.name IN :tagNames AND p.isPublished = true
             GROUP BY p.id
             HAVING COUNT(DISTINCT t.name) = :tagCount
             """)

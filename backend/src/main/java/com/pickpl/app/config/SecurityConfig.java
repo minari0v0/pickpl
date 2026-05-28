@@ -25,6 +25,9 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
+    @org.springframework.beans.factory.annotation.Value("${app.admin.secret-key}")
+    private String adminSecretKey;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -45,12 +48,16 @@ public class SecurityConfig {
                         // 공개 허용 API
                         .requestMatchers("/api/v1/auth/**", "/api/v1/places/**", "/api/v1/internal/**", "/error").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        // 관리자 전용 API 권한 제한
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
                 
                 // JWT 필터 추가
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
+                // AdminKey 필터 추가 (JWT 필터보다 앞단에서 처리)
+                .addFilterBefore(new com.pickpl.app.security.admin.AdminKeyAuthenticationFilter(adminSecretKey), JwtAuthenticationFilter.class)
                 
                 // OAuth2 설정
                 .oauth2Login(oauth2 -> oauth2

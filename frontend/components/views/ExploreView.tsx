@@ -255,15 +255,15 @@ export default function ExploreView({
                                         </div>
                                         
                                         {/* 모바일 큐레이터 감성 리뷰 카드 */}
-                                        {place.bestReview && (
+                                        {place.editorsComment && (
                                             <div className="bg-[#FAF9F6] border border-[#F2ECE5] p-4 rounded-[16px] text-[13px] text-[#5A4F43] flex items-start gap-3 relative overflow-hidden">
                                                 <div className="w-5 h-5 rounded-full bg-[#FFF0E6] flex items-center justify-center text-orange-500 font-serif text-[15px] select-none mt-0.5 shrink-0">
                                                     “
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-[10px] font-bold text-orange-500/90 tracking-widest uppercase mb-0.5">Editor's Pick Review</p>
-                                                    <p className="line-clamp-1 font-semibold text-[#4E4338]">
-                                                        {place.bestReview}
+                                                    <p className="line-clamp-3 font-semibold text-[#4E4338] leading-relaxed">
+                                                        {place.editorsComment}
                                                     </p>
                                                 </div>
                                             </div>
@@ -337,15 +337,15 @@ export default function ExploreView({
                                         </div>
                                         
                                         {/* PC 큐레이터 감성 리뷰 카드 */}
-                                        {place.bestReview && (
+                                        {place.editorsComment && (
                                             <div className="mt-6 bg-[#FAF9F6] border border-[#F2ECE5] px-5 py-4 rounded-[18px] text-[13.5px] text-[#5A4F43] flex items-start gap-3.5 relative overflow-hidden select-none">
                                                 <div className="w-6 h-6 rounded-full bg-[#FFF0E6] flex items-center justify-center text-orange-500 font-serif text-[18px] select-none mt-0.5 shrink-0">
                                                     “
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-[11px] font-bold text-orange-500/90 tracking-widest uppercase mb-1">Editor's Pick Review</p>
-                                                    <p className="line-clamp-1 font-semibold text-[#4E4338] leading-relaxed">
-                                                        {place.bestReview}
+                                                    <p className="line-clamp-3 font-semibold text-[#4E4338] leading-relaxed">
+                                                        {place.editorsComment}
                                                     </p>
                                                 </div>
                                             </div>
