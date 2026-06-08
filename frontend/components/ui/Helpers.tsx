@@ -1,5 +1,5 @@
 import React from 'react';
-import { CafeIcon, RestaurantIcon, StudyIcon, CocktailIcon, SparkleIcon } from './Icons';
+import { CafeIcon, RestaurantIcon, StudyIcon, CocktailIcon, SparkleIcon, NatureIcon, TentIcon } from './Icons';
 
 // --- 썸네일 콜라주 (Collage) 생성 함수 ---
 export const renderFolderCover = (scraps: any[]) => {
@@ -66,6 +66,34 @@ export const renderFolderCover = (scraps: any[]) => {
 // --- 업종/태그 분석 카테고리 아이콘 헬퍼 ---
 export const getCategoryIcon = (category: string = '', name: string = '') => {
     const combined = `${category} ${name}`.toLowerCase();
+    
+    // 1. 자연 / 공원 / 야외 활동 (관악산, 공원, 산책 등)
+    if (
+        combined.includes('공원') || 
+        combined.includes('자연') || 
+        combined.includes('등산') || 
+        combined.includes('산책') || 
+        combined.includes('수목원') || 
+        combined.includes('계곡') || 
+        combined.includes('둘레길') || 
+        combined.includes('숲') ||
+        combined.includes('산')
+    ) {
+        return { icon: <NatureIcon />, bg: "bg-[#EAF2EC]", text: "text-[#2B6A4F]" }; // Forest Green / Sage
+    }
+    
+    // 2. 야장 / 노상 / 포차 (야외 감성 술집/식당)
+    if (
+        combined.includes('야장') || 
+        combined.includes('노상') || 
+        combined.includes('포차') || 
+        combined.includes('포장마차') || 
+        combined.includes('루프탑') ||
+        combined.includes('캠핑')
+    ) {
+        return { icon: <TentIcon />, bg: "bg-[#F3E8FF]", text: "text-[#8B5CF6]" }; // Deep Neon Purple (Midnight vibe)
+    }
+
     if (combined.includes('카페') || combined.includes('디저트') || combined.includes('커피') || combined.includes('베이커리')) {
         return { icon: <CafeIcon />, bg: "bg-[#FFF4EE]", text: "text-[#E65C00]" }; // Warm Terracotta/Peach
     }
@@ -137,8 +165,20 @@ export const mapPlaceToData = (place: any) => {
         imageUrls = place.imageUrls.split(',').map((url: string) => url.trim()).filter(Boolean);
     }
     
+    // 네이버 이미지 CDN 주소를 모달에 적합한 w560_sharpen 고화질 규격으로 일괄 치환
+    imageUrls = imageUrls.map((url: string) => {
+        if (url.includes('pstatic.net') || url.includes('naver.net')) {
+            return url.replace(/type=[a-zA-Z0-9_]+/g, 'type=w560_sharpen');
+        }
+        return url;
+    });
+
+    const finalThumbnail = place.thumbnailUrl && (place.thumbnailUrl.includes('pstatic.net') || place.thumbnailUrl.includes('naver.net'))
+        ? place.thumbnailUrl.replace(/type=[a-zA-Z0-9_]+/g, 'type=w560_sharpen')
+        : (place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800");
+
     if (imageUrls.length === 0) {
-        imageUrls = [place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800"];
+        imageUrls = [finalThumbnail];
     }
 
     return {
@@ -147,7 +187,7 @@ export const mapPlaceToData = (place: any) => {
         location: place.address,
         category: place.category,
         distance: "내 위치에서 " + ((place.id % 10) + 1) + "km",
-        imageUrl: place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800",
+        imageUrl: finalThumbnail,
         imageUrls: imageUrls,
         aspectRatio: "aspect-[4/5]",
         tags: tags,

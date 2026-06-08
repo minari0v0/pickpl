@@ -47,3 +47,19 @@ export const SparkleIcon = ({ className = "w-5 h-5" }: IconProps) => (
     </svg>
 );
 
+export const NatureIcon = ({ className = "w-5 h-5" }: IconProps) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 2 2 4a7 7 0 0 1-12 14z" fill="currentColor" fillOpacity="0.15" />
+        <path d="M19 2c-2.26 4.33-5.27 7.14-8 9" />
+    </svg>
+);
+
+export const TentIcon = ({ className = "w-5 h-5" }: IconProps) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 20 12 4 5 20Z" fill="currentColor" fillOpacity="0.15" />
+        <path d="M12 4v16" />
+        <path d="m12 14-4 6h8Z" />
+    </svg>
+);
+
+
