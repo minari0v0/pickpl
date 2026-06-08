@@ -126,6 +126,7 @@ export const getProfileBgClass = (imgUrl: string = '') => {
 
 export const mapPlaceToData = (place: any) => {
     const tags = place.tags ? place.tags.map((t: any) => t.name) : [];
+    const tagInfos = place.tags ? place.tags.map((t: any) => ({ name: t.name, type: t.type })) : [];
     const isHiddenGem = false;
     const initialVibe = place.vibeStats || { quiet: 0, chatty: 0 };
     return {
@@ -137,13 +138,15 @@ export const mapPlaceToData = (place: any) => {
         imageUrl: place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800",
         aspectRatio: "aspect-[4/5]",
         tags: tags,
+        tagInfos: tagInfos,
         isHiddenGem: isHiddenGem,
         initialVibe: initialVibe,
         description: place.aiMoodSummary || place.category || "공간에 대한 설명이 없습니다.",
-        features: [{ icon: "✨", title: "특징", desc: place.category || "매력적인 공간" }],
+        features: [{ icon: "✨", title: place.category || "공간", desc: "" }],
         bestReview: "정말 분위기가 좋았어요. 강력 추천합니다!",
         isScrapped: place.isScrapped,
         userVotedVibe: place.userVotedVibe ? place.userVotedVibe.toLowerCase() : null,
-        editorsComment: place.editorsComment
+        editorsComment: place.editorsComment,
+        externalId: place.externalId
     };
 };

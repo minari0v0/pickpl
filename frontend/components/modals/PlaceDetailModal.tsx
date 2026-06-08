@@ -1,4 +1,5 @@
 import React from 'react';
+import { getCategoryIcon } from '../ui/Helpers';
 
 interface PlaceDetailModalProps {
     selectedPlace: any | null;
@@ -28,6 +29,86 @@ export default function PlaceDetailModal({
     const quietPercent = vibeStats.quiet + vibeStats.chatty === 0 ? 50 : Math.round((vibeStats.quiet / (vibeStats.quiet + vibeStats.chatty)) * 100);
     const chattyPercent = 100 - quietPercent;
 
+    const getMapLink = () => {
+        const extId = selectedPlace?.externalId;
+        const name = selectedPlace?.name;
+        const location = selectedPlace?.location;
+
+        if (extId && extId.startsWith('naver_place_')) {
+            const placeId = extId.replace('naver_place_', '');
+            return {
+                type: 'naver',
+                url: `https://pcmap.place.naver.com/place/${placeId}`,
+                label: '네이버 지도'
+            };
+        } else if (extId && extId.startsWith('kakao_place_')) {
+            const placeId = extId.replace('kakao_place_', '');
+            return {
+                type: 'kakao',
+                url: `https://place.map.kakao.com/${placeId}`,
+                label: '카카오 맵'
+            };
+        } else if (name) {
+            const query = encodeURIComponent(`${name} ${location || ''}`.trim());
+            return {
+                type: 'naver',
+                url: `https://map.naver.com/p/search/${query}`,
+                label: '네이버 지도'
+            };
+        }
+        return null;
+    };
+
+    const mapLink = getMapLink();
+
+    const renderMapButton = (viewType: 'mobile' | 'pc') => {
+        if (!mapLink) return null;
+        
+        if (mapLink.type === 'naver') {
+            const gradId = `naverMapGrad_${viewType}`;
+            return (
+                <a 
+                    href={mapLink.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex flex-col items-center gap-1 group shrink-0"
+                >
+                    <div className="w-[60px] h-[60px] rounded-[20px] bg-white border border-[#E5E8EB] hover:bg-[#F9FAFB] transition-colors flex items-center justify-center shadow-md">
+                        <svg className="w-9 h-9" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stopColor="#0090ec" />
+                                    <stop offset="100%" stopColor="#00c73c" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M50 8 C33.43 8 20 21.43 20 38 C20 54.34 50 82 50 82 C50 82 80 54.34 80 38 C80 21.43 66.57 8 50 8 Z" fill={`url(#${gradId})`} />
+                            <text x="50" y="44" fill="white" fontSize="24" fontWeight="900" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="middle">N</text>
+                        </svg>
+                    </div>
+                    <span className="text-[11px] font-bold text-[#8B95A1] group-hover:text-[#4E5968] transition-colors tracking-tight">지도</span>
+                </a>
+            );
+        } else if (mapLink.type === 'kakao') {
+            return (
+                <a 
+                    href={mapLink.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex flex-col items-center gap-1 group shrink-0"
+                >
+                    <div className="w-[60px] h-[60px] rounded-[20px] bg-[#FFF9E6] hover:bg-[#FFE0B2] transition-colors flex items-center justify-center shadow-md border border-[#FEE500]/30">
+                        <svg className="w-9 h-9" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M50 8 C33.43 8 20 21.43 20 38 C20 54.34 50 82 50 82 C50 82 80 54.34 80 38 C80 21.43 66.57 8 50 8 Z" fill="#FEE500" />
+                            <text x="50" y="44" fill="#3C1E1E" fontSize="24" fontWeight="900" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="middle">K</text>
+                        </svg>
+                    </div>
+                    <span className="text-[11px] font-bold text-[#8B95A1] group-hover:text-[#4E5968] transition-colors tracking-tight">지도</span>
+                </a>
+            );
+        }
+        return null;
+    };
+
     return (
         <>
             {/* 모바일 슬라이드업 모달 */}
@@ -44,7 +125,10 @@ export default function PlaceDetailModal({
                 </div>
                 <div className="flex-1 bg-white -mt-8 rounded-t-[32px] relative z-10 overflow-y-auto no-scrollbar pb-[100px] shadow-[0_-10px_30px_rgba(0,0,0,0.1)]">
                     <div className="px-6 pt-8 pb-6">
-                        <h1 className="text-[26px] font-bold mb-1.5 tracking-tight">{selectedPlace.name}</h1>
+                        <div className="flex justify-between items-start gap-4 mb-2">
+                            <h1 className="text-[26px] font-bold tracking-tight flex-1 leading-tight">{selectedPlace.name}</h1>
+                            {renderMapButton('mobile')}
+                        </div>
                         <p className="text-[14px] font-medium text-[#8B95A1] mb-5 flex items-center gap-1.5 w-full overflow-hidden">
                             <svg className="w-4 h-4 text-[#B0B8C1] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -55,9 +139,24 @@ export default function PlaceDetailModal({
                             <span className="shrink-0 text-orange-500 font-bold">{selectedPlace.distance}</span>
                         </p>
                         <div className="flex flex-wrap gap-1.5">
-                            {selectedPlace.tags.map((tag: string) => (
-                                <span key={tag} className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] text-[#4E5968] text-[12px] font-bold tracking-tight">#{tag}</span>
-                            ))}
+                            {selectedPlace.tagInfos && selectedPlace.tagInfos.length > 0 ? (
+                                selectedPlace.tagInfos.map((tag: any) => {
+                                    const style = tag.type === 'FACILITY' 
+                                        ? 'bg-[#F2F4F6] text-[#4E5968] border-transparent' 
+                                        : tag.type === 'WEATHER'
+                                        ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                        : 'bg-orange-50 text-orange-600 border-orange-100';
+                                    return (
+                                        <span key={tag.name} className={`px-3 py-1.5 rounded-[10px] text-[12px] font-bold tracking-tight border ${style}`}>
+                                            #{tag.name}
+                                        </span>
+                                    );
+                                })
+                            ) : (
+                                selectedPlace.tags.map((tag: string) => (
+                                    <span key={tag} className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] text-[#4E5968] text-[12px] font-bold tracking-tight">#{tag}</span>
+                                ))
+                            )}
                         </div>
                         <p className="text-[15px] text-[#4E5968] leading-relaxed mt-6">{selectedPlace.description}</p>
                     </div>
@@ -128,8 +227,11 @@ export default function PlaceDetailModal({
                     </div>
                     <div className="w-[45%] h-full flex flex-col bg-white">
                         <div className="flex-1 overflow-y-auto p-10 no-scrollbar">
-                            <h1 className="text-[32px] font-bold mb-2 tracking-tight text-[#191F28]">{selectedPlace.name}</h1>
-                            <p className="text-[15px] font-medium text-[#8B95A1] mb-6 flex items-center gap-1.5 w-full overflow-hidden">
+                            <div className="flex justify-between items-start gap-4 mb-2">
+                                <h1 className="text-[32px] font-bold tracking-tight text-[#191F28] flex-1 leading-tight">{selectedPlace.name}</h1>
+                                {renderMapButton('pc')}
+                            </div>
+                            <p className="text-[15px] font-medium text-[#8B95A1] mb-5 flex items-center gap-1.5 w-full overflow-hidden">
                                 <svg className="w-5 h-5 text-[#B0B8C1] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -139,9 +241,24 @@ export default function PlaceDetailModal({
                                 <span className="shrink-0 text-[#E65C00] font-bold">{selectedPlace.distance}</span>
                             </p>
                             <div className="flex flex-wrap gap-1.5 mb-8">
-                                {selectedPlace.tags.map((tag: string) => (
-                                    <span key={tag} className="px-3.5 py-2 rounded-[12px] bg-[#F2F4F6] text-[#4E5968] text-[13px] font-bold tracking-tight">#{tag}</span>
-                                ))}
+                                {selectedPlace.tagInfos && selectedPlace.tagInfos.length > 0 ? (
+                                    selectedPlace.tagInfos.map((tag: any) => {
+                                        const style = tag.type === 'FACILITY' 
+                                            ? 'bg-[#F2F4F6] text-[#4E5968] border-transparent' 
+                                            : tag.type === 'WEATHER'
+                                            ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                            : 'bg-orange-50 text-orange-600 border-orange-100';
+                                        return (
+                                            <span key={tag.name} className={`px-3.5 py-2 rounded-[12px] text-[13px] font-bold tracking-tight border ${style}`}>
+                                                #{tag.name}
+                                            </span>
+                                        );
+                                    })
+                                ) : (
+                                    selectedPlace.tags.map((tag: string) => (
+                                        <span key={tag} className="px-3.5 py-2 rounded-[12px] bg-[#F2F4F6] text-[#4E5968] text-[13px] font-bold tracking-tight">#{tag}</span>
+                                    ))
+                                )}
                             </div>
                             <p className="text-[16px] text-[#4E5968] leading-[1.7] mb-10 bg-[#F9FAFB] p-6 rounded-[24px] border border-[#F2F4F6]">
                                 {selectedPlace.description}
@@ -149,17 +266,20 @@ export default function PlaceDetailModal({
                             <div className="w-full h-[1px] bg-[#F2F4F6] mb-10"></div>
                             <h3 className="font-bold text-[20px] mb-5 tracking-tight text-[#191F28]">이 공간의 특징</h3>
                             <div className="flex flex-col gap-5 mb-10">
-                                {selectedPlace.features.map((feat: any, idx: number) => (
-                                    <div key={idx} className="flex items-center gap-4">
-                                        <div className="w-14 h-14 rounded-[16px] bg-[#F9FAFB] border border-[#F2F4F6] flex items-center justify-center text-gray-500 shadow-sm">
-                                            {feat.icon}
+                                {selectedPlace.features.map((feat: any, idx: number) => {
+                                    const catInfo = getCategoryIcon(selectedPlace.category, selectedPlace.name);
+                                    return (
+                                        <div key={idx} className="flex items-center gap-4">
+                                            <div className="w-16 h-16 rounded-[18px] bg-[#F2F4F6] border border-[#E5E8EB] flex items-center justify-center shadow-sm">
+                                                {React.cloneElement(catInfo.icon as React.ReactElement<any>, { className: `w-7 h-7 ${catInfo.text}` })}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-[16px] text-[#4E5968]">{feat.title}</p>
+                                                {feat.desc && <p className="font-medium text-[14px] text-[#8B95A1] mt-0.5">{feat.desc}</p>}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-[16px] text-[#333D4B]">{feat.title}</p>
-                                            <p className="font-medium text-[14px] text-[#8B95A1] mt-0.5">{feat.desc}</p>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <div className="bg-[#F9FAFB] p-8 rounded-[32px] border border-[#F2F4F6]">
                                 <div className="flex justify-between items-center mb-3">

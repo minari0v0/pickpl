@@ -127,11 +127,20 @@ export default function DiscoverView({
                                             {place.description}
                                         </p>
                                         <div className="flex flex-wrap gap-1.5 mt-0.5">
-                                            {place.tags.map((tag: string) => (
-                                                <span key={tag} className="px-2.5 py-1 rounded-[8px] bg-[#F2F4F6] text-[#4E5968] text-[12px] font-bold tracking-tight">
-                                                    #{tag}
-                                                </span>
-                                            ))}
+                                            {(() => {
+                                                const displayTags = (place.tagInfos || []).filter((tag: any) => {
+                                                    const isCafe = place.category && (place.category.includes('카페') || place.category.includes('디저트'));
+                                                    if (!isCafe && tag.type === 'FACILITY') {
+                                                        return false;
+                                                    }
+                                                    return true;
+                                                });
+                                                return displayTags.map((tag: any) => (
+                                                    <span key={tag.name} className="px-2.5 py-1 rounded-[8px] bg-[#F2F4F6] text-[#4E5968] text-[12px] font-bold tracking-tight">
+                                                        #{tag.name}
+                                                    </span>
+                                                ));
+                                            })()}
                                         </div>
                                     </div>
                                 </article>
