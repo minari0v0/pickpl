@@ -18,10 +18,10 @@ import java.util.List;
  */
 public class AdminKeyAuthenticationFilter extends OncePerRequestFilter {
 
-    private final String adminSecretKey;
+    private final AdminKeyService adminKeyService;
 
-    public AdminKeyAuthenticationFilter(String adminSecretKey) {
-        this.adminSecretKey = adminSecretKey;
+    public AdminKeyAuthenticationFilter(AdminKeyService adminKeyService) {
+        this.adminKeyService = adminKeyService;
     }
 
     @Override
@@ -33,8 +33,9 @@ public class AdminKeyAuthenticationFilter extends OncePerRequestFilter {
         // 관리자용 API 경로 진입 시에만 헤더 검증 작동
         if (path.startsWith("/api/v1/admin")) {
             String requestKey = request.getHeader("X-Admin-Secret-Key");
+            String actualAdminKey = adminKeyService.getAdminKey();
 
-            if (adminSecretKey != null && !adminSecretKey.isEmpty() && adminSecretKey.equals(requestKey)) {
+            if (actualAdminKey != null && !actualAdminKey.isEmpty() && actualAdminKey.equals(requestKey)) {
                 // 가상 어드민 인증 토큰 설정 (ROLE_ADMIN 부여)
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         "ADMIN_SYSTEM", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))

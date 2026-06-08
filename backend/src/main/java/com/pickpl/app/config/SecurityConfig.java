@@ -24,9 +24,7 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
-
-    @org.springframework.beans.factory.annotation.Value("${app.admin.secret-key}")
-    private String adminSecretKey;
+    private final com.pickpl.app.security.admin.AdminKeyService adminKeyService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -57,7 +55,7 @@ public class SecurityConfig {
                 // JWT 필터 추가
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
                 // AdminKey 필터 추가 (JWT 필터보다 앞단에서 처리)
-                .addFilterBefore(new com.pickpl.app.security.admin.AdminKeyAuthenticationFilter(adminSecretKey), JwtAuthenticationFilter.class)
+                .addFilterBefore(new com.pickpl.app.security.admin.AdminKeyAuthenticationFilter(adminKeyService), JwtAuthenticationFilter.class)
                 
                 // OAuth2 설정
                 .oauth2Login(oauth2 -> oauth2

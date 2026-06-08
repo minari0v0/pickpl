@@ -9,6 +9,7 @@ export default function AdminPage() {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [passwordInput, setPasswordInput] = useState<string>('');
     const [errorMsg, setErrorMsg] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
     useEffect(() => {
         // 브라우저 탭 타이틀 설정
@@ -16,26 +17,44 @@ export default function AdminPage() {
             document.title = "PickPl | 공간 관리 센터";
             const savedKey = sessionStorage.getItem('adminSecretKey');
             if (savedKey) {
-                // 백엔드 시크릿 키가 설정되어 있을 때, 우선은 세션스토리지가 존재하면 로그인 상태로 간주
+                // 백엔드 시크릿 키가 설정되어 있을 때, 우선은 세션스토리지에 저장된 키를 확인하여 로그인 처리
                 setIsAuthenticated(true);
             }
         }
     }, []);
 
-    const handleLoginSubmit = (e: React.FormEvent) => {
+    const handleLoginSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!passwordInput.trim()) {
+        const trimmedPassword = passwordInput.trim();
+        if (!trimmedPassword) {
             setErrorMsg('비밀번호를 입력해 주세요.');
             return;
         }
 
-        // 우선 클라이언트 단에서 빈값 및 공백 가드
-        // 실제 API 요청 시 백엔드에서도 보안 헤더 검증이 이루어지므로
-        // 사용자가 입력한 키를 그대로 세션스토리지에 저장하여 통과시킵니다.
-        if (typeof window !== 'undefined') {
-            sessionStorage.setItem('adminSecretKey', passwordInput.trim());
-            setIsAuthenticated(true);
-            setErrorMsg('');
+        setIsSubmitting(true);
+        setErrorMsg('');
+
+        try {
+            const res = await fetch('http://localhost:8080/api/v1/admin/places', {
+                headers: {
+                    'X-Admin-Secret-Key': trimmedPassword
+                }
+            });
+
+            if (res.ok) {
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('adminSecretKey', trimmedPassword);
+                    setIsAuthenticated(true);
+                }
+            } else if (res.status === 403) {
+                setErrorMsg('관리자 비밀번호가 올바르지 않습니다.');
+            } else {
+                setErrorMsg(`인증 실패: HTTP ${res.status}`);
+            }
+        } catch (err: any) {
+            setErrorMsg('서버와 통신할 수 없습니다. 백엔드(8080 포트) 상태를 확인해 주세요.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -71,21 +90,30 @@ export default function AdminPage() {
                             placeholder="비밀번호를 입력하세요"
                             value={passwordInput}
                             onChange={(e) => setPasswordInput(e.target.value)}
-                            className="w-full bg-[#F2F4F6] focus:bg-[#E5E8EB] focus:ring-2 focus:ring-orange-500/20 text-[#191F28] text-[15.5px] font-semibold rounded-[18px] px-5 py-4 border-none outline-none transition-all placeholder-[#B0B8C1]"
+                            disabled={isSubmitting}
+                            className="w-full bg-[#F2F4F6] focus:bg-[#E5E8EB] focus:ring-2 focus:ring-orange-500/20 text-[#191F28] text-[15.5px] font-semibold rounded-[18px] px-5 py-4 border-none outline-none transition-all placeholder-[#B0B8C1] disabled:opacity-50"
                         />
                     </div>
 
                     {errorMsg && (
-                        <p className="text-red-500 text-[13px] font-semibold pl-1 animate-pulse">
+                        <p className="text-red-500 text-[13.5px] font-bold pl-1 animate-pulse">
                             {errorMsg}
                         </p>
                     )}
 
                     <button
                         type="submit"
-                        className="w-full h-[56px] rounded-[18px] bg-[#191F28] hover:bg-black text-white font-bold text-[16px] transition-colors mt-4 active:scale-[0.98]"
+                        disabled={isSubmitting}
+                        className="w-full h-[56px] rounded-[18px] bg-[#191F28] hover:bg-black text-white font-bold text-[16px] transition-all mt-4 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                        로그인
+                        {isSubmitting ? (
+                            <>
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                인증 확인 중...
+                            </>
+                        ) : (
+                            '로그인'
+                        )}
                     </button>
                 </form>
                 

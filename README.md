@@ -199,6 +199,24 @@ make front
   make down
   ```
 
+### 4. 최초 데이터 적재 가이드 (Data Ingestion Guide)
+* **보안 및 용량 정책**으로 인해 크롤링 분석 산출물이 저장되는 `data-pipeline/raw_data/` 디렉토리는 `.gitignore`에 등록되어 있습니다.
+* 처음 설치 후 로컬 화면을 테스트하려면, 아래 두 가지 방법 중 하나를 선택하여 동봉된 샘플 장소 데이터(`analyzed_places.json.example`)를 주입할 수 있습니다.
+
+#### 방법 A. CMS 어드민 패널에서 파일 업로드 (권장)
+1. 프론트엔드 기동 후 `http://localhost:3000/admin` 경로로 이동합니다.
+2. 어드민 최초 기본 비밀번호 `admin`을 입력하여 로그인합니다. (로그인 후 **CMS 환경설정** 탭에서 비밀번호를 안전하게 변경할 수 있습니다.)
+3. 아래의 샘플 파일을 화면 중앙의 드래그 앤 드롭 영역에 놓고, 우측 상단의 **최종 DB 주입 실행** 버튼을 클릭하면 편리하게 적재됩니다.
+   * 복사할 대상: `data-pipeline/analyzed_places.json.example`
+
+#### 방법 B. CLI 터미널 명령어로 주입
+1. 샘플 JSON 파일을 아래 경로로 복사합니다:
+   * 복사 경로: `data-pipeline/analyzed_places.json.example` ➡️ `data-pipeline/raw_data/analyzed_places.json`
+2. 백엔드 서버가 기동 중인 상태에서 데이터 주입 명령을 실행합니다:
+   ```bash
+   make pipe-load
+   ```
+
 ---
 
 ## 🔒 보안 및 편의성

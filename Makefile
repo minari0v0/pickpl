@@ -33,11 +33,21 @@ pipe-setup:
 	cd data-pipeline && .venv\Scripts\pip install -r requirements.txt
 	cd data-pipeline && .venv\Scripts\playwright install
 
-# 크롤링 및 Gemini 감성 분석 수행 (QUERY 및 SOURCE 지정 가능)
-# 예: make pipe-analyze QUERY="홍대 카페" SOURCE=kakao
+# 크롤링 및 Gemini 감성 분석 수행 (QUERY, SOURCE, LIMIT 지정 가능)
+# 예: make pipe-analyze QUERY="홍대 카페, 신촌 카페" LIMIT=5
 SOURCE ?= naver
+LIMIT ?= 3
 pipe-analyze:
-	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query "$(QUERY)" --source $(SOURCE)
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query "$(QUERY)" --source $(SOURCE) --limit $(LIMIT)
+
+# regions.json 내 전체 지역 x 4대 키워드 자동 일괄 순회 수집
+pipe-analyze-all:
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query-all --source $(SOURCE) --limit $(LIMIT)
+
+# 특정 지역(REGION) 및 카테고리(CATEGORY) 매트릭스 1건 핀포인트 수집
+# 예: make pipe-analyze-matrix REGION=mullae CATEGORY=술집
+pipe-analyze-matrix:
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --region "$(REGION)" --category "$(CATEGORY)" --source $(SOURCE) --limit $(LIMIT)
 
 # analyzed_places.json 검토 완료 후 백엔드 DB 주입
 pipe-load:

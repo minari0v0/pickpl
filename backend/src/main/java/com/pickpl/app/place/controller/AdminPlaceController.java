@@ -23,10 +23,12 @@ public class AdminPlaceController {
 
     private final PlaceService placeService;
     private final PlaceRepository placeRepository;
+    private final com.pickpl.app.security.admin.AdminKeyService adminKeyService;
 
-    public AdminPlaceController(PlaceService placeService, PlaceRepository placeRepository) {
+    public AdminPlaceController(PlaceService placeService, PlaceRepository placeRepository, com.pickpl.app.security.admin.AdminKeyService adminKeyService) {
         this.placeService = placeService;
         this.placeRepository = placeRepository;
+        this.adminKeyService = adminKeyService;
     }
 
     @Operation(summary = "수집된 장소 중복 검사", description = "가등록 예정인 장소들의 externalId 목록을 받아, 이미 DB에 적재되어 있는지 확인하여 Boolean 맵으로 반환합니다.")
@@ -99,6 +101,18 @@ public class AdminPlaceController {
         response.put("status", "SUCCESS");
         response.put("message", "성공적으로 " + updatedCount + "개의 공간 상태를 변경했습니다.");
         response.put("updatedCount", updatedCount);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "관리자 비밀번호 변경", description = "관리자 비밀번호를 변경하여 DB에 영구 저장합니다.")
+    @PutMapping("/settings/password")
+    public ResponseEntity<Map<String, String>> changeAdminPassword(
+            @RequestBody Map<String, String> request) {
+        String newPassword = request.get("newPassword");
+        adminKeyService.updateAdminKey(newPassword);
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "SUCCESS");
+        response.put("message", "관리자 비밀번호가 성공적으로 변경되었습니다.");
         return ResponseEntity.ok(response);
     }
 
