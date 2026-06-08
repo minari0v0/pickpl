@@ -156,18 +156,28 @@ class PortalScraper:
                                     addr = clean_txt
                                     break
 
-                        # 대표 이미지 파싱 (SVG 포맷 제외 및 고화질 썸네일 우선 매칭)
+                        # 대표 및 상세 이미지 파싱 (최대 5개 수집)
                         thumb_els = page.locator("img.img-thumb, .board_photo img, img").all()
+                        place_images = []
                         for img in thumb_els:
                             src = img.get_attribute("src") or ""
                             if "daumcdn" in src or "kakaocdn" in src or "kakao" in src:
                                 # SVG 및 로고 차단
-                                if ".svg" in src or "img_logo" in src or "ico_" in src:
+                                if ".svg" in src or "img_logo" in src or "ico_" in src or "icon_" in src:
                                     continue
                                 if src.startswith("//"):
                                     src = "https:" + src
-                                photo_url = src
-                                break
+                                if src not in place_images:
+                                    place_images.append(src)
+                                    if len(place_images) >= 3:
+                                        break
+                                        
+                        if place_images:
+                            photo_url = place_images[0]
+                            image_urls_str = ",".join(place_images)
+                        else:
+                            photo_url = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500"
+                            image_urls_str = photo_url
 
                         # 카테고리 업종명 파싱
                         cat_els = page.locator("span.txt_tab, .txt_tab, .txt_category").all()
@@ -209,10 +219,10 @@ class PortalScraper:
                         "longitude": 126.92,
                         "category": category,
                         "thumbnailUrl": photo_url,
-                        "imageUrls": photo_url,
+                        "imageUrls": image_urls_str,
                         "reviews": reviews[:5] # 최대 5개 리뷰 제한
                     })
-                    logger.info(f"수집 완료 -> 장소명: '{name}', 주소: '{addr}', 이미지: '{photo_url}', 리뷰 개수: {len(reviews)}")
+                    logger.info(f"수집 완료 -> 장소명: '{name}', 주소: '{addr}', 이미지 개수: {len(place_images)}, 리뷰 개수: {len(reviews)}")
                     time.sleep(0.5)
 
                 browser.close()
@@ -331,7 +341,7 @@ class PortalScraper:
                             if match:
                                 addr = match.group(1).strip()
 
-                        # 대표 이미지 파싱 (SVG 포맷 및 아이콘/로고 제외 적용)
+                        # 대표 이미지 1장만 파싱 (썸네일용)
                         all_imgs = page.locator("img").all()
                         for img in all_imgs:
                             src = img.get_attribute("src") or ""
@@ -340,6 +350,35 @@ class PortalScraper:
                                     continue
                                 photo_url = src
                                 break
+
+                        # 업체 등록 공식 이미지 수집으로 이동 (동적 개수 수집)
+                        photo_owner_url = f"https://m.place.naver.com/place/{place_id}/photo?filterType=owner"
+                        place_images = []
+                        try:
+                            # 15초 타임아웃으로 안정성 확보 후 이동
+                            page.goto(photo_owner_url, timeout=15000)
+                            page.wait_for_selector("img", state="attached", timeout=8000)
+                            page.wait_for_timeout(1000)
+                            
+                            owner_imgs = page.locator("img").all()
+                            for img in owner_imgs:
+                                src = img.get_attribute("src") or ""
+                                if "naver.net" in src or "navercdn" in src or "pstatic.net" in src:
+                                    if ".svg" in src or "img_logo" in src or "ico_" in src or "icon_" in src:
+                                        continue
+                                    if "type=f" in src or "type=s" in src: # 작은 아이콘/프로필 제외
+                                        continue
+                                    if src not in place_images:
+                                        place_images.append(src)
+                                        if len(place_images) >= 4: # 최대 4장 제한
+                                            break
+                        except Exception as pe:
+                            logger.warning(f"ID {place_id} 업체 공식 이미지 파싱 실패: {pe}")
+
+                        if not place_images:
+                            place_images = [photo_url]
+                            
+                        image_urls_str = ",".join(place_images)
 
                         # 카테고리 업종명 파싱
                         cat_els = page.locator("span.lnJFt, [class*='lnJFt'], span[class*='category']").all()
@@ -397,10 +436,10 @@ class PortalScraper:
                         "longitude": 126.92,
                         "category": category,
                         "thumbnailUrl": photo_url,
-                        "imageUrls": photo_url,
+                        "imageUrls": image_urls_str,
                         "reviews": reviews[:5]
                     })
-                    logger.info(f"수집 완료 -> 장소명: '{name}', 주소: '{addr}', 이미지: '{photo_url}', 리뷰 개수: {len(reviews)}")
+                    logger.info(f"수집 완료 -> 장소명: '{name}', 주소: '{addr}', 이미지 개수: {len(place_images)}, 리뷰 개수: {len(reviews)}")
                     time.sleep(0.5)
 
                 browser.close()
