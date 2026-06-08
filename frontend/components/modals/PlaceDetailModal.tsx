@@ -24,7 +24,25 @@ export default function PlaceDetailModal({
     isBookmarkPopping,
     onSaveClick
 }: PlaceDetailModalProps) {
+    const [currentImgIdx, setCurrentImgIdx] = React.useState(0);
+
+    React.useEffect(() => {
+        setCurrentImgIdx(0);
+    }, [selectedPlace?.id]);
+
     if (!selectedPlace || !isDetailOpen) return null;
+
+    const imageUrls = selectedPlace.imageUrls || [selectedPlace.imageUrl];
+
+    const handlePrevImage = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentImgIdx(prev => (prev === 0 ? imageUrls.length - 1 : prev - 1));
+    };
+
+    const handleNextImage = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentImgIdx(prev => (prev === imageUrls.length - 1 ? 0 : prev + 1));
+    };
 
     const quietPercent = vibeStats.quiet + vibeStats.chatty === 0 ? 50 : Math.round((vibeStats.quiet / (vibeStats.quiet + vibeStats.chatty)) * 100);
     const chattyPercent = 100 - quietPercent;
@@ -113,17 +131,69 @@ export default function PlaceDetailModal({
         <>
             {/* 모바일 슬라이드업 모달 */}
             <div className="lg:hidden absolute inset-0 z-40 bg-white flex flex-col animate-slide-up">
-                <div className="relative w-full h-[45vh] bg-[#F2F4F6] shrink-0">
-                    <img src={selectedPlace.imageUrl} className="w-full h-full object-cover" alt="" />
-                    <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent pt-safe z-50">
-                        <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform">
+                <div className="relative w-full h-[45vh] bg-[#12161F] shrink-0 group overflow-hidden flex items-center justify-center">
+                    <img 
+                        src={imageUrls[currentImgIdx]} 
+                        className="absolute inset-0 w-full h-full object-cover blur-[24px] opacity-45 scale-110 pointer-events-none select-none" 
+                        alt="" 
+                        onError={(e) => {
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800";
+                        }}
+                    />
+                    <div className="w-full h-full relative z-10 flex items-center justify-center p-6 pb-10">
+                        <img 
+                            src={imageUrls[currentImgIdx]} 
+                            className="max-w-full max-h-full object-contain rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.25)] border border-white/10 transition-all duration-300 ease-in-out" 
+                            alt="" 
+                            onError={(e) => {
+                                e.currentTarget.src = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800";
+                            }}
+                        />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none z-15" />
+                    
+                    <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center pt-safe z-50">
+                        <button 
+                            onClick={onClose} 
+                            className="w-10 h-10 rounded-full bg-black/25 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform shadow-md"
+                        >
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
                     </div>
+
+                    {imageUrls.length > 1 && (
+                        <>
+                            <button 
+                                onClick={handlePrevImage} 
+                                className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 backdrop-blur-md text-white active:scale-90 flex items-center justify-center shadow-md z-40"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <button 
+                                onClick={handleNextImage} 
+                                className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 backdrop-blur-md text-white active:scale-90 flex items-center justify-center shadow-md z-40"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        </>
+                    )}
+
+                    {imageUrls.length > 1 && (
+                        <div className="absolute bottom-12 right-6 px-3 py-1 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-bold shadow-sm z-40">
+                            {currentImgIdx + 1} / {imageUrls.length}
+                        </div>
+                    )}
                 </div>
-                <div className="flex-1 bg-white -mt-8 rounded-t-[32px] relative z-10 overflow-y-auto no-scrollbar pb-[100px] shadow-[0_-10px_30px_rgba(0,0,0,0.1)]">
+                <div className="flex-1 bg-white -mt-8 rounded-t-[32px] relative z-10 overflow-y-auto no-scrollbar pb-[100px] shadow-[0_-12px_36px_rgba(0,0,0,0.12)]">
+                    <div className="w-full flex justify-center pt-3 pb-1">
+                        <div className="w-12 h-1 bg-[#E5E8EB] rounded-full" />
+                    </div>
                     <div className="px-6 pt-8 pb-6">
                         <div className="flex justify-between items-start gap-4 mb-2">
                             <h1 className="text-[26px] font-bold tracking-tight flex-1 leading-tight">{selectedPlace.name}</h1>
@@ -158,7 +228,20 @@ export default function PlaceDetailModal({
                                 ))
                             )}
                         </div>
-                        <p className="text-[15px] text-[#4E5968] leading-relaxed mt-6">{selectedPlace.description}</p>
+                        {selectedPlace.editorsComment && (
+                            <div className="mb-6 mt-2 p-5 rounded-[20px] bg-orange-50/50 border border-orange-100/40 flex gap-3">
+                                <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-black shrink-0 shadow-sm text-[11.5px]">
+                                    Pick
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-bold text-orange-600 tracking-tight uppercase">에디터의 한마디</p>
+                                    <p className="text-[13.5px] font-bold text-[#333D4B] mt-0.5 leading-relaxed">
+                                        "{selectedPlace.editorsComment}"
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                        <p className="text-[15px] text-[#4E5968] leading-relaxed mt-4">{selectedPlace.description}</p>
                     </div>
                     <div className="w-full h-2 bg-[#F2F4F6]"></div>
                     <div className="px-6 py-8">
@@ -217,13 +300,59 @@ export default function PlaceDetailModal({
             <div className="hidden lg:flex fixed inset-0 z-50 bg-black/60 backdrop-blur-sm items-center justify-center p-8 animate-fade-in">
                 <div className="absolute inset-0 cursor-pointer" onClick={onClose}></div>
                 <div className="relative w-full max-w-[1100px] h-[90vh] bg-white rounded-[40px] overflow-hidden flex shadow-2xl animate-scale-up z-10">
-                    <div className="w-[55%] h-full relative bg-[#F2F4F6] shrink-0">
-                        <img src={selectedPlace.imageUrl} className="w-full h-full object-cover" alt="" />
-                        <button onClick={onClose} className="absolute top-6 left-6 w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/40 transition-colors shadow-lg">
+                    <div className="w-[55%] h-full relative bg-[#12161F] shrink-0 group overflow-hidden flex items-center justify-center">
+                        <img 
+                            src={imageUrls[currentImgIdx]} 
+                            className="absolute inset-0 w-full h-full object-cover blur-[32px] opacity-40 scale-110 pointer-events-none select-none" 
+                            alt="" 
+                            onError={(e) => {
+                                e.currentTarget.src = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800";
+                            }}
+                        />
+                        <div className="w-full h-full relative z-10 flex items-center justify-center p-8">
+                            <img 
+                                src={imageUrls[currentImgIdx]} 
+                                className="max-w-full max-h-full object-contain rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.3)] border border-white/10 transition-all duration-500 ease-in-out" 
+                                alt={`${selectedPlace.name} - ${currentImgIdx + 1}`} 
+                                onError={(e) => {
+                                    e.currentTarget.src = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800";
+                                }}
+                            />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none z-15" />
+                        <button 
+                            onClick={onClose} 
+                            className="absolute top-6 left-6 w-12 h-12 rounded-full bg-black/25 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/45 hover:scale-105 active:scale-95 transition-all shadow-lg z-20"
+                        >
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
+                        {imageUrls.length > 1 && (
+                            <>
+                                <button 
+                                    onClick={handlePrevImage} 
+                                    className="absolute left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/35 backdrop-blur-md text-white hover:bg-black/55 hover:scale-105 active:scale-95 transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center shadow-lg z-20"
+                                >
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <button 
+                                    onClick={handleNextImage} 
+                                    className="absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/35 backdrop-blur-md text-white hover:bg-black/55 hover:scale-105 active:scale-95 transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center shadow-lg z-20"
+                                >
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </>
+                        )}
+                        {imageUrls.length > 1 && (
+                            <div className="absolute bottom-6 right-6 px-3.5 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[12px] font-bold tracking-wider shadow-sm z-25">
+                                {currentImgIdx + 1} / {imageUrls.length}
+                            </div>
+                        )}
                     </div>
                     <div className="w-[45%] h-full flex flex-col bg-white">
                         <div className="flex-1 overflow-y-auto p-10 no-scrollbar">
@@ -260,6 +389,19 @@ export default function PlaceDetailModal({
                                     ))
                                 )}
                             </div>
+                            {selectedPlace.editorsComment && (
+                                <div className="mb-8 p-5.5 rounded-[24px] bg-orange-50/50 border border-orange-100/50 flex gap-4">
+                                    <div className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold shrink-0 mt-0.5 shadow-sm text-[13px]">
+                                        Pick
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[12px] font-bold text-orange-600 tracking-tight uppercase">에디터의 한마디</p>
+                                        <p className="text-[14.5px] font-bold text-[#333D4B] mt-1 leading-relaxed">
+                                            "{selectedPlace.editorsComment}"
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                             <p className="text-[16px] text-[#4E5968] leading-[1.7] mb-10 bg-[#F9FAFB] p-6 rounded-[24px] border border-[#F2F4F6]">
                                 {selectedPlace.description}
                             </p>

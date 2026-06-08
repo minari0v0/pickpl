@@ -196,7 +196,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         setSelectedTags(prev => prev.includes(tag) ? prev.filter((t: string) => t !== tag) : [...prev, tag]);
     };
 
-    const handlePlaceClick = (place: any) => {
+    const handlePlaceClick = async (place: any) => {
         if (place.isHiddenGem) {
             setHiddenGemPlace(place);
             setShowHiddenGemPopup(true);
@@ -206,6 +206,19 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             setIsSaved(!!place.isScrapped);
             setUserVotedVibe(place.userVotedVibe || null);
             setIsDetailOpen(true);
+
+            try {
+                const res = await axiosInstance.get(`/places/${place.id}`);
+                if (res.data) {
+                    const detailed = mapPlaceToData(res.data);
+                    setSelectedPlace(detailed);
+                    setVibeStats(detailed.initialVibe);
+                    setIsSaved(!!detailed.isScrapped);
+                    setUserVotedVibe(detailed.userVotedVibe || null);
+                }
+            } catch (err) {
+                console.error("장소 상세정보 조회 실패:", err);
+            }
         }
     };
 

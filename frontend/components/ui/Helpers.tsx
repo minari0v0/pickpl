@@ -129,6 +129,18 @@ export const mapPlaceToData = (place: any) => {
     const tagInfos = place.tags ? place.tags.map((t: any) => ({ name: t.name, type: t.type })) : [];
     const isHiddenGem = false;
     const initialVibe = place.vibeStats || { quiet: 0, chatty: 0 };
+    
+    let imageUrls: string[] = [];
+    if (Array.isArray(place.imageUrls)) {
+        imageUrls = place.imageUrls;
+    } else if (typeof place.imageUrls === 'string' && place.imageUrls.trim() !== '') {
+        imageUrls = place.imageUrls.split(',').map((url: string) => url.trim()).filter(Boolean);
+    }
+    
+    if (imageUrls.length === 0) {
+        imageUrls = [place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800"];
+    }
+
     return {
         id: place.id,
         name: place.name,
@@ -136,6 +148,7 @@ export const mapPlaceToData = (place: any) => {
         category: place.category,
         distance: "내 위치에서 " + ((place.id % 10) + 1) + "km",
         imageUrl: place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800",
+        imageUrls: imageUrls,
         aspectRatio: "aspect-[4/5]",
         tags: tags,
         tagInfos: tagInfos,
