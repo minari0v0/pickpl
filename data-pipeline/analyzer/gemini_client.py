@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 
-from analyzer.prompts import SYSTEM_PROMPT, RECOMMENDED_TAGS
+from analyzer.prompts import SYSTEM_PROMPT, MOOD_TAGS, FACILITY_TAGS, WEATHER_TAGS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 class PlaceAnalysis(BaseModel):
     externalId: str = Field(description="장소의 고유 식별자(externalId)")
     aiMoodSummary: str = Field(description="장소의 분위기를 트렌디하게 요약한 1~2줄 글 (최대 100자)")
-    tags: List[str] = Field(description="추천 태그 풀에서 선정한 2~5개 태그 리스트")
+    moodTags: List[str] = Field(description="감성 분위기 태그 풀에서 선정한 1~3개 태그 리스트")
+    facilityTags: List[str] = Field(description="시설/편의 태그 풀에서 선정한 0~3개 태그 리스트")
+    weatherTags: List[str] = Field(description="날씨/상황 태그 풀에서 선정한 0~2개 태그 리스트")
 
 class BatchAnalysisResponse(BaseModel):
     places: List[PlaceAnalysis] = Field(description="분석된 장소 결과 목록")
@@ -112,7 +114,11 @@ class GeminiAnalyzer:
             
             # API 호출
             try:
-                system_instr = SYSTEM_PROMPT.format(tags_pool=", ".join(RECOMMENDED_TAGS))
+                system_instr = SYSTEM_PROMPT.format(
+                    mood_pool=", ".join(MOOD_TAGS),
+                    facility_pool=", ".join(FACILITY_TAGS),
+                    weather_pool=", ".join(WEATHER_TAGS)
+                )
                 
                 try:
                     response = self.client.models.generate_content(
@@ -162,8 +168,10 @@ class GeminiAnalyzer:
                     matched = analysis_map.get(ext_id)
                     if matched:
                         p["aiMoodSummary"] = matched.aiMoodSummary
-                        p["tags"] = matched.tags
-                        logger.info(f"장소 [{p['name']}] 분석 매핑 완료 -> 요약: {matched.aiMoodSummary}, 태그: {matched.tags}")
+                        # 분석된 3대 유형 태그 리스트를 하나의 플랫 리스트로 합침
+                        # 감성(Mood) + 시설(Facility) + 날씨(Weather)
+                        p["tags"] = matched.moodTags + matched.facilityTags + matched.weatherTags
+                        logger.info(f"장소 [{p['name']}] 분석 매핑 완료 -> 요약: {matched.aiMoodSummary}, 합산 태그: {p['tags']}")
                     else:
                         # 매칭 실패 시 기본값 세팅
                         p["aiMoodSummary"] = f"{p['name']}은(는) 분위기 좋은 아늑한 공간입니다."

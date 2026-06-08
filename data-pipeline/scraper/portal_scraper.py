@@ -19,6 +19,44 @@ class PortalScraper:
     def __init__(self, use_mock: bool = False):
         self.use_mock = use_mock
 
+    def _sample_ids(self, ids: List[str], limit: int) -> List[str]:
+        """
+        상위 랭킹(핫플)과 중하위 랭킹(Cozy 공간)을 고루 섞어 샘플링합니다.
+        """
+        if len(ids) <= limit:
+            return ids
+            
+        # 핫플 우선 확보: 상위 2개는 무조건 픽업 (limit가 1이나 2면 그만큼만 픽업)
+        top_count = min(2, limit)
+        selected = ids[:top_count]
+        
+        if len(selected) >= limit:
+            return selected
+            
+        # 나머지 개수는 중하위권(최대 15위)에서 고루 듬성듬성 샘플링
+        remaining_count = limit - len(selected)
+        candidates = ids[top_count:15] # 15위보다 뒤는 매칭 품질을 위해 제외
+        
+        if len(candidates) <= remaining_count:
+            selected.extend(candidates)
+        else:
+            step = len(candidates) / remaining_count
+            for i in range(remaining_count):
+                idx = int(i * step)
+                if idx < len(candidates):
+                    item = candidates[idx]
+                    if item not in selected:
+                        selected.append(item)
+                        
+        # 듬성듬성 수집 후 개수가 여전히 부족하면 앞서 수집된 전체 목록에서 보충
+        for item in ids:
+            if len(selected) >= limit:
+                break
+            if item not in selected:
+                selected.append(item)
+                
+        return selected
+
     def scrape_by_query(self, query: str, source: str = "naver", limit: int = 3) -> List[Dict[str, Any]]:
         """
         검색어(query)와 수집 채널(source)을 기반으로 실시간 수집을 진행합니다.
@@ -56,14 +94,14 @@ class PortalScraper:
             if not place_ids:
                 place_ids = re.findall(r'confirmId=(\d+)', response.text)
                 
-            unique_ids = []
+            raw_ids = []
             for p_id in place_ids:
-                if p_id not in unique_ids:
-                    unique_ids.append(p_id)
-                if len(unique_ids) >= limit:
-                    break
-
-            logger.info(f"획득한 카카오 플레이스 ID 목록: {unique_ids}")
+                if p_id not in raw_ids:
+                    raw_ids.append(p_id)
+            
+            # 랭킹 샘플링 적용
+            unique_ids = self._sample_ids(raw_ids, limit)
+            logger.info(f"샘플링 필터 적용 전 전체 ID 수: {len(raw_ids)} | 샘플링 후 선택된 카카오 플레이스 ID 목록: {unique_ids}")
 
             if not unique_ids:
                 logger.warning("카카오 플레이스 ID를 찾지 못했습니다. Mock 데이터로 대체합니다.")
@@ -209,14 +247,14 @@ class PortalScraper:
             if not place_ids:
                 place_ids = re.findall(r'entry/place/(\d+)', response.text)
 
-            unique_ids = []
+            raw_ids = []
             for p_id in place_ids:
-                if p_id not in unique_ids and len(p_id) >= 6:
-                    unique_ids.append(p_id)
-                if len(unique_ids) >= limit:
-                    break
-
-            logger.info(f"획득한 네이버 플레이스 ID 목록: {unique_ids}")
+                if p_id not in raw_ids and len(p_id) >= 6:
+                    raw_ids.append(p_id)
+            
+            # 랭킹 샘플링 적용
+            unique_ids = self._sample_ids(raw_ids, limit)
+            logger.info(f"샘플링 필터 적용 전 전체 ID 수: {len(raw_ids)} | 샘플링 후 선택된 네이버 플레이스 ID 목록: {unique_ids}")
 
             if not unique_ids:
                 logger.warning("네이버 플레이스 ID를 찾지 못했습니다. Mock 데이터로 대체합니다.")
@@ -334,11 +372,11 @@ class PortalScraper:
                                     # 1. 영수증/결제내역 인증 날짜 정보 필터링
                                     if re.search(r'\d+년\s*\d+월\s*\d+일', clean_rev) or re.search(r'\d+\.\d+\.[월화수목금토일]', clean_rev):
                                         continue
-                                    if any(x in clean_rev for x in ["방문일", "방문인증", "인증수단", "인증 수단", "영수증", "결제내역", "반응 남기기", "번째 방문"]):
+                                    if any(x in clean_rev for x in ["방문일", "방문인증", "인증수단", "인증 수단", "영수증", "결제내역", "반응 남기기", "번째 방문", "표정을 눌러", "반응을 남겨"]):
                                         continue
 
                                     # 2. 탭 이동 문구, 날짜, 태그, 방문 옵션 등 노이즈 제외 필터링
-                                    if not any(x in clean_rev for x in ["방문자리뷰", "블로그리뷰", "블로그", "리뷰", "등록", "별점", "네이버", "펼쳐보기", "팔로워", "사진", "일자", "방문예약", "대기 시간", "다녀오셨나요", "경험을 남겨보세요"]):
+                                    if not any(x in clean_rev for x in ["방문자리뷰", "블로그리뷰", "블로그", "리뷰", "등록", "별점", "네이버", "펼쳐보기", "팔로워", "사진", "일자", "방문예약", "대기 시간", "다녀오셨나요", "경험을 남겨보세요", "표정을 눌러", "반응을 남겨"]):
                                         # 띄어쓰기가 충분하여 완전한 문장 구조를 갖추고 있는지 체크 (태그 나열 필터링)
                                         if len(clean_rev.split()) >= 3:
                                             if clean_rev not in reviews:
