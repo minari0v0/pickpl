@@ -17,9 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class InternalPlaceController {
 
     private final PlaceService placeService;
-
-    @Value("${app.admin.secret-key}")
-    private String adminSecretKey;
+    private final com.pickpl.app.security.admin.AdminKeyService adminKeyService;
 
     @Operation(summary = "장소 대량 등록", description = "Python 크롤러가 수집한 데이터를 대량 등록합니다. (Admin Secret Key 필요)")
     @PostMapping("/batch")
@@ -27,7 +25,7 @@ public class InternalPlaceController {
             @RequestHeader("X-Admin-Secret-Key") String requestSecretKey,
             @RequestBody PlaceBatchRequest request) {
 
-        if (!adminSecretKey.equals(requestSecretKey)) {
+        if (!adminKeyService.getAdminKey().equals(requestSecretKey)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("유효하지 않은 어드민 키입니다.");
         }
 

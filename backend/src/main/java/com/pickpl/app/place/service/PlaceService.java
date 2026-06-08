@@ -23,6 +23,14 @@ public class PlaceService {
     private final com.pickpl.app.domain.vibe.VibeVoteRepository vibeVoteRepository;
     private final jakarta.persistence.EntityManager entityManager;
 
+    private static final java.util.List<String> FACILITY_TAGS = java.util.List.of(
+            "콘센트석", "노트북하기좋은", "화장실깨끗", "반려동물동반", "주차가능", "단체석", "와이파이"
+    );
+
+    private static final java.util.List<String> WEATHER_TAGS = java.util.List.of(
+            "비오는날", "야외테라스", "루프탑"
+    );
+
     public PlaceService(PlaceRepository placeRepository, com.pickpl.app.domain.tag.TagRepository tagRepository, ScrapRepository scrapRepository, com.pickpl.app.domain.vibe.VibeVoteRepository vibeVoteRepository, jakarta.persistence.EntityManager entityManager) {
         this.placeRepository = placeRepository;
         this.tagRepository = tagRepository;
@@ -105,14 +113,23 @@ public class PlaceService {
             );
             place.setImageUrls(data.imageUrls());
             place.setAiMoodSummary(data.aiMoodSummary());
+            place.setPublished(true);
 
             placeRepository.save(place);
 
             // 태그 처리
             if (data.tags() != null) {
                 for (String tagName : data.tags()) {
-                    com.pickpl.app.domain.tag.Tag tag = tagRepository.findByNameAndType(tagName, com.pickpl.app.domain.tag.TagType.MOOD)
-                            .orElseGet(() -> tagRepository.save(new com.pickpl.app.domain.tag.Tag(tagName, com.pickpl.app.domain.tag.TagType.MOOD)));
+                    com.pickpl.app.domain.tag.TagType type = com.pickpl.app.domain.tag.TagType.MOOD;
+                    if (FACILITY_TAGS.contains(tagName)) {
+                        type = com.pickpl.app.domain.tag.TagType.FACILITY;
+                    } else if (WEATHER_TAGS.contains(tagName)) {
+                        type = com.pickpl.app.domain.tag.TagType.WEATHER;
+                    }
+                    
+                    final com.pickpl.app.domain.tag.TagType finalType = type;
+                    com.pickpl.app.domain.tag.Tag tag = tagRepository.findByNameAndType(tagName, finalType)
+                            .orElseGet(() -> tagRepository.save(new com.pickpl.app.domain.tag.Tag(tagName, finalType)));
                     place.addTag(tag);
                 }
             }
@@ -131,28 +148,23 @@ public class PlaceService {
         for (com.pickpl.app.place.dto.AdminPlacePublishRequest.PlacePublishData data : request.places()) {
             java.util.Optional<com.pickpl.app.domain.place.Place> existingPlaceOpt = placeRepository.findByExternalId(data.externalId());
 
-            com.pickpl.app.domain.place.Place place;
             if (existingPlaceOpt.isPresent()) {
-                place = existingPlaceOpt.get();
-                place.setEditorsComment(data.editorsComment());
-                place.setPublished(data.isPublished());
-                place.setAiMoodSummary(data.aiMoodSummary());
-                place.setImageUrls(data.imageUrls());
-            } else {
-                place = new com.pickpl.app.domain.place.Place(
-                        data.name(),
-                        data.thumbnailUrl() != null ? data.thumbnailUrl() : "",
-                        data.externalId(),
-                        data.address(),
-                        data.latitude(),
-                        data.longitude(),
-                        data.category()
-                );
-                place.setImageUrls(data.imageUrls());
-                place.setAiMoodSummary(data.aiMoodSummary());
-                place.setEditorsComment(data.editorsComment());
-                place.setPublished(data.isPublished());
+                continue;
             }
+
+            com.pickpl.app.domain.place.Place place = new com.pickpl.app.domain.place.Place(
+                    data.name(),
+                    data.thumbnailUrl() != null ? data.thumbnailUrl() : "",
+                    data.externalId(),
+                    data.address(),
+                    data.latitude(),
+                    data.longitude(),
+                    data.category()
+            );
+            place.setImageUrls(data.imageUrls());
+            place.setAiMoodSummary(data.aiMoodSummary());
+            place.setEditorsComment(data.editorsComment());
+            place.setPublished(true);
 
             placeRepository.save(place);
 
@@ -175,8 +187,16 @@ public class PlaceService {
             }
 
             for (String tagName : tagsToAdd) {
-                com.pickpl.app.domain.tag.Tag tag = tagRepository.findByNameAndType(tagName, com.pickpl.app.domain.tag.TagType.MOOD)
-                        .orElseGet(() -> tagRepository.save(new com.pickpl.app.domain.tag.Tag(tagName, com.pickpl.app.domain.tag.TagType.MOOD)));
+                com.pickpl.app.domain.tag.TagType type = com.pickpl.app.domain.tag.TagType.MOOD;
+                if (FACILITY_TAGS.contains(tagName)) {
+                    type = com.pickpl.app.domain.tag.TagType.FACILITY;
+                } else if (WEATHER_TAGS.contains(tagName)) {
+                    type = com.pickpl.app.domain.tag.TagType.WEATHER;
+                }
+                
+                final com.pickpl.app.domain.tag.TagType finalType = type;
+                com.pickpl.app.domain.tag.Tag tag = tagRepository.findByNameAndType(tagName, finalType)
+                        .orElseGet(() -> tagRepository.save(new com.pickpl.app.domain.tag.Tag(tagName, finalType)));
                 place.addTag(tag);
             }
 
@@ -226,8 +246,16 @@ public class PlaceService {
         }
 
         for (String tagName : tagsToAdd) {
-            com.pickpl.app.domain.tag.Tag tag = tagRepository.findByNameAndType(tagName, com.pickpl.app.domain.tag.TagType.MOOD)
-                    .orElseGet(() -> tagRepository.save(new com.pickpl.app.domain.tag.Tag(tagName, com.pickpl.app.domain.tag.TagType.MOOD)));
+            com.pickpl.app.domain.tag.TagType type = com.pickpl.app.domain.tag.TagType.MOOD;
+            if (FACILITY_TAGS.contains(tagName)) {
+                type = com.pickpl.app.domain.tag.TagType.FACILITY;
+            } else if (WEATHER_TAGS.contains(tagName)) {
+                type = com.pickpl.app.domain.tag.TagType.WEATHER;
+            }
+            
+            final com.pickpl.app.domain.tag.TagType finalType = type;
+            com.pickpl.app.domain.tag.Tag tag = tagRepository.findByNameAndType(tagName, finalType)
+                    .orElseGet(() -> tagRepository.save(new com.pickpl.app.domain.tag.Tag(tagName, finalType)));
             place.addTag(tag);
         }
         placeRepository.save(place);

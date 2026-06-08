@@ -14,6 +14,7 @@ public record PlaceDetailResponse(
         String address,
         String category,
         String aiMoodSummary,
+        String externalId,
         boolean isHiddenGem,
         boolean isScrapped,
         List<PlaceSummaryResponse.TagInfo> tags,
@@ -40,6 +41,7 @@ public record PlaceDetailResponse(
                 place.getAddress(),
                 place.getCategory(),
                 place.getAiMoodSummary(),
+                place.getExternalId(),
                 false, // isHiddenGem
                 isScrapped,
                 tagInfos,
