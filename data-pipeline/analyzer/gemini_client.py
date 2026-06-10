@@ -216,24 +216,9 @@ class GeminiAnalyzer:
                 raise qe
             except Exception as e:
                 logger.error(f"Gemini 일괄 분석 API 호출 실패 (배치 {i // batch_size + 1}): {e}")
-                # 배치 통째로 다른 에러 시 Fallback 처리
-                for p in batch:
-                    fallback_p = {
-                        "name": p.get("name"),
-                        "address": p.get("address"),
-                        "externalId": p.get("externalId"),
-                        "latitude": p.get("latitude"),
-                        "longitude": p.get("longitude"),
-                        "category": p.get("category", "음식점"),
-                        "subCategory": "기타음식점",
-                        "thumbnailUrl": p.get("thumbnailUrl"),
-                        "imageUrls": p.get("imageUrls"),
-                        "reviews": p.get("reviews"),
-                        "searchQuery": p.get("searchQuery"),
-                        "aiMoodSummary": f"{p['name']}은(는) 매력적인 분위기의 감성 공간입니다.",
-                        "tags": ["코지한", "조용한"]
-                    }
-                    analyzed_results.append(fallback_p)
+                # 치명적인 API 에러(인증 실패, 연결 오류, 예기치 않은 쿼터 제한 등) 시 
+                # 더미 데이터를 생성해 넘겨받지 않고 즉시 예외를 전파하여 중단을 유도합니다.
+                raise e
             
             # RPM 쿼타 제한 우회를 위해 다음 배치 실행 전 대기 (5초)
             if i + batch_size < len(places):

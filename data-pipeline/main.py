@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from scraper.portal_scraper import PortalScraper
 from analyzer.gemini_client import GeminiAnalyzer
 from loader.batch_loader import BatchLoader
+from utils.gui_monitor import GuiMonitor
 
 # 루트 폴더 및 현재 폴더의 .env 파일 로드
 dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
@@ -120,7 +121,7 @@ def save_and_merge_results(new_places: list, output_file: str):
         json.dump(merged_places, f, ensure_ascii=False, indent=2)
     logger.info(f"병합 완료. 기존 장소에 신규 {added_count}개 추가됨. (총 {len(merged_places)}개 저장 위치: {output_file})")
 
-def run_scraping(query: str = None, source: str = "naver", limit: int = 3, region: str = None, category: str = None, query_all: bool = False, output_file: str = None, delay: float = 5.0, delay_random: bool = False):
+def run_scraping(query: str = None, source: str = "naver", limit: int = 3, region: str = None, category: str = None, query_all: bool = False, output_file: str = None, delay: float = 5.0, delay_random: bool = False, gui: bool = False):
     logger.info("=========================================")
     logger.info("1단계: 공간 정보 크롤링 (No AI) 시작")
     logger.info("=========================================")
@@ -198,10 +199,22 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
 
     logger.info(f"실행할 총 쿼리 개수: {len(queries_to_run)}개")
     
+    # GUI 모니터 초기화
+    monitor = None
+    if gui:
+        monitor = GuiMonitor(
+            title="PickPl Data Pipeline - 1단계 공간 수집",
+            task_name="네이버 지도 정보 수집",
+            total_steps=len(queries_to_run)
+        )
+    
     active_idx = 0
     for q in queries_to_run:
         if q in completed_queries:
             logger.info(f"검색어 '{q}'는 이미 이전에 수집 완료되어 통째로 스킵합니다.")
+            active_idx += 1
+            if monitor:
+                monitor.update_progress(active_idx, f"스킵됨: {q}")
             continue
             
         if active_idx > 0:
@@ -215,6 +228,8 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
         active_idx += 1
         try:
             logger.info(f"==> 쿼리 실행: '{q}' (개수 한도: {limit})")
+            if monitor:
+                monitor.update_progress(active_idx, f"수집 진행 중: '{q}'")
             raw_places = scraper.scrape_by_query(query=q, source=source, limit=limit)
             logger.info(f"수집 성공: {len(raw_places)}개 장소 확보")
             if raw_places:
@@ -233,14 +248,19 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
                             existing_ids.add(p.get("externalId"))
         except Exception as e:
             logger.error(f"쿼리 '{q}' 실행 실패: {e}")
+            if monitor:
+                monitor.update_progress(active_idx, f"⚠️ '{q}' 수집 실패")
+                time.sleep(0.5)
         
     logger.info("=========================================")
     logger.info("대량 크롤링 완료!")
     logger.info("=========================================")
+    if monitor:
+        monitor.finish(success=True, final_message="🎉 모든 지역 공간 수집이 완료되었습니다!")
 
 from analyzer.gemini_client import QuotaExhaustedError
 
-def run_analysis_pipeline(raw_file: str, analyzed_file: str):
+def run_analysis_pipeline(raw_file: str, analyzed_file: str, gui: bool = False):
     logger.info("=========================================")
     logger.info("2단계: Gemini AI 감성 및 카테고리 분석 시작")
     logger.info("=========================================")
@@ -290,11 +310,26 @@ def run_analysis_pipeline(raw_file: str, analyzed_file: str):
     
     batch_size = 3
     quota_exhausted = False
+    total_batches = (len(to_analyze) + batch_size - 1) // batch_size
     
+    # GUI 초기화
+    monitor = None
+    if gui:
+        monitor = GuiMonitor(
+            title="PickPl Data Pipeline - 2단계 AI 분석",
+            task_name="Gemini 감성 분석",
+            total_steps=total_batches
+        )
+            
     for i in range(0, len(to_analyze), batch_size):
         batch = to_analyze[i:i + batch_size]
-        logger.info(f"배치 분석 실행 중 ({i // batch_size + 1}/{ (len(to_analyze) + batch_size - 1) // batch_size })")
+        batch_num = i // batch_size + 1
+        logger.info(f"배치 분석 실행 중 ({batch_num}/{total_batches})")
         
+        # GUI 실시간 업데이트
+        if monitor:
+            monitor.update_progress(batch_num)
+                
         try:
             analyzed_batch = analyzer.analyze_places_batch(batch, batch_size=batch_size)
             if analyzed_batch:
@@ -303,9 +338,13 @@ def run_analysis_pipeline(raw_file: str, analyzed_file: str):
             logger.warning("⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
             logger.warning("현재까지 성공한 분석 데이터를 안전하게 저장하고 작업을 중단합니다.")
             quota_exhausted = True
+            if monitor:
+                monitor.finish(success=False, final_message="⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
             break
         except Exception as e:
             logger.error(f"배치 분석 중 에러 발생: {e}")
+            if monitor:
+                monitor.finish(success=False, final_message=f"⚠️ 배치 분석 중 에러 발생: {e}")
             break
             
     if quota_exhausted:
@@ -315,8 +354,11 @@ def run_analysis_pipeline(raw_file: str, analyzed_file: str):
         logger.info("=========================================")
         logger.info("모든 장소에 대한 AI 분석이 완료되었습니다!")
         logger.info("=========================================")
+        if monitor:
+            monitor.finish(success=True, final_message="🎉 모든 장소에 대한 AI 분석이 완료되었습니다!")
 
-def run_loading(output_file: str):
+
+def run_loading(output_file: str, gui: bool = False):
     logger.info("=========================================")
     logger.info("3단계: 가공 데이터 백엔드 DB 벌크 주입 시작")
     logger.info("=========================================")
@@ -331,23 +373,43 @@ def run_loading(output_file: str):
         
     logger.info(f"로컬 파일에서 {len(places_to_load)}개의 장소 정보를 로드했습니다.")
     
+    # GUI 초기화
+    monitor = None
+    if gui:
+        monitor = GuiMonitor(
+            title="PickPl Data Pipeline - 3단계 DB 적재",
+            task_name="백엔드 DB 주입",
+            total_steps=100
+        )
+        monitor.update_progress(10, "백엔드 전송 준비 중...")
+    
     admin_key = os.getenv("ADMIN_SECRET_KEY")
     backend_url = os.getenv("BACKEND_URL", "http://localhost:8080")
     if not admin_key:
         logger.error("에러: .env 파일에 ADMIN_SECRET_KEY가 존재하지 않습니다.")
+        if monitor:
+            monitor.finish(success=False, final_message="⚠️ ADMIN_SECRET_KEY 누락")
         sys.exit(1)
         
     loader = BatchLoader(backend_url=backend_url, admin_key=admin_key)
+    
+    if monitor:
+        monitor.update_progress(50, f"백엔드로 벌크 전송 중... (총 {len(places_to_load)}개 장소)")
+        
     success = loader.load_to_backend(places_to_load)
     
     if success:
         logger.info("=========================================")
         logger.info("데이터 적재가 완전히 완료되었습니다!")
         logger.info("=========================================")
+        if monitor:
+            monitor.finish(success=True, final_message="🎉 백엔드 데이터 적재가 완료되었습니다!")
     else:
         logger.error("=========================================")
         logger.error("데이터 적재 실패. 백엔드 서버 상태 및 로그를 확인하십시오.")
         logger.error("=========================================")
+        if monitor:
+            monitor.finish(success=False, final_message="⚠️ 백엔드 데이터 적재 실패")
         sys.exit(1)
 def main():
     parser = argparse.ArgumentParser(description="PickPl Data Pipeline Engine")
@@ -365,6 +427,7 @@ def main():
     parser.add_argument("--file", type=str, default=None, help="저장하거나 로드할 파일명 또는 날짜(YYYY-MM-DD). 미지정 시 오늘 날짜 또는 가장 최신 파일 자동 선택")
     parser.add_argument("--delay", type=float, default=5.0, help="쿼리 간 대기 시간 (초) (기본 5.0)")
     parser.add_argument("--delay-random", action="store_true", help="대기 시간을 지정한 delay값 기반으로 무작위화 (delay ~ delay*2.5 사이)")
+    parser.add_argument("--gui", action="store_true", help="분석 진행률을 그래픽 팝업 창(GUI)으로 시각화")
     
     args = parser.parse_args()
     
@@ -379,15 +442,16 @@ def main():
             query_all=args.query_all,
             output_file=output_file,
             delay=args.delay,
-            delay_random=args.delay_random
+            delay_random=args.delay_random,
+            gui=args.gui
         )
     elif args.analyze:
         raw_file = get_raw_output_path(file_arg=args.file, default_to_latest=True)
         analyzed_file = get_analyzed_output_path(file_arg=args.file, default_to_latest=False)
-        run_analysis_pipeline(raw_file=raw_file, analyzed_file=analyzed_file)
+        run_analysis_pipeline(raw_file=raw_file, analyzed_file=analyzed_file, gui=args.gui)
     elif args.load:
         output_file = get_analyzed_output_path(file_arg=args.file, default_to_latest=True)
-        run_loading(output_file=output_file)
+        run_loading(output_file=output_file, gui=args.gui)
 
 if __name__ == "__main__":
     main()
