@@ -37,18 +37,26 @@ pipe-setup:
 # 예: make pipe-analyze QUERY="홍대 카페, 신촌 카페" LIMIT=5
 SOURCE ?= naver
 LIMIT ?= 3
-pipe-analyze:
-	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query "$(QUERY)" --source $(SOURCE) --limit $(LIMIT)
+FILE ?=
+DELAY ?= 5
+DELAY_RANDOM ?=
 
-# regions.json 내 전체 지역 x 4대 키워드 자동 일괄 순회 수집
+pipe-analyze:
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query "$(QUERY)" --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
+
+# regions.json 내 전체 지역 x 6대 키워드 자동 일괄 순회 수집
 pipe-analyze-all:
-	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query-all --source $(SOURCE) --limit $(LIMIT)
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query-all --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
 
 # 특정 지역(REGION) 및 카테고리(CATEGORY) 매트릭스 1건 핀포인트 수집
 # 예: make pipe-analyze-matrix REGION=mullae CATEGORY=술집
 pipe-analyze-matrix:
-	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --region "$(REGION)" --category "$(CATEGORY)" --source $(SOURCE) --limit $(LIMIT)
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --region "$(REGION)" --category "$(CATEGORY)" --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
 
 # analyzed_places.json 검토 완료 후 백엔드 DB 주입
 pipe-load:
-	cd data-pipeline && .venv\Scripts\python main.py --load
+	cd data-pipeline && .venv\Scripts\python main.py --load $(if $(FILE),--file "$(FILE)",)
+
+# AI 분석 실패(429)로 임시 더미처리된 데이터만 콕 찝어 내일(또는 쿼터 확보 후) 다시 감성 분석 수행
+pipe-backfill:
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python backfill.py $(if $(FILE),--file "$(FILE)",)

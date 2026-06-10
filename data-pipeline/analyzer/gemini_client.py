@@ -120,38 +120,39 @@ class GeminiAnalyzer:
                     weather_pool=", ".join(WEATHER_TAGS)
                 )
                 
-                try:
-                    response = self.client.models.generate_content(
-                        model=self.model_name,
-                        contents=contents,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            response_schema=BatchAnalysisResponse,
-                            system_instruction=system_instr,
-                            temperature=0.2
-                        )
-                    )
-                except Exception as api_err:
-                    # 429 또는 RESOURCE_EXHAUSTED 에러 감지 시 gemini-2.5-flash 모델로 자동 폴백 재시도
-                    err_str = str(api_err)
-                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                        fallback_model = "gemini-2.5-flash"
-                        if self.model_name != fallback_model:
-                            logger.warning(f"모델 {self.model_name}의 API 쿼터 한도가 초과되어 fallback 모델 {fallback_model}로 재시도합니다. 에러: {api_err}")
-                            response = self.client.models.generate_content(
-                                model=fallback_model,
-                                contents=contents,
-                                config=types.GenerateContentConfig(
-                                    response_mime_type="application/json",
-                                    response_schema=BatchAnalysisResponse,
-                                    system_instruction=system_instr,
-                                    temperature=0.2
-                                )
+                # 429 RESOURCE_EXHAUSTED 발생 시 대기 후 재시도(최대 3회) 및 폴백 모델 처리 루프
+                max_retries = 3
+                retry_count = 0
+                response = None
+                
+                while retry_count < max_retries:
+                    try:
+                        # 1차 시도는 self.model_name, 2차 시도부터는 gemini-2.5-flash 모델 적용
+                        active_model = self.model_name if retry_count == 0 else "gemini-2.5-flash"
+                        
+                        response = self.client.models.generate_content(
+                            model=active_model,
+                            contents=contents,
+                            config=types.GenerateContentConfig(
+                                response_mime_type="application/json",
+                                response_schema=BatchAnalysisResponse,
+                                system_instruction=system_instr,
+                                temperature=0.2
                             )
+                        )
+                        break  # 성공 시 루프 탈출
+                    except Exception as api_err:
+                        err_str = str(api_err)
+                        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                            retry_count += 1
+                            if retry_count < max_retries:
+                                wait_sec = 25 * retry_count
+                                logger.warning(f"Gemini API 429 쿼터 초과 감지. {wait_sec}초 대기 후 재시도합니다... (시도 {retry_count}/{max_retries}) | 모델: {active_model} | 에러: {api_err}")
+                                time.sleep(wait_sec)
+                            else:
+                                raise api_err
                         else:
                             raise api_err
-                    else:
-                        raise api_err
                 
                 # 파싱 결과 파싱 및 맵 구성
                 res_text = response.text

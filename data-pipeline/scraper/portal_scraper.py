@@ -248,19 +248,60 @@ class PortalScraper:
             }
             response = requests.get(search_url, headers=headers, timeout=10)
             
-            # 다각도 정규식 매칭 패턴 적용
-            place_ids = re.findall(r'place\.naver\.com/place/(\d+)', response.text)
-            if not place_ids:
-                place_ids = re.findall(r'place/(\d+)', response.text)
-            if not place_ids:
-                place_ids = re.findall(r'data-cid="(\d+)"', response.text)
-            if not place_ids:
-                place_ids = re.findall(r'entry/place/(\d+)', response.text)
-
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(response.text, "html.parser")
+            
             raw_ids = []
-            for p_id in place_ids:
-                if p_id not in raw_ids and len(p_id) >= 6:
-                    raw_ids.append(p_id)
+            for a_tag in soup.find_all("a", href=True):
+                href = a_tag["href"]
+                match = re.search(r'(?:place\.naver\.com/place/|entry/place/|place/)(\d+)', href)
+                if match:
+                    p_id = match.group(1)
+                    if len(p_id) < 6:
+                        continue
+                    
+                    # 광고 뱃지 여부 검사 (조상 노드로 거슬러 올라가며 뱃지 및 광고 클래스 탐색)
+                    is_ad = False
+                    curr = a_tag
+                    for _ in range(5):
+                        if curr is None:
+                            break
+                        
+                        # 1) 정확한 광고 지시 텍스트 검출 (광고, 광고i 등)
+                        ad_elements = curr.find_all(text=lambda t: t and t.strip() in ["광고", "광고i", "광고ⓘ", "AD"])
+                        if ad_elements:
+                            is_ad = True
+                            break
+                            
+                        # 2) 광고 전용 스타일 클래스 검출
+                        classes = curr.get("class", [])
+                        if classes:
+                            valid_ad_class = any(
+                                c.lower() in ["ad", "ads", "advert", "advertisement", "sp_advert", "txt_ad", "ad_badge"] 
+                                or c.lower().startswith("ad_") 
+                                or c.lower().endswith("_ad") 
+                                for c in classes
+                            )
+                            if valid_ad_class:
+                                is_ad = True
+                                break
+                        curr = curr.parent
+                        
+                    if is_ad:
+                        logger.info(f"네이버 광고 플레이스 감지 및 배제 완료 (ID: {p_id})")
+                        continue
+                        
+                    if p_id not in raw_ids:
+                        raw_ids.append(p_id)
+            
+            # BeautifulSoup 파싱 실패 또는 ID 미획득 시 기존 정규식 매칭 폴백
+            if not raw_ids:
+                place_ids = re.findall(r'place\.naver\.com/place/(\d+)', response.text)
+                if not place_ids:
+                    place_ids = re.findall(r'place/(\d+)', response.text)
+                for p_id in place_ids:
+                    if p_id not in raw_ids and len(p_id) >= 6:
+                        raw_ids.append(p_id)
             
             # 랭킹 샘플링 적용
             unique_ids = self._sample_ids(raw_ids, limit)

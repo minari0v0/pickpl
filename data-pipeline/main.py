@@ -4,6 +4,10 @@ import json
 import argparse
 import logging
 import time
+import re
+import glob
+import random
+from datetime import datetime
 from dotenv import load_dotenv
 
 # 내부 모듈 로드
@@ -28,12 +32,34 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "raw_data")
-OUTPUT_FILE = os.path.join(RAW_DATA_DIR, "analyzed_places.json")
 REGIONS_FILE = os.path.join(os.path.dirname(__file__), "regions.json")
 
 def ensure_directory():
     if not os.path.exists(RAW_DATA_DIR):
         os.makedirs(RAW_DATA_DIR)
+
+def get_output_path(file_arg=None, default_to_latest=False):
+    ensure_directory()
+    if file_arg:
+        if re.match(r"^\d{4}-\d{2}-\d{2}$", file_arg):
+            return os.path.join(RAW_DATA_DIR, f"analyzed_places_{file_arg}.json")
+        if os.path.isabs(file_arg) or "/" in file_arg or "\\" in file_arg:
+            return file_arg
+        return os.path.join(RAW_DATA_DIR, file_arg)
+    
+    if default_to_latest:
+        pattern = os.path.join(RAW_DATA_DIR, "analyzed_places_*.json")
+        files = glob.glob(pattern)
+        old_file = os.path.join(RAW_DATA_DIR, "analyzed_places.json")
+        if os.path.exists(old_file):
+            files.append(old_file)
+            
+        if files:
+            files.sort(key=os.path.getmtime, reverse=True)
+            return files[0]
+            
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(RAW_DATA_DIR, f"analyzed_places_{today_str}.json")
 
 def load_regions():
     if not os.path.exists(REGIONS_FILE):
@@ -47,12 +73,12 @@ def load_regions():
         logger.error(f"regions.json 로드 중 오류 발생: {e}")
         return {}
 
-def save_and_merge_results(new_places: list):
+def save_and_merge_results(new_places: list, output_file: str):
     ensure_directory()
     existing_places = []
-    if os.path.exists(OUTPUT_FILE):
+    if os.path.exists(output_file):
         try:
-            with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+            with open(output_file, "r", encoding="utf-8") as f:
                 existing_places = json.load(f)
                 if not isinstance(existing_places, list):
                     existing_places = []
@@ -71,31 +97,48 @@ def save_and_merge_results(new_places: list):
             existing_ids.add(ext_id)
             added_count += 1
             
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(merged_places, f, ensure_ascii=False, indent=2)
-    logger.info(f"병합 완료. 기존 장소에 신규 {added_count}개 추가됨. (총 {len(merged_places)}개 저장 위치: {OUTPUT_FILE})")
+    logger.info(f"병합 완료. 기존 장소에 신규 {added_count}개 추가됨. (총 {len(merged_places)}개 저장 위치: {output_file})")
 
-def process_single_query(query: str, source: str, limit: int, scraper: PortalScraper, analyzer: GeminiAnalyzer) -> list:
+def process_single_query(query: str, source: str, limit: int, scraper: PortalScraper, analyzer: GeminiAnalyzer, existing_ids: set = None) -> list:
     logger.info(f"==> 쿼리 실행: '{query}' (출처: {source}, 개수 한도: {limit})")
     
-    # 1. 크롤링 수행 (샘플링 활성화 인자 전달 - 2단계에서 고도화 예정)
+    # 1. 크롤링 수행
     raw_places = scraper.scrape_by_query(query=query, source=source, limit=limit)
     logger.info(f"수집 성공: {len(raw_places)}개 장소 확보")
     if not raw_places:
         return []
         
-    # 2. Gemini 감성 분석 수행
-    logger.info("Gemini AI 감성/시설 분석 요청 중...")
+    # 2. 이미 존재하는 ID 필터링 (이어서 수집 지원)
+    if existing_ids:
+        filtered_places = [p for p in raw_places if p.get("externalId") not in existing_ids]
+        skipped_count = len(raw_places) - len(filtered_places)
+        if skipped_count > 0:
+            logger.info(f"이미 파일에 존재하는 장소 {skipped_count}개 수집 및 분석 생략 (스킵)")
+        raw_places = filtered_places
+        
+    if not raw_places:
+        logger.info("모든 수집 장소가 이미 파일에 존재하여 AI 분석을 생략합니다.")
+        return []
+        
+    # 3. Gemini 감성 분석 수행
+    logger.info(f"Gemini AI 감성/시설 분석 요청 중... (분석 대상: {len(raw_places)}개)")
     analyzed = analyzer.analyze_places_batch(raw_places, batch_size=3)
+    
+    # 4. 각 분석 결과에 출처 쿼리 정보 기록 (이어서 수집할 때 통째로 쿼리 스킵하기 위함)
+    for p in analyzed:
+        p["searchQuery"] = query
+        
     return analyzed
 
-def run_analysis(query: str = None, source: str = "naver", limit: int = 3, region: str = None, category: str = None, query_all: bool = False):
+def run_analysis(query: str = None, source: str = "naver", limit: int = 3, region: str = None, category: str = None, query_all: bool = False, output_file: str = None, delay: float = 5.0, delay_random: bool = False):
     logger.info("=========================================")
     logger.info("1단계: 공간 정보 크롤링 및 AI 감성/시설 분석 시작")
     logger.info("=========================================")
     
     REGIONS_MAP = load_regions()
-    KEYWORDS = ["맛집", "술집", "카페", "핫플레이스"]
+    KEYWORDS = ["맛집", "술집", "카페", "핫플레이스", "디저트", "명소"]
     
     api_key = os.getenv("GEMINI_API_KEY")
     model_name = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
@@ -186,39 +229,72 @@ def run_analysis(query: str = None, source: str = "naver", limit: int = 3, regio
         if env_source in ["naver", "kakao"]:
             source = env_source
 
+    # 이어서 수집하기 지원을 위해 기존 수집 완료된 쿼리 및 ID 로드
+    existing_ids = set()
+    completed_queries = set()
+    if output_file and os.path.exists(output_file):
+        try:
+            with open(output_file, "r", encoding="utf-8") as f:
+                existing_data = json.load(f)
+                if isinstance(existing_data, list):
+                    for p in existing_data:
+                        ext_id = p.get("externalId")
+                        if ext_id:
+                            existing_ids.add(ext_id)
+                        sq = p.get("searchQuery")
+                        if sq:
+                            completed_queries.add(sq)
+            logger.info(f"이어서 수집 활성화: 기존 완료된 검색어 {len(completed_queries)}개 스킵 | 기존 수집 장소 {len(existing_ids)}개 감지")
+        except Exception as e:
+            logger.warning(f"기존 수집 정보 로드 중 실패 (처음부터 수집): {e}")
+
     total_new_places = []
     logger.info(f"실행할 총 쿼리 개수: {len(queries_to_run)}개")
     
     # 쿼리 순회 실행
-    for idx, q in enumerate(queries_to_run):
-        if idx > 0:
-            logger.info("쿼리간 간섭 방지 및 봇 차단 우회를 위해 5초간 대기합니다...")
-            time.sleep(5.0)
+    active_idx = 0
+    for q in queries_to_run:
+        # 이미 완수된 쿼리 키워드는 네이버 호출조차 하지 않고 통째로 패스 (사용자 차단 리스크 보호)
+        if q in completed_queries:
+            logger.info(f"검색어 '{q}'는 이미 이전에 수집 완료되어 통째로 스킵합니다.")
+            continue
+            
+        if active_idx > 0:
+            if delay_random:
+                sleep_time = random.uniform(delay, delay * 2.5)
+            else:
+                sleep_time = delay
+            logger.info(f"쿼리간 간섭 방지 및 봇 차단 우회를 위해 {sleep_time:.1f}초간 대기합니다...")
+            time.sleep(sleep_time)
+            
+        active_idx += 1
         try:
-            places = process_single_query(q, source, limit, scraper, analyzer)
-            total_new_places.extend(places)
+            places = process_single_query(q, source, limit, scraper, analyzer, existing_ids)
+            if places:
+                # 쿼리 하나 완료될 때마다 즉시 파일에 실시간 누적 저장
+                save_and_merge_results(places, output_file)
+                # 실시간으로 기존 ID 셋에 갱신하여 중복 방지
+                for p in places:
+                    if p.get("externalId"):
+                        existing_ids.add(p.get("externalId"))
         except Exception as e:
             logger.error(f"쿼리 '{q}' 실행 실패: {e}")
-            
-    # 최종 결과 병합 저장
-    if total_new_places:
-        save_and_merge_results(total_new_places)
         
     logger.info("=========================================")
     logger.info("대량 크롤링 및 AI 분석 완료!")
     logger.info("=========================================")
 
-def run_loading():
+def run_loading(output_file: str):
     logger.info("=========================================")
     logger.info("2단계: 가공 데이터 백엔드 DB 벌크 주입 시작")
     logger.info("=========================================")
     
-    if not os.path.exists(OUTPUT_FILE):
-        logger.error(f"에러: 분석 결과 파일({OUTPUT_FILE})이 존재하지 않습니다.")
+    if not os.path.exists(output_file):
+        logger.error(f"에러: 분석 결과 파일({output_file})이 존재하지 않습니다.")
         logger.error("먼저 'make pipe-analyze'를 통해 데이터를 분석 및 생성하십시오.")
         sys.exit(1)
         
-    with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+    with open(output_file, "r", encoding="utf-8") as f:
         places_to_load = json.load(f)
         
     logger.info(f"로컬 파일에서 {len(places_to_load)}개의 장소 정보를 로드했습니다.")
@@ -252,22 +328,30 @@ def main():
     parser.add_argument("--source", type=str, default="naver", choices=["naver", "kakao"], help="크롤링 대상 포털 소스")
     parser.add_argument("--limit", type=int, default=3, help="검색당 수집할 최대 장소 개수 (기본 3)")
     parser.add_argument("--region", type=str, default=None, help="지역명 필터 (영문/한글 매핑 지원)")
-    parser.add_argument("--category", type=str, default=None, choices=["맛집", "술집", "카페", "핫플레이스"], help="수집 대상 카테고리")
-    parser.add_argument("--query-all", action="store_true", help="regions.json의 모든 지역과 4대 업종 키워드 조합 순회 수집")
+    parser.add_argument("--category", type=str, default=None, choices=["맛집", "술집", "카페", "핫플레이스", "디저트", "명소"], help="수집 대상 카테고리")
+    parser.add_argument("--query-all", action="store_true", help="regions.json의 모든 지역과 6대 업종 키워드 조합 순회 수집")
+    parser.add_argument("--file", type=str, default=None, help="저장하거나 로드할 파일명 또는 날짜(YYYY-MM-DD). 미지정 시 analyze는 오늘 날짜, load는 가장 최신 파일 자동 선택")
+    parser.add_argument("--delay", type=float, default=5.0, help="쿼리 간 대기 시간 (초) (기본 5.0)")
+    parser.add_argument("--delay-random", action="store_true", help="대기 시간을 지정한 delay값 기반으로 무작위화 (delay ~ delay*2.5 사이)")
     
     args = parser.parse_args()
     
     if args.analyze:
+        output_file = get_output_path(file_arg=args.file, default_to_latest=False)
         run_analysis(
             query=args.query,
             source=args.source,
             limit=args.limit,
             region=args.region,
             category=args.category,
-            query_all=args.query_all
+            query_all=args.query_all,
+            output_file=output_file,
+            delay=args.delay,
+            delay_random=args.delay_random
         )
     elif args.load:
-        run_loading()
+        output_file = get_output_path(file_arg=args.file, default_to_latest=True)
+        run_loading(output_file=output_file)
 
 if __name__ == "__main__":
     main()
