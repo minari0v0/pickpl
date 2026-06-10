@@ -41,6 +41,7 @@ class BatchLoader:
                 "latitude": float(p.get("latitude", 0.0)),
                 "longitude": float(p.get("longitude", 0.0)),
                 "category": cat,
+                "subCategory": p.get("subCategory"),
                 "thumbnailUrl": p.get("thumbnailUrl"),
                 "imageUrls": p.get("imageUrls"),
                 "aiMoodSummary": p.get("aiMoodSummary"),

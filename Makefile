@@ -33,30 +33,45 @@ pipe-setup:
 	cd data-pipeline && .venv\Scripts\pip install -r requirements.txt
 	cd data-pipeline && .venv\Scripts\playwright install
 
-# 크롤링 및 Gemini 감성 분석 수행 (QUERY, SOURCE, LIMIT 지정 가능)
-# 예: make pipe-analyze QUERY="홍대 카페, 신촌 카페" LIMIT=5
+# 1단계: 네이버 플레이스 크롤링 수집 전용 (No AI)
+# 예: make pipe-scrape QUERY="홍대 카페" LIMIT=3
 SOURCE ?= naver
 LIMIT ?= 3
 FILE ?=
 DELAY ?= 5
 DELAY_RANDOM ?=
 
-pipe-analyze:
-	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query "$(QUERY)" --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
+pipe-scrape:
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --scrape --query "$(QUERY)" --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
 
-# regions.json 내 전체 지역 x 6대 키워드 자동 일괄 순회 수집
-pipe-analyze-all:
-	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --query-all --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
+# regions.json 내 전체 지역 x 6대 키워드 자동 일괄 순회 크롤링
+pipe-scrape-all:
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --scrape --query-all --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
 
-# 특정 지역(REGION) 및 카테고리(CATEGORY) 매트릭스 1건 핀포인트 수집
-# 예: make pipe-analyze-matrix REGION=mullae CATEGORY=술집
-pipe-analyze-matrix:
-	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze --region "$(REGION)" --category "$(CATEGORY)" --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
+# 특정 지역(REGION) 및 카테고리(CATEGORY) 매트릭스 1건 핀포인트 크롤링
+pipe-scrape-matrix:
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --scrape --region "$(REGION)" --category "$(CATEGORY)" --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,)
 
-# analyzed_places.json 검토 완료 후 백엔드 DB 주입
+# 2단계: Gemini AI 감성/카테고리 분석 전용 (Resume 지원)
+# 예: make pipe-ai-analyze FILE=2026-06-10
+pipe-ai-analyze:
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --analyze $(if $(FILE),--file "$(FILE)",)
+
+# 3단계: analyzed_places.json 검토 완료 후 백엔드 DB 주입
 pipe-load:
 	cd data-pipeline && .venv\Scripts\python main.py --load $(if $(FILE),--file "$(FILE)",)
 
-# AI 분석 실패(429)로 임시 더미처리된 데이터만 콕 찝어 내일(또는 쿼터 확보 후) 다시 감성 분석 수행
+# AI 분석 실패(429) 복구용 백필 수행
 pipe-backfill:
 	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python backfill.py $(if $(FILE),--file "$(FILE)",)
+
+# 통합: 1단계 크롤링 수집 + 2단계 AI 분석 순차 실행
+# 예: make pipe-all QUERY="홍대 카페" LIMIT=3
+pipe-all:
+	@make pipe-scrape QUERY="$(QUERY)" LIMIT=$(LIMIT) FILE="$(FILE)" DELAY=$(DELAY) DELAY_RANDOM=$(DELAY_RANDOM)
+	@make pipe-ai-analyze FILE="$(FILE)"
+
+# 통합: 전체 지역 일괄 크롤링 수집 + AI 분석 순차 실행
+pipe-all-run:
+	@make pipe-scrape-all LIMIT=$(LIMIT) FILE="$(FILE)" DELAY=$(DELAY) DELAY_RANDOM=$(DELAY_RANDOM)
+	@make pipe-ai-analyze FILE="$(FILE)"

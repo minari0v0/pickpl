@@ -38,22 +38,41 @@ def ensure_directory():
     if not os.path.exists(RAW_DATA_DIR):
         os.makedirs(RAW_DATA_DIR)
 
-def get_output_path(file_arg=None, default_to_latest=False):
+def get_raw_output_path(file_arg=None, default_to_latest=False):
+    ensure_directory()
+    if file_arg:
+        if re.match(r"^\d{4}-\d{2}-\d{2}$", file_arg):
+            return os.path.join(RAW_DATA_DIR, f"raw_places_{file_arg}.json")
+        if os.path.isabs(file_arg) or "/" in file_arg or "\\" in file_arg:
+            return file_arg
+        if not file_arg.startswith("raw_"):
+            return os.path.join(RAW_DATA_DIR, f"raw_places_{file_arg}.json")
+        return os.path.join(RAW_DATA_DIR, file_arg)
+    
+    if default_to_latest:
+        pattern = os.path.join(RAW_DATA_DIR, "raw_places_*.json")
+        files = glob.glob(pattern)
+        if files:
+            files.sort(key=os.path.getmtime, reverse=True)
+            return files[0]
+            
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(RAW_DATA_DIR, f"raw_places_{today_str}.json")
+
+def get_analyzed_output_path(file_arg=None, default_to_latest=False):
     ensure_directory()
     if file_arg:
         if re.match(r"^\d{4}-\d{2}-\d{2}$", file_arg):
             return os.path.join(RAW_DATA_DIR, f"analyzed_places_{file_arg}.json")
         if os.path.isabs(file_arg) or "/" in file_arg or "\\" in file_arg:
             return file_arg
+        if not file_arg.startswith("analyzed_"):
+            return os.path.join(RAW_DATA_DIR, f"analyzed_places_{file_arg}.json")
         return os.path.join(RAW_DATA_DIR, file_arg)
     
     if default_to_latest:
         pattern = os.path.join(RAW_DATA_DIR, "analyzed_places_*.json")
         files = glob.glob(pattern)
-        old_file = os.path.join(RAW_DATA_DIR, "analyzed_places.json")
-        if os.path.exists(old_file):
-            files.append(old_file)
-            
         if files:
             files.sort(key=os.path.getmtime, reverse=True)
             return files[0]
@@ -101,54 +120,15 @@ def save_and_merge_results(new_places: list, output_file: str):
         json.dump(merged_places, f, ensure_ascii=False, indent=2)
     logger.info(f"병합 완료. 기존 장소에 신규 {added_count}개 추가됨. (총 {len(merged_places)}개 저장 위치: {output_file})")
 
-def process_single_query(query: str, source: str, limit: int, scraper: PortalScraper, analyzer: GeminiAnalyzer, existing_ids: set = None) -> list:
-    logger.info(f"==> 쿼리 실행: '{query}' (출처: {source}, 개수 한도: {limit})")
-    
-    # 1. 크롤링 수행
-    raw_places = scraper.scrape_by_query(query=query, source=source, limit=limit)
-    logger.info(f"수집 성공: {len(raw_places)}개 장소 확보")
-    if not raw_places:
-        return []
-        
-    # 2. 이미 존재하는 ID 필터링 (이어서 수집 지원)
-    if existing_ids:
-        filtered_places = [p for p in raw_places if p.get("externalId") not in existing_ids]
-        skipped_count = len(raw_places) - len(filtered_places)
-        if skipped_count > 0:
-            logger.info(f"이미 파일에 존재하는 장소 {skipped_count}개 수집 및 분석 생략 (스킵)")
-        raw_places = filtered_places
-        
-    if not raw_places:
-        logger.info("모든 수집 장소가 이미 파일에 존재하여 AI 분석을 생략합니다.")
-        return []
-        
-    # 3. Gemini 감성 분석 수행
-    logger.info(f"Gemini AI 감성/시설 분석 요청 중... (분석 대상: {len(raw_places)}개)")
-    analyzed = analyzer.analyze_places_batch(raw_places, batch_size=3)
-    
-    # 4. 각 분석 결과에 출처 쿼리 정보 기록 (이어서 수집할 때 통째로 쿼리 스킵하기 위함)
-    for p in analyzed:
-        p["searchQuery"] = query
-        
-    return analyzed
-
-def run_analysis(query: str = None, source: str = "naver", limit: int = 3, region: str = None, category: str = None, query_all: bool = False, output_file: str = None, delay: float = 5.0, delay_random: bool = False):
+def run_scraping(query: str = None, source: str = "naver", limit: int = 3, region: str = None, category: str = None, query_all: bool = False, output_file: str = None, delay: float = 5.0, delay_random: bool = False):
     logger.info("=========================================")
-    logger.info("1단계: 공간 정보 크롤링 및 AI 감성/시설 분석 시작")
+    logger.info("1단계: 공간 정보 크롤링 (No AI) 시작")
     logger.info("=========================================")
     
     REGIONS_MAP = load_regions()
     KEYWORDS = ["맛집", "술집", "카페", "핫플레이스", "디저트", "명소"]
     
-    api_key = os.getenv("GEMINI_API_KEY")
-    model_name = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
-    if not api_key:
-        logger.error("에러: .env 파일에 GEMINI_API_KEY가 존재하지 않습니다.")
-        sys.exit(1)
-        
     scraper = PortalScraper(use_mock=False)
-    analyzer = GeminiAnalyzer(api_key=api_key, model_name=model_name)
-    
     queries_to_run = []
     
     # 1. --query-all 플래그 처리
@@ -171,51 +151,26 @@ def run_analysis(query: str = None, source: str = "naver", limit: int = 3, regio
             if reg_key in REGIONS_MAP:
                 reg_name = REGIONS_MAP[reg_key]
             else:
-                reg_name = region.strip() # 매핑 없으면 그대로 사용
+                reg_name = region.strip()
         else:
             reg_name = "합정"
             
         queries_to_run.append(f"{reg_name} {cat_name}")
         
-    # 3. --query (다중 쿼리 혹은 단일 쿼리) 처리
+    # 3. --query 처리
     else:
-        # 쿼리가 지정되지 않은 경우의 폴백 처리
         if not query:
             env_query = os.getenv("SEARCH_QUERY")
             if env_query:
                 query = env_query.strip()
                 
-        # 대화형 입력 처리
-        if not query:
-            try:
-                print("\n[안내] 검색어를 입력해 주세요 (쉼표 구분으로 다중 입력 가능. 예: 홍대 카페, 망원 술집)")
-                sys.stdout.flush()
-                line_bytes = sys.stdin.buffer.readline()
-                user_input = None
-                for enc in ["cp949", "utf-8", "utf-16", "euc-kr"]:
-                    try:
-                        candidate = line_bytes.decode(enc).strip()
-                        candidate.encode("utf-8")
-                        user_input = candidate
-                        break
-                    except Exception:
-                        continue
-                if not user_input:
-                    user_input = line_bytes.decode("utf-8", errors="ignore").strip()
-                if user_input:
-                    query = user_input
-            except Exception as e:
-                logger.warning(f"대화형 입력 오류: {e}")
-                
         if not query:
             logger.info("검색어가 제공되지 않았습니다. 기본 테스트 키워드('합정 카페')로 진행합니다.")
             query = "합정 카페"
             
-        # 쉼표 구분 다중 쿼리 파싱 및 로마자 치환 매핑
         parts = [p.strip() for p in query.split(",") if p.strip()]
         for part in parts:
             part_lower = part.lower().replace(" ", "").replace("_", "").replace("-", "")
-            # 영문 번역 치환 적용 (예: hongdae -> 홍대 카페)
             if part_lower in REGIONS_MAP:
                 translated = f"{REGIONS_MAP[part_lower]} 카페"
                 logger.info(f"영문 지역 치환 적용: '{part}' -> '{translated}'")
@@ -223,13 +178,6 @@ def run_analysis(query: str = None, source: str = "naver", limit: int = 3, regio
             else:
                 queries_to_run.append(part)
                 
-    # 소스(naver/kakao) 결정 (.env 또는 인자)
-    if not source or source == "naver":
-        env_source = os.getenv("SEARCH_SOURCE", "naver")
-        if env_source in ["naver", "kakao"]:
-            source = env_source
-
-    # 이어서 수집하기 지원을 위해 기존 수집 완료된 쿼리 및 ID 로드
     existing_ids = set()
     completed_queries = set()
     if output_file and os.path.exists(output_file):
@@ -248,13 +196,10 @@ def run_analysis(query: str = None, source: str = "naver", limit: int = 3, regio
         except Exception as e:
             logger.warning(f"기존 수집 정보 로드 중 실패 (처음부터 수집): {e}")
 
-    total_new_places = []
     logger.info(f"실행할 총 쿼리 개수: {len(queries_to_run)}개")
     
-    # 쿼리 순회 실행
     active_idx = 0
     for q in queries_to_run:
-        # 이미 완수된 쿼리 키워드는 네이버 호출조차 하지 않고 통째로 패스 (사용자 차단 리스크 보호)
         if q in completed_queries:
             logger.info(f"검색어 '{q}'는 이미 이전에 수집 완료되어 통째로 스킵합니다.")
             continue
@@ -269,29 +214,116 @@ def run_analysis(query: str = None, source: str = "naver", limit: int = 3, regio
             
         active_idx += 1
         try:
-            places = process_single_query(q, source, limit, scraper, analyzer, existing_ids)
-            if places:
-                # 쿼리 하나 완료될 때마다 즉시 파일에 실시간 누적 저장
-                save_and_merge_results(places, output_file)
-                # 실시간으로 기존 ID 셋에 갱신하여 중복 방지
-                for p in places:
-                    if p.get("externalId"):
-                        existing_ids.add(p.get("externalId"))
+            logger.info(f"==> 쿼리 실행: '{q}' (개수 한도: {limit})")
+            raw_places = scraper.scrape_by_query(query=q, source=source, limit=limit)
+            logger.info(f"수집 성공: {len(raw_places)}개 장소 확보")
+            if raw_places:
+                filtered_places = [p for p in raw_places if p.get("externalId") not in existing_ids]
+                skipped_count = len(raw_places) - len(filtered_places)
+                if skipped_count > 0:
+                    logger.info(f"이미 파일에 존재하는 장소 {skipped_count}개 수집 생략 (스킵)")
+                
+                for p in filtered_places:
+                    p["searchQuery"] = q
+                
+                if filtered_places:
+                    save_and_merge_results(filtered_places, output_file)
+                    for p in filtered_places:
+                        if p.get("externalId"):
+                            existing_ids.add(p.get("externalId"))
         except Exception as e:
             logger.error(f"쿼리 '{q}' 실행 실패: {e}")
         
     logger.info("=========================================")
-    logger.info("대량 크롤링 및 AI 분석 완료!")
+    logger.info("대량 크롤링 완료!")
     logger.info("=========================================")
+
+from analyzer.gemini_client import QuotaExhaustedError
+
+def run_analysis_pipeline(raw_file: str, analyzed_file: str):
+    logger.info("=========================================")
+    logger.info("2단계: Gemini AI 감성 및 카테고리 분석 시작")
+    logger.info("=========================================")
+    
+    if not os.path.exists(raw_file):
+        logger.error(f"에러: 크롤링 원본 파일({raw_file})이 존재하지 않습니다.")
+        logger.error("먼저 'python main.py --scrape'를 통해 데이터를 크롤링하십시오.")
+        sys.exit(1)
+        
+    with open(raw_file, "r", encoding="utf-8") as f:
+        raw_places = json.load(f)
+        
+    if not isinstance(raw_places, list) or not raw_places:
+        logger.info("크롤링 원본 데이터가 비어있습니다. 분석을 진행하지 않습니다.")
+        return
+        
+    existing_analyzed = []
+    existing_ids = set()
+    if os.path.exists(analyzed_file):
+        try:
+            with open(analyzed_file, "r", encoding="utf-8") as f:
+                existing_analyzed = json.load(f)
+                if not isinstance(existing_analyzed, list):
+                    existing_analyzed = []
+                for p in existing_analyzed:
+                    if p.get("externalId"):
+                        existing_ids.add(p.get("externalId"))
+            logger.info(f"이어서 분석하기 활성화: 이미 분석 완료된 {len(existing_ids)}개 장소 스킵")
+        except Exception as e:
+            logger.warning(f"기존 분석 결과 파일 읽기 오류: {e}")
+            existing_analyzed = []
+
+    to_analyze = [p for p in raw_places if p.get("externalId") not in existing_ids]
+    logger.info(f"총 {len(raw_places)}개 장소 중 분석할 신규 장소: {len(to_analyze)}개")
+    
+    if not to_analyze:
+        logger.info("이미 모든 장소의 분석이 완료되었습니다!")
+        return
+        
+    api_key = os.getenv("GEMINI_API_KEY")
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+    if not api_key:
+        logger.error("에러: .env 파일에 GEMINI_API_KEY가 존재하지 않습니다.")
+        sys.exit(1)
+        
+    analyzer = GeminiAnalyzer(api_key=api_key, model_name=model_name)
+    
+    batch_size = 3
+    quota_exhausted = False
+    
+    for i in range(0, len(to_analyze), batch_size):
+        batch = to_analyze[i:i + batch_size]
+        logger.info(f"배치 분석 실행 중 ({i // batch_size + 1}/{ (len(to_analyze) + batch_size - 1) // batch_size })")
+        
+        try:
+            analyzed_batch = analyzer.analyze_places_batch(batch, batch_size=batch_size)
+            if analyzed_batch:
+                save_and_merge_results(analyzed_batch, analyzed_file)
+        except QuotaExhaustedError:
+            logger.warning("⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
+            logger.warning("현재까지 성공한 분석 데이터를 안전하게 저장하고 작업을 중단합니다.")
+            quota_exhausted = True
+            break
+        except Exception as e:
+            logger.error(f"배치 분석 중 에러 발생: {e}")
+            break
+            
+    if quota_exhausted:
+        logger.info("분석이 조기 중단되었습니다. 쿼터 리셋 후 다시 --analyze를 실행하여 재개할 수 있습니다.")
+        sys.exit(2)
+    else:
+        logger.info("=========================================")
+        logger.info("모든 장소에 대한 AI 분석이 완료되었습니다!")
+        logger.info("=========================================")
 
 def run_loading(output_file: str):
     logger.info("=========================================")
-    logger.info("2단계: 가공 데이터 백엔드 DB 벌크 주입 시작")
+    logger.info("3단계: 가공 데이터 백엔드 DB 벌크 주입 시작")
     logger.info("=========================================")
     
     if not os.path.exists(output_file):
         logger.error(f"에러: 분석 결과 파일({output_file})이 존재하지 않습니다.")
-        logger.error("먼저 'make pipe-analyze'를 통해 데이터를 분석 및 생성하십시오.")
+        logger.error("먼저 '--analyze'를 통해 데이터를 분석 및 생성하십시오.")
         sys.exit(1)
         
     with open(output_file, "r", encoding="utf-8") as f:
@@ -317,28 +349,28 @@ def run_loading(output_file: str):
         logger.error("데이터 적재 실패. 백엔드 서버 상태 및 로그를 확인하십시오.")
         logger.error("=========================================")
         sys.exit(1)
-
 def main():
     parser = argparse.ArgumentParser(description="PickPl Data Pipeline Engine")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--analyze", action="store_true", help="크롤링 및 Gemini 감성 분석 수행 후 로컬 JSON으로 저장")
+    group.add_argument("--scrape", action="store_true", help="네이버 지도에서 Playwright 크롤링만 고속 진행하고 로컬 raw JSON으로 저장")
+    group.add_argument("--analyze", action="store_true", help="raw JSON 파일을 읽어 Gemini AI 분석 수행 후 analyzed JSON으로 저장")
     group.add_argument("--load", action="store_true", help="분석 결과 로컬 JSON을 읽어 스프링 백엔드 DB에 적재")
     
-    parser.add_argument("--query", type=str, default=None, help="네이버/카카오 지도에서 검색할 키워드 (쉼표 구분 다중 지원)")
-    parser.add_argument("--source", type=str, default="naver", choices=["naver", "kakao"], help="크롤링 대상 포털 소스")
+    parser.add_argument("--query", type=str, default=None, help="네이버 지도에서 검색할 키워드 (쉼표 구분 다중 지원)")
+    parser.add_argument("--source", type=str, default="naver", choices=["naver"], help="크롤링 대상 포털 소스")
     parser.add_argument("--limit", type=int, default=3, help="검색당 수집할 최대 장소 개수 (기본 3)")
     parser.add_argument("--region", type=str, default=None, help="지역명 필터 (영문/한글 매핑 지원)")
     parser.add_argument("--category", type=str, default=None, choices=["맛집", "술집", "카페", "핫플레이스", "디저트", "명소"], help="수집 대상 카테고리")
     parser.add_argument("--query-all", action="store_true", help="regions.json의 모든 지역과 6대 업종 키워드 조합 순회 수집")
-    parser.add_argument("--file", type=str, default=None, help="저장하거나 로드할 파일명 또는 날짜(YYYY-MM-DD). 미지정 시 analyze는 오늘 날짜, load는 가장 최신 파일 자동 선택")
+    parser.add_argument("--file", type=str, default=None, help="저장하거나 로드할 파일명 또는 날짜(YYYY-MM-DD). 미지정 시 오늘 날짜 또는 가장 최신 파일 자동 선택")
     parser.add_argument("--delay", type=float, default=5.0, help="쿼리 간 대기 시간 (초) (기본 5.0)")
     parser.add_argument("--delay-random", action="store_true", help="대기 시간을 지정한 delay값 기반으로 무작위화 (delay ~ delay*2.5 사이)")
     
     args = parser.parse_args()
     
-    if args.analyze:
-        output_file = get_output_path(file_arg=args.file, default_to_latest=False)
-        run_analysis(
+    if args.scrape:
+        output_file = get_raw_output_path(file_arg=args.file, default_to_latest=False)
+        run_scraping(
             query=args.query,
             source=args.source,
             limit=args.limit,
@@ -349,8 +381,12 @@ def main():
             delay=args.delay,
             delay_random=args.delay_random
         )
+    elif args.analyze:
+        raw_file = get_raw_output_path(file_arg=args.file, default_to_latest=True)
+        analyzed_file = get_analyzed_output_path(file_arg=args.file, default_to_latest=False)
+        run_analysis_pipeline(raw_file=raw_file, analyzed_file=analyzed_file)
     elif args.load:
-        output_file = get_output_path(file_arg=args.file, default_to_latest=True)
+        output_file = get_analyzed_output_path(file_arg=args.file, default_to_latest=True)
         run_loading(output_file=output_file)
 
 if __name__ == "__main__":

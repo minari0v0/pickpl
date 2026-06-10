@@ -13,6 +13,7 @@ public record PlaceDetailResponse(
         List<String> imageUrls,
         String address,
         String category,
+        String subCategory,
         String aiMoodSummary,
         String externalId,
         boolean isHiddenGem,
@@ -40,6 +41,7 @@ public record PlaceDetailResponse(
                 images,
                 place.getAddress(),
                 place.getCategory(),
+                place.getSubCategory(),
                 place.getAiMoodSummary(),
                 place.getExternalId(),
                 false, // isHiddenGem

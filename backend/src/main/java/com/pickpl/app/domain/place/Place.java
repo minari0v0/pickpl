@@ -59,6 +59,10 @@ public class Place extends BaseTimeEntity {
     @Column(length = 50)
     private String category;
 
+    /** 2차 카테고리 (소분류, 예: 일식, 중식, 베이커리) */
+    @Column(name = "sub_category", length = 50)
+    private String subCategory;
+
     /**
      * AI가 분석한 공간의 무드 요약 텍스트.
      * 예: "우드톤, 코지한 감성의 플랜테리어 카페"
@@ -138,6 +142,7 @@ public class Place extends BaseTimeEntity {
     public Double getLatitude() { return latitude; }
     public Double getLongitude() { return longitude; }
     public String getCategory() { return category; }
+    public String getSubCategory() { return subCategory; }
     public String getAiMoodSummary() { return aiMoodSummary; }
     public List<PlaceTagMap> getPlaceTagMaps() { return placeTagMaps; }
     public List<com.pickpl.app.domain.scrap.Scrap> getScraps() { return scraps; }
@@ -153,6 +158,7 @@ public class Place extends BaseTimeEntity {
     public void setAiMoodSummary(String aiMoodSummary) { this.aiMoodSummary = aiMoodSummary; }
     public void setEditorsComment(String editorsComment) { this.editorsComment = editorsComment; }
     public void setPublished(boolean published) { this.isPublished = published; }
+    public void setSubCategory(String subCategory) { this.subCategory = subCategory; }
 
     // --- 비즈니스 로직 ---
     

@@ -12,6 +12,7 @@ public record PlaceBatchRequest(
             Double latitude,
             Double longitude,
             String category,
+            String subCategory,
             String thumbnailUrl,
             String imageUrls,
             String aiMoodSummary,

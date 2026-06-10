@@ -65,6 +65,20 @@ export const renderFolderCover = (scraps: any[]) => {
 
 // --- 업종/태그 분석 카테고리 아이콘 헬퍼 ---
 export const getCategoryIcon = (category: string = '', name: string = '') => {
+    const cat = category.trim();
+    if (cat === '자연명소') {
+        return { icon: <NatureIcon />, bg: "bg-[#EAF2EC]", text: "text-[#2B6A4F]" }; // Sage Green
+    }
+    if (cat === '카페/디저트') {
+        return { icon: <CafeIcon />, bg: "bg-[#FFF4EE]", text: "text-[#E65C00]" }; // Warm Terracotta
+    }
+    if (cat === '음식점') {
+        return { icon: <RestaurantIcon />, bg: "bg-[#FFF0F0]", text: "text-[#E63939]" }; // Warm Coral
+    }
+    if (cat === '술집') {
+        return { icon: <CocktailIcon />, bg: "bg-[#FFF9E6]", text: "text-[#B38000]" }; // Muted Gold
+    }
+
     const combined = `${category} ${name}`.toLowerCase();
     
     // 1. 자연 / 공원 / 야외 활동 (관악산, 공원, 산책 등)
@@ -186,6 +200,7 @@ export const mapPlaceToData = (place: any) => {
         name: place.name,
         location: place.address,
         category: place.category,
+        subCategory: place.subCategory,
         distance: "내 위치에서 " + ((place.id % 10) + 1) + "km",
         imageUrl: finalThumbnail,
         imageUrls: imageUrls,

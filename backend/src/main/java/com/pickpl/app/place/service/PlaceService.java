@@ -113,6 +113,7 @@ public class PlaceService {
             );
             place.setImageUrls(data.imageUrls());
             place.setAiMoodSummary(data.aiMoodSummary());
+            place.setSubCategory(data.subCategory());
             place.setPublished(true);
 
             placeRepository.save(place);
@@ -164,6 +165,7 @@ public class PlaceService {
             place.setImageUrls(data.imageUrls());
             place.setAiMoodSummary(data.aiMoodSummary());
             place.setEditorsComment(data.editorsComment());
+            place.setSubCategory(data.subCategory());
             place.setPublished(true);
 
             placeRepository.save(place);
@@ -226,6 +228,7 @@ public class PlaceService {
         place.setPublished(data.isPublished());
         place.setAiMoodSummary(data.aiMoodSummary());
         place.setImageUrls(data.imageUrls());
+        place.setSubCategory(data.subCategory());
         
         // Delta 방식으로 태그 갱신
         List<String> newTagNames = data.tags() != null ? data.tags() : java.util.Collections.emptyList();

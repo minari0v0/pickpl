@@ -12,9 +12,15 @@ from analyzer.prompts import SYSTEM_PROMPT, MOOD_TAGS, FACILITY_TAGS, WEATHER_TA
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+class QuotaExhaustedError(Exception):
+    """Gemini API Quota Exhausted (429) Exception"""
+    pass
+
 # Pydantic을 활용한 Gemini Structured Output 스키마 정의
 class PlaceAnalysis(BaseModel):
     externalId: str = Field(description="장소의 고유 식별자(externalId)")
+    category: str = Field(description="1차 카테고리 대분류. 반드시 다음 4개 중 하나여야 함: '음식점', '카페/디저트', '술집', '자연명소'")
+    subCategory: str = Field(description="2차 카테고리 소분류. 예: '한식', '일식', '중식', '양식', '아시안', '이자카야', '오뎅바', '바(Bar)', '와인바', '펍/맥주', '요리주점', '포장마차', '기타술집', '공원', '산', '바다' 등 정형화된 분류")
     aiMoodSummary: str = Field(description="장소의 분위기를 트렌디하게 요약한 1~2줄 글 (최대 100자)")
     moodTags: List[str] = Field(description="감성 분위기 태그 풀에서 선정한 1~3개 태그 리스트")
     facilityTags: List[str] = Field(description="시설/편의 태그 풀에서 선정한 0~3개 태그 리스트")
@@ -150,7 +156,8 @@ class GeminiAnalyzer:
                                 logger.warning(f"Gemini API 429 쿼터 초과 감지. {wait_sec}초 대기 후 재시도합니다... (시도 {retry_count}/{max_retries}) | 모델: {active_model} | 에러: {api_err}")
                                 time.sleep(wait_sec)
                             else:
-                                raise api_err
+                                logger.error("Gemini API 429 쿼터 한도 완전 초과. 분석 중단을 요청합니다.")
+                                raise QuotaExhaustedError("Gemini API Quota Exhausted") from api_err
                         else:
                             raise api_err
                 
@@ -168,26 +175,65 @@ class GeminiAnalyzer:
                     ext_id = p.get("externalId")
                     matched = analysis_map.get(ext_id)
                     if matched:
-                        p["aiMoodSummary"] = matched.aiMoodSummary
-                        # 분석된 3대 유형 태그 리스트를 하나의 플랫 리스트로 합침
-                        # 감성(Mood) + 시설(Facility) + 날씨(Weather)
-                        p["tags"] = matched.moodTags + matched.facilityTags + matched.weatherTags
-                        logger.info(f"장소 [{p['name']}] 분석 매핑 완료 -> 요약: {matched.aiMoodSummary}, 합산 태그: {p['tags']}")
+                        new_p = {
+                            "name": p.get("name"),
+                            "address": p.get("address"),
+                            "externalId": p.get("externalId"),
+                            "latitude": p.get("latitude"),
+                            "longitude": p.get("longitude"),
+                            "category": matched.category,
+                            "subCategory": matched.subCategory,
+                            "thumbnailUrl": p.get("thumbnailUrl"),
+                            "imageUrls": p.get("imageUrls"),
+                            "reviews": p.get("reviews"),
+                            "searchQuery": p.get("searchQuery"),
+                            "aiMoodSummary": matched.aiMoodSummary,
+                            "tags": matched.moodTags + matched.facilityTags + matched.weatherTags
+                        }
+                        logger.info(f"장소 [{p['name']}] 분석 매핑 완료 -> 대분류: {matched.category}, 소분류: {matched.subCategory}, 요약: {matched.aiMoodSummary}, 합산 태그: {new_p['tags']}")
+                        analyzed_results.append(new_p)
                     else:
-                        # 매칭 실패 시 기본값 세팅
-                        p["aiMoodSummary"] = f"{p['name']}은(는) 분위기 좋은 아늑한 공간입니다."
-                        p["tags"] = ["코지한", "데이트코스"]
+                        fallback_p = {
+                            "name": p.get("name"),
+                            "address": p.get("address"),
+                            "externalId": p.get("externalId"),
+                            "latitude": p.get("latitude"),
+                            "longitude": p.get("longitude"),
+                            "category": p.get("category", "음식점"),
+                            "subCategory": "기타음식점",
+                            "thumbnailUrl": p.get("thumbnailUrl"),
+                            "imageUrls": p.get("imageUrls"),
+                            "reviews": p.get("reviews"),
+                            "searchQuery": p.get("searchQuery"),
+                            "aiMoodSummary": f"{p['name']}은(는) 분위기 좋은 아늑한 공간입니다.",
+                            "tags": ["코지한", "데이트코스"]
+                        }
                         logger.warning(f"장소 [{p['name']}] 에 대한 AI 분석 매핑 결과가 없어 기본값으로 대체합니다.")
+                        analyzed_results.append(fallback_p)
                     
-                    analyzed_results.append(p)
-                    
+            except QuotaExhaustedError as qe:
+                logger.error(f"Gemini 429 쿼터 한도 초과로 인해 분석을 즉시 중단합니다.")
+                raise qe
             except Exception as e:
                 logger.error(f"Gemini 일괄 분석 API 호출 실패 (배치 {i // batch_size + 1}): {e}")
-                # 배치 통째로 에러 시 Fallback 처리
+                # 배치 통째로 다른 에러 시 Fallback 처리
                 for p in batch:
-                    p["aiMoodSummary"] = f"{p['name']}은(는) 매력적인 분위기의 감성 공간입니다."
-                    p["tags"] = ["코지한", "조용한"]
-                    analyzed_results.append(p)
+                    fallback_p = {
+                        "name": p.get("name"),
+                        "address": p.get("address"),
+                        "externalId": p.get("externalId"),
+                        "latitude": p.get("latitude"),
+                        "longitude": p.get("longitude"),
+                        "category": p.get("category", "음식점"),
+                        "subCategory": "기타음식점",
+                        "thumbnailUrl": p.get("thumbnailUrl"),
+                        "imageUrls": p.get("imageUrls"),
+                        "reviews": p.get("reviews"),
+                        "searchQuery": p.get("searchQuery"),
+                        "aiMoodSummary": f"{p['name']}은(는) 매력적인 분위기의 감성 공간입니다.",
+                        "tags": ["코지한", "조용한"]
+                    }
+                    analyzed_results.append(fallback_p)
             
             # RPM 쿼타 제한 우회를 위해 다음 배치 실행 전 대기 (5초)
             if i + batch_size < len(places):

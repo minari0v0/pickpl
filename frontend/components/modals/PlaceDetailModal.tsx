@@ -412,12 +412,14 @@ export default function PlaceDetailModal({
                                     const catInfo = getCategoryIcon(selectedPlace.category, selectedPlace.name);
                                     return (
                                         <div key={idx} className="flex items-center gap-4">
-                                            <div className="w-16 h-16 rounded-[18px] bg-[#F2F4F6] border border-[#E5E8EB] flex items-center justify-center shadow-sm">
+                                            <div className={`w-16 h-16 rounded-[18px] ${catInfo.bg || 'bg-[#F2F4F6]'} border border-[#E5E8EB] flex items-center justify-center shadow-sm`}>
                                                 {React.cloneElement(catInfo.icon as React.ReactElement<any>, { className: `w-7 h-7 ${catInfo.text}` })}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-[16px] text-[#4E5968]">{feat.title}</p>
-                                                {feat.desc && <p className="font-medium text-[14px] text-[#8B95A1] mt-0.5">{feat.desc}</p>}
+                                                <p className="font-bold text-[16px] text-[#4E5968]">{selectedPlace.category || feat.title}</p>
+                                                {selectedPlace.subCategory && (
+                                                    <p className="font-medium text-[14px] text-[#8B95A1] mt-0.5">{selectedPlace.subCategory}</p>
+                                                )}
                                             </div>
                                         </div>
                                     );
