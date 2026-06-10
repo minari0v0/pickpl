@@ -68,7 +68,7 @@ graph TD
     
     subgraph "Data Pipeline Layer"
         PythonCrawler[🐍 Python Crawler & Analyzer]
-        Web[Naver Places (Naver Maps)]
+        Web["Naver Places (Naver Maps)"]
         Gemini[🤖 Gemini API]
     end
     
