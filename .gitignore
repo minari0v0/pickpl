@@ -33,3 +33,8 @@ backend/build/
 PickPl*기능명세서*.md
 PickPl*유저플로우*.md*
 pickpl_summary.md
+
+# 6. 파이프라인 로그 파일
+pipeline.log
+*.log
+
