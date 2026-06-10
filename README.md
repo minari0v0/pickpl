@@ -68,7 +68,7 @@ graph TD
     
     subgraph "Data Pipeline Layer"
         PythonCrawler[🐍 Python Crawler & Analyzer]
-        Web[Naver/Kakao Places]
+        Web[Naver Places (Naver Maps)]
         Gemini[🤖 Gemini API]
     end
     
@@ -87,8 +87,8 @@ graph TD
   - Docker Compose 환경을 바탕으로 **Spring Boot 4.0.6**, **MySQL 8.0.35**, **Redis 7.x** 서버를 완전히 격리된 단일 네트워크 내에서 빠르고 안전하게 연속 구동.
   - Redis 메모리 캐싱 및 토큰 인증 서버 구동으로 무상태 API의 성능 최적화.
 * **Data Pipeline (Python & Gemini API)**
-  - 독립적으로 구성된 Python 크롤러가 포털 지도의 공간 사진과 리뷰 데이터를 수집합니다.
-  - 수집된 데이터를 Gemini API로 전달해 멀티모달(이미지+텍스트) 방식으로 공간의 감성 무드 지표와 카테고리 태그 분류 연산을 처리합니다.
+  - 독립적으로 구성된 Python 크롤러가 네이버 지도의 공간 사진과 리뷰 데이터를 수집합니다. (오직 네이버 지도로 단일화하여 수집 안정성 극대화)
+  - 크롤링과 AI 분석을 2단계로 분리하여 429 쿼타 초과에 대비한 유연한 이어서 수집(Resume) 및 백필(Backfill)을 지원합니다.
   - 가공 완료된 최종 데이터셋은 백엔드가 제공하는 `/api/v1/places/batch` 엔드포인트를 통해 DB에 안전하고 일괄적으로 주입(Injection)됩니다.
 
 ---
@@ -129,30 +129,82 @@ flowchart TD
 
 ---
 
-## 📁 프로젝트 구조 (Monorepo)
+## 📁 프로젝트 구조
 
-본 프로젝트는 프론트엔드와 백엔드의 상호 유기적인 로컬 실행 및 배포 자동화를 위해 최적화된 **모노레포(Monorepo)** 아키텍처로 운영됩니다.
+본 프로젝트는 프론트엔드와 백엔드, 그리고 수집 파이프라인이 유기적으로 연결된 **모노레포(Monorepo)** 형태로 구성되어 있습니다.
 
+### 🗺️ 전체 디렉토리 오버뷰
 ```text
 pickpl/ (Root Directory)
-├── frontend/                 # Next.js 16.2.6 & Tailwind 4 프론트엔드 애플리케이션
-│   ├── app/                  # App Router 기반 페이지 구성 (layout, page 등)
-│   ├── components/           # 프리미엄 공통 컴포넌트 (ResponsiveApp.tsx 등)
-│   ├── store/                # Zustand 기반 초경량 글로벌 상태 관리
-│   └── api/                  # Axios 인터셉터 기반 REST API 클라이언트
-├── backend/                  # Spring Boot 4.0.6 백엔드 API 서버 (Java 25)
-│   ├── src/main/java/        # 도메인 비즈니스 로직 및 API 컨트롤러
-│   │   └── com/pickpl/app/
-│   │       ├── config/       # Spring Security, CORS, OAuth2 설정
-│   │       ├── controller/   # API 엔드포인트 구현 (Places, Scraps 등)
-│   │       ├── domain/       # JPA 엔티티 선언 (Place, Scrap, Member)
-│   │       └── service/      # 무드 투표, 폴더 관리, OAuth 가입 핵심 서비스
-│   └── build.gradle          # 의존성 설정 (JPA, MySQL, Redis, JWT 등)
-├── docker-compose.yml        # MySQL 8.0 및 Redis 로컬 구동 컨테이너 인프라 스펙
-├── Makefile                  # 로컬 통합 실행 단축 스크립트 (make up/front/back)
-├── .env.example              # 로컬 및 개발 환경용 환경변수 템플릿
-└── README.md                 # 본 가이드 문서
+├── frontend/           # Next.js 프론트엔드 웹 앱
+├── backend/            # Spring Boot 백엔드 API 서버
+├── data-pipeline/      # Playwright & Gemini 데이터 수집 파이프라인
+├── docker-compose.yml  # MySQL & Redis 개발 환경 컨테이너 스펙
+└── Makefile            # 로컬 통합 개발 실행 단축 스크립트
 ```
+
+<br />
+
+> **💡 아래의 각 레이어 영역을 클릭하면 상세 디렉토리 구조를 확인할 수 있습니다!**
+
+<details>
+<summary><b>🎨 Frontend (Next.js & Tailwind CSS 4) 구조 보기</b></summary>
+
+```text
+frontend/
+├── app/                  # App Router 기반 페이지 및 레이아웃
+│   ├── admin/            # CMS 어드민 & 데이터 주입 패널
+│   ├── login/            # 소셜 및 게스트 로그인
+│   ├── oauth-signup/     # OAuth 취향 온보딩 회원가입
+│   ├── auth-success/     # 소셜 로그인 성공 콜백 핸들러
+│   ├── layout.tsx        # 글로벌 모바일 뷰 래퍼 레이아웃
+│   └── page.tsx          # 메인 감성 룩북 피드 페이지
+├── components/           # 프리미엄 반응형 UI 컴포넌트
+│   ├── ui/               # 아코디언, 버튼, 스켈레톤 등 공통 하위 UI 칩
+│   ├── modals/           # 공간 상세 모달 (PlaceDetailModal 등) 및 약관 모달
+│   ├── views/            # 모바일 핏 스와이프 피드, 검색, 컬렉션 뷰
+│   └── ResponsiveApp.tsx # 미디어 쿼리 기반 데스크탑-모바일 듀얼 레이아웃 래퍼
+├── store/                # Zustand 기반 초경량 글로벌 상태 관리
+└── api/                  # Axios 인터셉터 기반 REST API 클라이언트
+```
+</details>
+
+<details>
+<summary><b>⚙️ Backend (Spring Boot 4.0.6 & Java 25) 구조 보기</b></summary>
+
+```text
+backend/
+├── src/main/java/com/pickpl/app/
+│   ├── auth/         # 소셜 OAuth2 및 이메일 회원가입/인증 로직
+│   ├── config/       # Spring Security, CORS, JPA 등 시스템 환경설정
+│   ├── domain/       # JPA 핵심 엔티티 정의 (Place, Scrap, Member)
+│   ├── init/         # 개발용 초기화 더미 데이터 주입
+│   ├── place/        # 장소 정보 관리 API (Places, DB batch 주입, DTO)
+│   ├── scrap/        # 개인 컬렉션/스크랩 보드 API
+│   ├── security/     # JWT Token Provider 및 필터 보안 체인
+│   └── vibe/         # 장소 상세 내의 실시간 혼잡도/분위기 투표 API
+└── build.gradle      # 의존성 설정 (JPA, MySQL, Redis, JWT 등)
+```
+</details>
+
+<details>
+<summary><b>🐍 Data Pipeline (Python & Playwright & Gemini) 구조 보기</b></summary>
+
+```text
+data-pipeline/
+├── scraper/              # 1단계: 네이버 플레이스 모바일 우회 크롤러 (Playwright)
+├── analyzer/             # 2단계: Gemini AI 구조화 감성/카테고리 분석기
+├── loader/               # 3단계: 가공 데이터 백엔드 DB 벌크 로더
+├── raw_data/             # 크롤링 생데이터 및 AI 분석 JSON 결과 저장소
+├── main.py               # 파이프라인 통합 CLI 엔진 (Scrape & Analyze 독립 수행 가능)
+├── backfill.py           # 429 쿼터 초과 대비 임시 더미데이터 사후 복구용 백필 툴
+├── migrate_from_log.py   # 수집 로그 기반 searchQuery 메타데이터 정밀 동기화 툴
+├── migrate_queries.py    # 수집된 데이터의 쿼리 데이터 정밀 이관 툴
+├── regions.json          # 전국 행정구역 및 수집 타겟 검색 질의 리스트
+├── analyzed_places.json.example  # 로컬 개발 및 테스트를 위한 데이터셋 샘플
+└── requirements.txt      # 파이썬 가상환경 의존성 정의 파일
+```
+</details>
 
 ---
 
