@@ -141,7 +141,10 @@ function AuthForm() {
         <div className="w-full min-h-screen flex items-center justify-center bg-[#F9FAFB] overflow-hidden">
             <motion.div 
                 layout 
-                className="w-full max-w-[480px] bg-white sm:rounded-[24px] sm:shadow-sm px-6 py-12 flex flex-col justify-center relative min-h-screen sm:min-h-[500px]"
+                className="w-full max-w-[480px] bg-white sm:rounded-[24px] px-6 py-12 flex flex-col justify-center relative min-h-screen sm:min-h-[500px]"
+                style={{
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 16px -6px rgba(0, 0, 0, 0.03)"
+                }}
                 transition={{ type: "spring", stiffness: 350, damping: 25 }}
             >
                 {/* Back Button */}
