@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class TkinterLogHandler(logging.Handler):
     """
     Python 표준 로깅 시스템의 이벤트를 수신하여 
-    Tkinter ScrolledText 위젯에 실시간으로 로그를 밀어주는 커스텀 핸들러.
+    Tkinter ScrolledText 위젯에 실시간으로 로그를 밀어주는 커스텀 핸들러 (Thread-Safe).
     """
     def __init__(self, text_widget: scrolledtext.ScrolledText):
         super().__init__()
@@ -25,17 +25,21 @@ class TkinterLogHandler(logging.Handler):
     def emit(self, record):
         try:
             msg = self.format(record)
-            self.text_widget.configure(state='normal')
-            
-            # 레벨에 맞춘 태그 적용하여 삽입
             tag = record.levelname
             if tag not in ["INFO", "WARNING", "ERROR", "CRITICAL"]:
                 tag = "INFO"
                 
+            # UI 스레드 안전하게 after()를 통해 전송하여 출력
+            if self.text_widget.winfo_exists():
+                self.text_widget.after(0, self._safe_write_log, msg, tag)
+        except Exception:
+            pass
+
+    def _safe_write_log(self, msg, tag):
+        try:
+            self.text_widget.configure(state='normal')
             self.text_widget.insert('end', msg + '\n', tag)
             self.text_widget.configure(state='disabled')
-            
-            # 자동 스크롤 하단 고정
             self.text_widget.yview('end')
         except Exception:
             pass
@@ -43,7 +47,7 @@ class TkinterLogHandler(logging.Handler):
 class GuiMonitor:
     """
     데이터 수집, AI 분석, 백엔드 적재 전반에서 
-    공통으로 활용하는 실시간 윈도우 프로그레스 & 로그 팝업 모니터 대시보드.
+    공통으로 활용하는 실시간 윈도우 프로그레스 & 로그 팝업 모니터 대시보드 (스레드 분리 버전).
     """
     def __init__(self, title: str, task_name: str, total_steps: int):
         self.title = title
@@ -56,6 +60,7 @@ class GuiMonitor:
         self.close_btn = None
         self.log_handler = None
         self.is_closed = False
+        self.worker_thread = None
 
         self._initialize_ui()
 
@@ -146,23 +151,39 @@ class GuiMonitor:
             self.log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S"))
             logging.getLogger().addHandler(self.log_handler)
 
-            self.refresh()
         except Exception as e:
             logger.warning(f"통합 GUI 모니터 팝업 창 생성 실패 (텍스트 모드로 단독 수행): {e}")
             self.root = None
 
-    def refresh(self):
-        """GUI 화면을 강제 리프레시하여 실시간 반응성 확보"""
-        if self.root and not self.is_closed:
+    def set_worker_thread(self, thread):
+        """백그라운드에서 연산을 처리할 워커 스레드를 주입받음"""
+        self.worker_thread = thread
+
+    def start_loop(self):
+        """워커 스레드를 가동하고 메인 Tkinter 이벤트 루프를 무중단 실행 (얼어붙음 방지)"""
+        if self.root:
+            if self.worker_thread:
+                self.worker_thread.start()
             try:
-                self.root.update()
+                self.root.mainloop()
             except Exception:
-                self.is_closed = True
+                pass
+
+    def refresh(self):
+        """호환성을 위한 빈 함수"""
+        pass
 
     def update_progress(self, current_step: int, status_text: str = None):
-        """현재 진행 단계와 상태 텍스트를 실시간 업데이트"""
+        """스레드 세이프하게 진행 상태 위젯을 업데이트"""
         if not self.root or self.is_closed:
             return
+        try:
+            if self.root.winfo_exists():
+                self.root.after(0, self._update_progress_safe, current_step, status_text)
+        except Exception:
+            pass
+
+    def _update_progress_safe(self, current_step: int, status_text: str):
         try:
             current_step = min(current_step, self.total_steps)
             percent = int((current_step / self.total_steps) * 100)
@@ -173,30 +194,33 @@ class GuiMonitor:
                 self.status_label['text'] = f"{self.task_name} 진행 중: {current_step} / {self.total_steps} ({percent}%)"
                 
             self.progress_bar['value'] = current_step
-            self.refresh()
         except Exception:
             pass
 
     def on_window_close(self):
         """사용자가 창을 닫거나 중단 버튼을 클릭했을 때의 이벤트 처리"""
         self.is_closed = True
-        # 로깅 핸들러 해제
         if self.log_handler:
             logging.getLogger().removeHandler(self.log_handler)
         try:
             self.root.destroy()
         except Exception:
             pass
-        # 백그라운드 구동 중 사용자가 의도적으로 끈 경우 스크립트 중지 유도
         logger.info("❌ 사용자에 의해 GUI 창이 닫혔거나 작업이 중단되었습니다.")
         os._exit(1)
 
     def finish(self, success: bool = True, final_message: str = None):
-        """작업 완료 시 호출하여 상태를 마무리하고 창 닫기 대기 흐름으로 전환"""
+        """작업 완료 시 호출하여 상태를 마무리하고 확인 버튼 대기 흐름으로 전환 (Thread-Safe)"""
         if not self.root or self.is_closed:
             return
         try:
-            # 로깅 핸들러 안전하게 제거
+            if self.root.winfo_exists():
+                self.root.after(0, self._finish_safe, success, final_message)
+        except Exception:
+            pass
+
+    def _finish_safe(self, success: bool, final_message: str):
+        try:
             if self.log_handler:
                 logging.getLogger().removeHandler(self.log_handler)
                 
@@ -211,12 +235,8 @@ class GuiMonitor:
                 self.status_label['fg'] = "#E65C00"
                 self.close_btn.configure(text="종료", command=self.close_gracefully)
                 logger.error("⚠️ 오류가 발생하여 파이프라인이 조기 중단되었습니다. 로그를 확인하세요.")
-
-            # 완료 후 창이 바로 사라지지 않고 확인 버튼을 눌러 끌 수 있도록 대기
-            self.root.bell() # 시스템 경고음으로 알림
-            while not self.is_closed:
-                self.refresh()
-                time.sleep(0.1)
+            
+            self.root.bell()
         except Exception:
             pass
 

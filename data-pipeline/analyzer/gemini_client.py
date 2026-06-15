@@ -40,6 +40,7 @@ class GeminiAnalyzer:
             raise ValueError("Gemini API Key가 누락되었습니다. .env 파일을 확인해 주세요.")
         self.client = genai.Client(api_key=api_key)
         self.model_name = model_name
+        self.use_fallback_model = False  # 3 모델 쿼터 초과 시 2.5-flash 고정 사용을 위한 스티키 플래그
         logger.info(f"Gemini Analyzer 초기화 완료. 모델: {self.model_name}")
 
     def download_image_as_part(self, image_url: str) -> types.Part:
@@ -133,8 +134,11 @@ class GeminiAnalyzer:
                 
                 while retry_count < max_retries:
                     try:
-                        # 1차 시도는 self.model_name, 2차 시도부터는 gemini-2.5-flash 모델 적용
-                        active_model = self.model_name if retry_count == 0 else "gemini-2.5-flash"
+                        # 쿼터 초과 스티키 플래그가 켜졌거나, 재시도 시에는 2.5-flash 모델 적용
+                        if self.use_fallback_model or retry_count > 0:
+                            active_model = "gemini-2.5-flash"
+                        else:
+                            active_model = self.model_name
                         
                         response = self.client.models.generate_content(
                             model=active_model,
@@ -149,15 +153,24 @@ class GeminiAnalyzer:
                         break  # 성공 시 루프 탈출
                     except Exception as api_err:
                         err_str = str(api_err)
+                        
+                        # 429 쿼터 초과 발생 시 다음 배치부터는 3 모델 시도를 생략하고 즉시 2.5 모델 고정 적용
                         if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                            self.use_fallback_model = True
+                            
+                        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
                             retry_count += 1
                             if retry_count < max_retries:
                                 wait_sec = 25 * retry_count
-                                logger.warning(f"Gemini API 429 쿼터 초과 감지. {wait_sec}초 대기 후 재시도합니다... (시도 {retry_count}/{max_retries}) | 모델: {active_model} | 에러: {api_err}")
+                                logger.warning(f"Gemini API 일시적 오류(429/503/UNAVAILABLE) 감지. {wait_sec}초 대기 후 재시도합니다... (시도 {retry_count}/{max_retries}) | 모델: {active_model} | 에러: {api_err}")
                                 time.sleep(wait_sec)
                             else:
-                                logger.error("Gemini API 429 쿼터 한도 완전 초과. 분석 중단을 요청합니다.")
-                                raise QuotaExhaustedError("Gemini API Quota Exhausted") from api_err
+                                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                                    logger.error("Gemini API 429 쿼터 한도 완전 초과. 분석 중단을 요청합니다.")
+                                    raise QuotaExhaustedError("Gemini API Quota Exhausted") from api_err
+                                else:
+                                    logger.error(f"Gemini API 일시적 오류 지속 발생으로 인한 최종 실패. 분석 중단을 요청합니다: {api_err}")
+                                    raise api_err
                         else:
                             raise api_err
                 

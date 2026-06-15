@@ -77,7 +77,6 @@ def backfill(file_path: str, gui: bool = False):
     
     batch_size = 3
     total_batches = (len(to_backfill) + batch_size - 1) // batch_size
-    quota_exhausted = False
     
     monitor = None
     if gui:
@@ -89,48 +88,58 @@ def backfill(file_path: str, gui: bool = False):
         
     from analyzer.gemini_client import QuotaExhaustedError
     
-    analyzed = []
-    for i in range(0, len(to_backfill), batch_size):
-        batch = to_backfill[i:i + batch_size]
-        batch_num = i // batch_size + 1
-        logger.info(f"백필 배치 복구 실행 중 ({batch_num}/{total_batches})")
-        
-        if monitor:
-            monitor.update_progress(batch_num)
+    def backfill_worker():
+        quota_exhausted = False
+        analyzed = []
+        for i in range(0, len(to_backfill), batch_size):
+            batch = to_backfill[i:i + batch_size]
+            batch_num = i // batch_size + 1
+            logger.info(f"백필 배치 복구 실행 중 ({batch_num}/{total_batches})")
             
-        try:
-            analyzed_batch = analyzer.analyze_places_batch(batch, batch_size=batch_size)
-            if analyzed_batch:
-                analyzed.extend(analyzed_batch)
-                # 중간 저장 수행 (파일 손실 방지)
-                temp_merged = normal_places + analyzed + to_backfill[i + len(batch):]
-                with open(file_path, "w", encoding="utf-8") as f:
-                    json.dump(temp_merged, f, ensure_ascii=False, indent=2)
-        except QuotaExhaustedError:
-            logger.warning("⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
-            logger.warning("현재까지 복구된 데이터를 안전하게 저장하고 작업을 중단합니다.")
-            quota_exhausted = True
             if monitor:
-                monitor.finish(success=False, final_message="⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
-            break
-        except Exception as e:
-            logger.error(f"백필 배치 복구 중 에러 발생: {e}")
-            quota_exhausted = True
+                monitor.update_progress(batch_num)
+                
+            try:
+                analyzed_batch = analyzer.analyze_places_batch(batch, batch_size=batch_size)
+                if analyzed_batch:
+                    analyzed.extend(analyzed_batch)
+                    # 중간 저장 수행 (파일 손실 방지)
+                    temp_merged = normal_places + analyzed + to_backfill[i + len(batch):]
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(temp_merged, f, ensure_ascii=False, indent=2)
+            except QuotaExhaustedError:
+                logger.warning("⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
+                logger.warning("현재까지 복구된 데이터를 안전하게 저장하고 작업을 중단합니다.")
+                quota_exhausted = True
+                if monitor:
+                    monitor.finish(success=False, final_message="⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
+                break
+            except Exception as e:
+                logger.error(f"백필 배치 복구 중 에러 발생: {e}")
+                quota_exhausted = True
+                if monitor:
+                    monitor.finish(success=False, final_message=f"⚠️ 백필 배치 복구 중 에러 발생: {e}")
+                break
+                
+        # 최종 결과 합치기
+        merged_places = normal_places + analyzed
+        if not quota_exhausted:
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(merged_places, f, ensure_ascii=False, indent=2)
+            logger.info(f"복구 완료! 복구된 파일 저장 위치: {file_path}")
             if monitor:
-                monitor.finish(success=False, final_message=f"⚠️ 백필 배치 복구 중 에러 발생: {e}")
-            break
-            
-    # 최종 결과 합치기
-    merged_places = normal_places + analyzed
-    if not quota_exhausted:
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(merged_places, f, ensure_ascii=False, indent=2)
-        logger.info(f"복구 완료! 복구된 파일 저장 위치: {file_path}")
-        if monitor:
-            monitor.finish(success=True, final_message="🎉 모든 더미 데이터 백필 복구가 완료되었습니다!")
+                monitor.finish(success=True, final_message="🎉 모든 더미 데이터 백필 복구가 완료되었습니다!")
+        else:
+            logger.info("복구 작업이 조기 중단되었습니다.")
+            os._exit(2)
+
+    if monitor:
+        import threading
+        t = threading.Thread(target=backfill_worker, daemon=True)
+        monitor.set_worker_thread(t)
+        monitor.start_loop()
     else:
-        logger.info("복구 작업이 조기 중단되었습니다.")
-        sys.exit(2)
+        backfill_worker()
 
 def main():
     parser = argparse.ArgumentParser(description="PickPl Data Pipeline Backfiller")

@@ -208,55 +208,64 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
             total_steps=len(queries_to_run)
         )
     
-    active_idx = 0
-    for q in queries_to_run:
-        if q in completed_queries:
-            logger.info(f"검색어 '{q}'는 이미 이전에 수집 완료되어 통째로 스킵합니다.")
+    def scrape_worker():
+        active_idx = 0
+        for q in queries_to_run:
+            if q in completed_queries:
+                logger.info(f"검색어 '{q}'는 이미 이전에 수집 완료되어 통째로 스킵합니다.")
+                active_idx += 1
+                if monitor:
+                    monitor.update_progress(active_idx, f"스킵됨: {q}")
+                continue
+                
+            if active_idx > 0:
+                if delay_random:
+                    sleep_time = random.uniform(delay, delay * 2.5)
+                else:
+                    sleep_time = delay
+                logger.info(f"쿼리간 간섭 방지 및 봇 차단 우회를 위해 {sleep_time:.1f}초간 대기합니다...")
+                time.sleep(sleep_time)
+                
             active_idx += 1
-            if monitor:
-                monitor.update_progress(active_idx, f"스킵됨: {q}")
-            continue
-            
-        if active_idx > 0:
-            if delay_random:
-                sleep_time = random.uniform(delay, delay * 2.5)
-            else:
-                sleep_time = delay
-            logger.info(f"쿼리간 간섭 방지 및 봇 차단 우회를 위해 {sleep_time:.1f}초간 대기합니다...")
-            time.sleep(sleep_time)
-            
-        active_idx += 1
-        try:
-            logger.info(f"==> 쿼리 실행: '{q}' (개수 한도: {limit})")
-            if monitor:
-                monitor.update_progress(active_idx, f"수집 진행 중: '{q}'")
-            raw_places = scraper.scrape_by_query(query=q, source=source, limit=limit)
-            logger.info(f"수집 성공: {len(raw_places)}개 장소 확보")
-            if raw_places:
-                filtered_places = [p for p in raw_places if p.get("externalId") not in existing_ids]
-                skipped_count = len(raw_places) - len(filtered_places)
-                if skipped_count > 0:
-                    logger.info(f"이미 파일에 존재하는 장소 {skipped_count}개 수집 생략 (스킵)")
-                
-                for p in filtered_places:
-                    p["searchQuery"] = q
-                
-                if filtered_places:
-                    save_and_merge_results(filtered_places, output_file)
+            try:
+                logger.info(f"==> 쿼리 실행: '{q}' (개수 한도: {limit})")
+                if monitor:
+                    monitor.update_progress(active_idx, f"수집 진행 중: '{q}'")
+                raw_places = scraper.scrape_by_query(query=q, source=source, limit=limit)
+                logger.info(f"수집 성공: {len(raw_places)}개 장소 확보")
+                if raw_places:
+                    filtered_places = [p for p in raw_places if p.get("externalId") not in existing_ids]
+                    skipped_count = len(raw_places) - len(filtered_places)
+                    if skipped_count > 0:
+                        logger.info(f"이미 파일에 존재하는 장소 {skipped_count}개 수집 생략 (스킵)")
+                    
                     for p in filtered_places:
-                        if p.get("externalId"):
-                            existing_ids.add(p.get("externalId"))
-        except Exception as e:
-            logger.error(f"쿼리 '{q}' 실행 실패: {e}")
-            if monitor:
-                monitor.update_progress(active_idx, f"⚠️ '{q}' 수집 실패")
-                time.sleep(0.5)
-        
-    logger.info("=========================================")
-    logger.info("대량 크롤링 완료!")
-    logger.info("=========================================")
+                        p["searchQuery"] = q
+                    
+                    if filtered_places:
+                        save_and_merge_results(filtered_places, output_file)
+                        for p in filtered_places:
+                            if p.get("externalId"):
+                                existing_ids.add(p.get("externalId"))
+            except Exception as e:
+                logger.error(f"쿼리 '{q}' 실행 실패: {e}")
+                if monitor:
+                    monitor.update_progress(active_idx, f"⚠️ '{q}' 수집 실패")
+                    time.sleep(0.5)
+            
+        logger.info("=========================================")
+        logger.info("대량 크롤링 완료!")
+        logger.info("=========================================")
+        if monitor:
+            monitor.finish(success=True, final_message="🎉 모든 지역 공간 수집이 완료되었습니다!")
+
     if monitor:
-        monitor.finish(success=True, final_message="🎉 모든 지역 공간 수집이 완료되었습니다!")
+        import threading
+        t = threading.Thread(target=scrape_worker, daemon=True)
+        monitor.set_worker_thread(t)
+        monitor.start_loop()
+    else:
+        scrape_worker()
 
 from analyzer.gemini_client import QuotaExhaustedError
 
@@ -321,41 +330,51 @@ def run_analysis_pipeline(raw_file: str, analyzed_file: str, gui: bool = False):
             total_steps=total_batches
         )
             
-    for i in range(0, len(to_analyze), batch_size):
-        batch = to_analyze[i:i + batch_size]
-        batch_num = i // batch_size + 1
-        logger.info(f"배치 분석 실행 중 ({batch_num}/{total_batches})")
-        
-        # GUI 실시간 업데이트
-        if monitor:
-            monitor.update_progress(batch_num)
-                
-        try:
-            analyzed_batch = analyzer.analyze_places_batch(batch, batch_size=batch_size)
-            if analyzed_batch:
-                save_and_merge_results(analyzed_batch, analyzed_file)
-        except QuotaExhaustedError:
-            logger.warning("⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
-            logger.warning("현재까지 성공한 분석 데이터를 안전하게 저장하고 작업을 중단합니다.")
-            quota_exhausted = True
-            if monitor:
-                monitor.finish(success=False, final_message="⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
-            break
-        except Exception as e:
-            logger.error(f"배치 분석 중 에러 발생: {e}")
-            if monitor:
-                monitor.finish(success=False, final_message=f"⚠️ 배치 분석 중 에러 발생: {e}")
-            break
+    def analyze_worker():
+        quota_exhausted = False
+        for i in range(0, len(to_analyze), batch_size):
+            batch = to_analyze[i:i + batch_size]
+            batch_num = i // batch_size + 1
+            logger.info(f"배치 분석 실행 중 ({batch_num}/{total_batches})")
             
-    if quota_exhausted:
-        logger.info("분석이 조기 중단되었습니다. 쿼터 리셋 후 다시 --analyze를 실행하여 재개할 수 있습니다.")
-        sys.exit(2)
+            # GUI 실시간 업데이트
+            if monitor:
+                monitor.update_progress(batch_num)
+                    
+            try:
+                analyzed_batch = analyzer.analyze_places_batch(batch, batch_size=batch_size)
+                if analyzed_batch:
+                    save_and_merge_results(analyzed_batch, analyzed_file)
+            except QuotaExhaustedError:
+                logger.warning("⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
+                logger.warning("현재까지 성공한 분석 데이터를 안전하게 저장하고 작업을 중단합니다.")
+                quota_exhausted = True
+                if monitor:
+                    monitor.finish(success=False, final_message="⚠️ Gemini API 429 일일 쿼터 한도가 모두 소진되었습니다.")
+                break
+            except Exception as e:
+                logger.error(f"배치 분석 중 에러 발생: {e}")
+                if monitor:
+                    monitor.finish(success=False, final_message=f"⚠️ 배치 분석 중 에러 발생: {e}")
+                break
+                
+        if quota_exhausted:
+            logger.info("분석이 조기 중단되었습니다. 쿼터 리셋 후 다시 --analyze를 실행하여 재개할 수 있습니다.")
+            os._exit(2)
+        else:
+            logger.info("=========================================")
+            logger.info("모든 장소에 대한 AI 분석이 완료되었습니다!")
+            logger.info("=========================================")
+            if monitor:
+                monitor.finish(success=True, final_message="🎉 모든 장소에 대한 AI 분석이 완료되었습니다!")
+
+    if monitor:
+        import threading
+        t = threading.Thread(target=analyze_worker, daemon=True)
+        monitor.set_worker_thread(t)
+        monitor.start_loop()
     else:
-        logger.info("=========================================")
-        logger.info("모든 장소에 대한 AI 분석이 완료되었습니다!")
-        logger.info("=========================================")
-        if monitor:
-            monitor.finish(success=True, final_message="🎉 모든 장소에 대한 AI 분석이 완료되었습니다!")
+        analyze_worker()
 
 
 def run_loading(output_file: str, gui: bool = False):
@@ -383,34 +402,43 @@ def run_loading(output_file: str, gui: bool = False):
         )
         monitor.update_progress(10, "백엔드 전송 준비 중...")
     
-    admin_key = os.getenv("ADMIN_SECRET_KEY")
-    backend_url = os.getenv("BACKEND_URL", "http://localhost:8080")
-    if not admin_key:
-        logger.error("에러: .env 파일에 ADMIN_SECRET_KEY가 존재하지 않습니다.")
-        if monitor:
-            monitor.finish(success=False, final_message="⚠️ ADMIN_SECRET_KEY 누락")
-        sys.exit(1)
+    def load_worker():
+        admin_key = os.getenv("ADMIN_SECRET_KEY")
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8080")
+        if not admin_key:
+            logger.error("에러: .env 파일에 ADMIN_SECRET_KEY가 존재하지 않습니다.")
+            if monitor:
+                monitor.finish(success=False, final_message="⚠️ ADMIN_SECRET_KEY 누락")
+            os._exit(1)
+            
+        loader = BatchLoader(backend_url=backend_url, admin_key=admin_key)
         
-    loader = BatchLoader(backend_url=backend_url, admin_key=admin_key)
-    
+        if monitor:
+            monitor.update_progress(50, f"백엔드로 벌크 전송 중... (총 {len(places_to_load)}개 장소)")
+            
+        success = loader.load_to_backend(places_to_load)
+        
+        if success:
+            logger.info("=========================================")
+            logger.info("데이터 적재가 완전히 완료되었습니다!")
+            logger.info("=========================================")
+            if monitor:
+                monitor.finish(success=True, final_message="🎉 백엔드 데이터 적재가 완료되었습니다!")
+        else:
+            logger.error("=========================================")
+            logger.error("데이터 적재 실패. 백엔드 서버 상태 및 로그를 확인하십시오.")
+            logger.error("=========================================")
+            if monitor:
+                monitor.finish(success=False, final_message="⚠️ 백엔드 데이터 적재 실패")
+            os._exit(1)
+
     if monitor:
-        monitor.update_progress(50, f"백엔드로 벌크 전송 중... (총 {len(places_to_load)}개 장소)")
-        
-    success = loader.load_to_backend(places_to_load)
-    
-    if success:
-        logger.info("=========================================")
-        logger.info("데이터 적재가 완전히 완료되었습니다!")
-        logger.info("=========================================")
-        if monitor:
-            monitor.finish(success=True, final_message="🎉 백엔드 데이터 적재가 완료되었습니다!")
+        import threading
+        t = threading.Thread(target=load_worker, daemon=True)
+        monitor.set_worker_thread(t)
+        monitor.start_loop()
     else:
-        logger.error("=========================================")
-        logger.error("데이터 적재 실패. 백엔드 서버 상태 및 로그를 확인하십시오.")
-        logger.error("=========================================")
-        if monitor:
-            monitor.finish(success=False, final_message="⚠️ 백엔드 데이터 적재 실패")
-        sys.exit(1)
+        load_worker()
 def main():
     parser = argparse.ArgumentParser(description="PickPl Data Pipeline Engine")
     group = parser.add_mutually_exclusive_group(required=True)
