@@ -1,8 +1,6 @@
 # 🌿 PickPl (픽플) - 공간을 픽하다
 
-> **AI 기반 무드 큐레이션 공간 룩북 플랫폼**
-> 
-> 기존의 딱딱한 별점과 거리 중심 정보에서 벗어나, **고화질 이미지와 AI가 자동 분석한 감성 무드 태그**를 통해 나만의 취향이 담긴 공간을 직관적으로 '픽(Pick)'할 수 있는 초개인화 공간 큐레이션 서비스입니다.
+> **광고 가득한 긴 리뷰 대신, 사진과 요약 정보로 가보고 싶은 공간을 빠르게 찾는 서비스**
 
 <br />
 
@@ -20,26 +18,36 @@
 
 ## 📖 PickPl 개요
 
-바쁜 현대인들에게 카페나 식당, 스터디룸 등의 공간은 단순한 장소를 넘어 **'나만의 시간을 보내는 감성 영역'**입니다. 
-PickPl은 사용자들이 더 이상 텍스트 리뷰와 평점을 하나하나 분석하지 않고도, 직관적인 **비주얼 룩북 피드**와 **대칭성 높은 시그니처 무드 태그**를 통해 단 0.1초 만에 감성에 녹아드는 공간을 선택할 수 있는 프리미엄 경험을 제공합니다.
+우리는 새로운 카페나 맛집, 작업 공간을 찾을 때 블로그와 광고가 뒤섞인 수많은 리뷰 글을 읽느라 피로를 느끼곤 해요. 
 
-![메인화면](https://private-user-images.githubusercontent.com/144759680/597458374-0668da9e-f812-42d5-a301-e61b48d60afe.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3Nzk2OTA4MTEsIm5iZiI6MTc3OTY5MDUxMSwicGF0aCI6Ii8xNDQ3NTk2ODAvNTk3NDU4Mzc0LTA2NjhkYTllLWY4MTItNDJkNS1hMzAxLWU2MWI0OGQ2MGFmZS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwNTI1JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDUyNVQwNjI4MzFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0wZDBiN2M5MzNkMWMxNWI1MDM3ZGQ2NzMyMjVkOGJjMWZkN2FkZjUxYjYyZWJmYmY1NGNjYTY1MDY0OTUyM2ViJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9aW1hZ2UlMkZwbmcifQ.-9KnkMlKs0c5eb_iZ66N6wiIFpPNEIXR2MiXU3pNU58)
+픽플(PickPl)은 사용자가 긴 리뷰를 하나하나 읽어보지 않아도, 한눈에 들어오는 **비주얼 룩북 피드**와 **AI가 핵심만 요약한 한 줄 코멘트, 무드 태그**를 통해 나의 취향에 딱 맞는 장소를 빠르고 쉽게 결정할 수 있도록 돕습니다.
 
-### ✨ 주요 차별화 기능
-1. **📱 몰입형 룩북 피드 (Swipe Curation):**
-   - 핀터레스트/인스타그램 스타일의 미려한 카드 레이아웃과 프로필 구조를 가진 모바일/PC 반응형 룩북 피드.
-   - 직관적이고 부드러운 스와이프 인터랙션을 통해 공간의 매력을 한눈에 제공.
-2. **🎯 3대 카테고리 웜 코지 감성 필터 (Warm Cozy Filter System):**
-   - **요즘 뜨는 취향 (popular)**: 피치/테라코타 웜 오렌지 테마 (`#FFF4EE` / `#E65C00`)
-   - **공간의 무드 (mood)**: Cozy 세이지 그린 테마 (`#F0F6F5` / `#2E7D7A`)
-   - **목적과 시설 (facility)**: 웜 뮤티드 골드 테마 (`#FFF9E6` / `#B38000`)
-   - 태그 클릭 시 픽플 고유의 팔레트 소프트 글로우 효과와 입체감을 제공하는 3D 리액티브 버튼 시스템.
-3. **🤖 AI 자동 무드 태깅:**
-   - **Gemini API**를 결합하여 웹 크롤링된 공간 이미지와 사용자 리뷰 텍스트를 자동 파싱.
-   - 단 한 번의 호출로 공간의 주요 분위기(Cozy, Modern, Minimal 등)와 핵심 장점(콘센트 많음, 반려동물 동반 등)을 감성 한 줄 요약 및 최적 태그로 자동 분류하는 최첨단 AI 파이프라인.
-4. **🗂️ 사용자 정의 비주얼 컬렉션 보드:**
-   - 핀터레스트 스타일의 저장 위치 지정과 썸네일 콜라주(1~4장 이미지 자동 합성 커버) 기술 탑재.
-   - 무드/목적에 맞게 나만의 폴더(예: '비 오는 날 작업실', '햇살 맛집 디저트')를 만들어 간직하는 취향 아카이브.
+![메인화면](https://private-user-images.githubusercontent.com/144759680/597458374-0668da9e-f812-42d5-a301-e61b48d60afe.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODE1MzEwMDAsIm5iZiI6MTc4MTUzMDcwMCwicGF0aCI6Ii8xNDQ3NTk2ODAvNTk3NDU4Mzc0LTA2NjhkYTllLWY4MTItNDJkNS1hMzAxLWU2MWI0OGQ2MGFmZS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwNjE1JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDYxNVQxMzM4MjBaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT02ZmIxNTRlMWRmYmNkYmJhZTJkN2M3NjM1MjcwYTIwMGNhMGZkMzNiM2JlYjRiMTEyYzFjZDQ4MTM2NzM3MDJlJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9aW1hZ2UlMkZwbmcifQ.GyMUxbIXKEWevCLGugZxjvIudq7O7v2_8_6WG1iGd6Y)
+
+### ✨ 주요 기능
+
+1. **📱 비주얼 룩북 피드**
+   - 핀터레스트처럼 미려한 카드 레이아웃과 화면 가득 차는 시각적 이미지를 지원해요. 직관적인 상하 스와이프 탐색으로 공간의 매력을 한눈에 전달합니다.
+   
+2. **🎯 취향 맞춤형 태그 필터**
+   - 요즘 뜨는 취향, 공간의 분위기, 이용 목적과 편의 시설까지 3대 기준에 따라 태그를 체계적으로 분류했어요. 여러 태그를 조합해 지금 나에게 꼭 필요한 장소만 콕 집어 탐색할 수 있습니다.
+   
+3. **🤖 AI 자동 무드 태깅 & 수집 파이프라인**
+   - 크롤링해 온 공간의 대표 사진과 실제 이용자 리뷰 데이터를 AI(Gemini)가 종합적으로 분석해요. 장소의 특징을 설명해 주는 트렌디한 한 줄 코멘트와 적합한 태그들을 자동으로 분류하고 적재합니다.
+   
+4. **🗂️ 내 취향을 모으는 컬렉션 폴더**
+   - 마음에 드는 공간들을 나만의 폴더(예: '노트북하기 좋은 조용한 카페', '비 오는 날 가고 싶은 와인바')로 만들어 저장해 보세요. 폴더에 모인 이미지들을 자동으로 조합하여 멋진 콜라주 형태의 폴더 커버를 만들어 드립니다.
+
+---
+
+## 🛠️ 기술 스택 (Tech Stack)
+
+| 레이어 | 핵심 기술 및 도구 | 역할 및 상세 |
+| :--- | :--- | :--- |
+| **Frontend** | Next.js, React, Tailwind CSS 4, Zustand, Axios, TypeScript | - 모바일 중심 반응형 룩북 피드 및 직관적인 다중 태그 탐색 UI 제공<br>- Zustand 기반 상태 관리 및 하이브리드 캐싱 최적화 |
+| **Backend** | Spring Boot 4.0.6, Java 25, Spring Security, JPA, Gradle | - JWT 기반 무상태 보안 및 간편 OAuth2 소셜 로그인 구현<br>- 실시간 분위기 투표 및 컬렉션/스크랩 기능 비즈니스 API 설계 |
+| **Database & Cache** | MySQL 8.0.35, Redis 7.x, Docker Compose | - Docker 환경의 다중 데이터 스토리지 구성 및 격리된 인프라 구축<br>- Redis 캐싱 기반 태그 검색 및 세션 최적화 |
+| **Data Pipeline** | Python, Playwright, Gemini API, Tkinter GUI | - Playwright 자동화 엔진 기반 네이버 플레이스 정보 우회 수집<br>- Gemini 멀티모달(이미지/텍스트) 기반 무드 분석 및 자동 태깅<br>- Tkinter 기반 수집 현황 모니터링 GUI 대시보드 구축 |
 
 ---
 
@@ -81,15 +89,15 @@ graph TD
 
 ### ⚙️ 시스템 구성의 핵심 기능:
 * **Frontend (Next.js / Tailwind CSS)**
-  - 글로벌 CDN 배포 최적화 및 정적/동적 하이브리드 캐싱을 통한 로드 속도 단축.
-  - 최신 Tailwind CSS 기반 유연하고 미려한 모던 디자인 토큰 시스템 구축.
+  - 글로벌 CDN 배포를 최적화하고 정적/동적 하이브리드 캐싱을 적용해 첫 페이지 로드 속도를 크게 줄였어요.
+  - 최신 Tailwind CSS를 사용해 일관성 있고 깔끔한 디자인 시스템을 구축했습니다.
 * **Backend & DB (Docker Compose)**
-  - Docker Compose 환경을 바탕으로 **Spring Boot 4.0.6**, **MySQL 8.0.35**, **Redis 7.x** 서버를 완전히 격리된 단일 네트워크 내에서 빠르고 안전하게 연속 구동.
-  - Redis 메모리 캐싱 및 토큰 인증 서버 구동으로 무상태 API의 성능 최적화.
+  - Docker Compose를 활용해 Spring Boot, MySQL, Redis 서버를 완전히 격리된 단일 네트워크에서 안전하게 구동하고 있어요.
+  - Redis 메모리 캐싱과 토큰 인증을 활용해 API 성능을 한층 더 끌어올렸습니다.
 * **Data Pipeline (Python & Gemini API)**
-  - 독립적으로 구성된 Python 크롤러가 네이버 지도의 공간 사진과 리뷰 데이터를 수집합니다. (오직 네이버 지도로 단일화하여 수집 안정성 극대화)
-  - 크롤링과 AI 분석을 2단계로 분리하여 429 쿼타 초과에 대비한 유연한 이어서 수집(Resume) 및 백필(Backfill)을 지원합니다.
-  - 가공 완료된 최종 데이터셋은 백엔드가 제공하는 `/api/v1/places/batch` 엔드포인트를 통해 DB에 안전하고 일괄적으로 주입(Injection)됩니다.
+  - 독립된 **Playwright 기반 Python 크롤러**가 네이버 지도의 공간 사진과 리뷰 데이터를 수집해요. 오직 네이버 지도로 단일화하고 Playwright를 통한 모바일 페이지 우회 자동화로 수집 과정의 안정성을 크게 높였습니다.
+  - 크롤링과 AI 분석을 2단계로 완전히 분리했어요. 덕분에 API 429 제한(Quota)이 발생해도 멈추지 않고, 이어서 수집(Resume)하고 백필(Backfill)할 수 있습니다.
+  - 가공이 끝난 데이터셋은 백엔드의 `/api/v1/places/batch` API를 통해 안전하게 일괄 등록됩니다.
 
 ---
 
@@ -264,18 +272,18 @@ make front
 #### 방법 B. CLI 터미널 명령어로 주입
 1. 샘플 JSON 파일을 아래 경로로 복사합니다:
    * 복사 경로: `data-pipeline/analyzed_places.json.example` ➡️ `data-pipeline/raw_data/analyzed_places.json`
-2. 백엔드 서버가 기동 중인 상태에서 데이터 주입 명령을 실행합니다:
+2. 백엔드 서버가 기동 중인 상태에서 파일명을 지정하여 데이터 주입 명령을 실행합니다:
    ```bash
-   make pipe-load
+   make pipe-load FILE=analyzed_places.json
    ```
 
 ---
 
 ## 🔒 보안 및 편의성
 * **JWT 기반 무상태(Stateless) 보안**: 
-  - OAuth 2.0 성공 시 리다이렉션을 통해 액세스 토큰을 로컬에 보관하며, Axios API 호출 시 JWT Bearer 인증 헤더를 안전하게 주입합니다.
+  - OAuth 2.0 로그인이 끝나면 리다이렉션으로 전달된 액세스 토큰을 안전하게 보관해요. API를 호출할 때는 JWT Bearer 인증 헤더가 자동으로 주입되도록 설계했습니다.
 * **OpenAPI 3.0 Swagger UI**:
-  - `http://localhost:8080/swagger-ui.html`을 통해 백엔드의 모든 엔드포인트(장소, 태그 검색, 즐겨찾기, 무드 투표 등)를 즉석에서 실시간 시뮬레이션 및 테스트할 수 있습니다.
+  - Swagger 문서 페이지(`http://localhost:8080/swagger-ui.html`)에서 백엔드가 제공하는 모든 API(장소 탐색, 태그 검색, 즐겨찾기, 실시간 분위기 투표 등)를 즉석에서 편리하게 테스트해 볼 수 있어요.
 
 ---
 
