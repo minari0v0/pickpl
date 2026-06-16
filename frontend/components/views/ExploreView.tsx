@@ -5,7 +5,7 @@ import { getCategoryIcon, getVibeBadge } from '../ui/Helpers';
 export const TAG_CATEGORIES = [
     { id: 'popular', title: "요즘 뜨는 취향", tags: ["대형카페", "노트북하기좋은", "햇살맛집", "디저트맛집", "뷰맛집", "데이트코스"] },
     { id: 'mood', title: "공간의 무드", tags: ["코지한", "따뜻한우드톤", "힙한/인더스트리얼", "조용한", "미니멀한", "식물가득", "나만아는"] },
-    { id: 'facility', title: "목적과 시설", tags: ["콘센트석", "편안한쇼파", "주차편리", "반려동물동반", "루프탑", "단체석"] }
+    { id: 'facility', title: "목적과 시설", tags: ["콘센트석", "편안한쇼파", "주차가능", "반려동물동반", "루프탑", "단체석"] }
 ];
 
 interface ExploreViewProps {

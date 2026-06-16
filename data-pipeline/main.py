@@ -231,7 +231,7 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
                 logger.info(f"==> 쿼리 실행: '{q}' (개수 한도: {limit})")
                 if monitor:
                     monitor.update_progress(active_idx, f"수집 진행 중: '{q}'")
-                raw_places = scraper.scrape_by_query(query=q, source=source, limit=limit)
+                raw_places = scraper.scrape_by_query(query=q, source=source, limit=limit, monitor=monitor)
                 logger.info(f"수집 성공: {len(raw_places)}개 장소 확보")
                 if raw_places:
                     filtered_places = [p for p in raw_places if p.get("externalId") not in existing_ids]
@@ -256,6 +256,8 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
         logger.info("=========================================")
         logger.info("대량 크롤링 완료!")
         logger.info("=========================================")
+        if scraper.skipped_queries:
+            logger.warning(f"⚠️ 수집 중 건너뛴(실패한) 검색어 목록: {scraper.skipped_queries}")
         if monitor:
             monitor.finish(success=True, final_message="🎉 모든 지역 공간 수집이 완료되었습니다!")
 
@@ -360,7 +362,8 @@ def run_analysis_pipeline(raw_file: str, analyzed_file: str, gui: bool = False):
                 
         if quota_exhausted:
             logger.info("분석이 조기 중단되었습니다. 쿼터 리셋 후 다시 --analyze를 실행하여 재개할 수 있습니다.")
-            os._exit(2)
+            if not monitor:
+                os._exit(2)
         else:
             logger.info("=========================================")
             logger.info("모든 장소에 대한 AI 분석이 완료되었습니다!")
@@ -409,7 +412,8 @@ def run_loading(output_file: str, gui: bool = False):
             logger.error("에러: .env 파일에 ADMIN_SECRET_KEY가 존재하지 않습니다.")
             if monitor:
                 monitor.finish(success=False, final_message="⚠️ ADMIN_SECRET_KEY 누락")
-            os._exit(1)
+            else:
+                os._exit(1)
             
         loader = BatchLoader(backend_url=backend_url, admin_key=admin_key)
         
@@ -430,7 +434,8 @@ def run_loading(output_file: str, gui: bool = False):
             logger.error("=========================================")
             if monitor:
                 monitor.finish(success=False, final_message="⚠️ 백엔드 데이터 적재 실패")
-            os._exit(1)
+            else:
+                os._exit(1)
 
     if monitor:
         import threading

@@ -1,9 +1,11 @@
 import os
 import time
 import logging
+import queue
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
+from tkinter import messagebox
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,9 @@ class TkinterLogHandler(logging.Handler):
         
         # 로그 등급별 전용 색상 스타일 정의 (일관되게 Consolas 폰트 유지하여 가로 폭 정렬 깨짐 방지)
         self.text_widget.tag_config("INFO", foreground="#191F28")
-        self.text_widget.tag_config("WARNING", foreground="#B38000", font=("Consolas", 10, "bold"))
-        self.text_widget.tag_config("ERROR", foreground="#E65C00", font=("Consolas", 10, "bold"))
-        self.text_widget.tag_config("CRITICAL", foreground="#D32F2F", font=("Consolas", 10, "bold"))
+        self.text_widget.tag_config("WARNING", foreground="#B38000", font=("맑은 고딕", 10, "bold"))
+        self.text_widget.tag_config("ERROR", foreground="#E65C00", font=("맑은 고딕", 10, "bold"))
+        self.text_widget.tag_config("CRITICAL", foreground="#D32F2F", font=("맑은 고딕", 10, "bold"))
 
     def emit(self, record):
         try:
@@ -127,7 +129,7 @@ class GuiMonitor:
 
             self.log_text = scrolledtext.ScrolledText(
                 log_frame, 
-                font=("Consolas", 10), 
+                font=("맑은 고딕", 10), 
                 bg="#FAF9F6", 
                 fg="#191F28",
                 state="disabled",
@@ -246,3 +248,133 @@ class GuiMonitor:
             self.root.destroy()
         except Exception:
             pass
+
+    def show_selection_dialog(self, query: str, candidates: list) -> str:
+        """
+        워커 스레드에서 호출되는 함수.
+        UI 스레드에 선택 다이얼로그 생성을 요청하고, 사용자가 선택할 때까지 대기합니다.
+        선택된 장소의 ID를 반환하며, 건너뛰기를 선택했거나 창이 그냥 닫힌 경우 None을 반환합니다.
+        """
+        if not self.root or self.is_closed:
+            return None
+            
+        res_queue = queue.Queue()
+        
+        # UI 스레드에서 다이얼로그를 생성하도록 요청
+        self.root.after(0, self._create_selection_dialog_safe, query, candidates, res_queue)
+        
+        # UI 스레드에서 결과를 채워줄 때까지 대기
+        try:
+            selected_id = res_queue.get() # block=True
+            return selected_id
+        except Exception as e:
+            logger.error(f"GUI 대화상자 대기 중 에러: {e}")
+            return None
+
+    def _create_selection_dialog_safe(self, query: str, candidates: list, res_queue: queue.Queue):
+        try:
+            # Toplevel 다이얼로그 창 생성
+            dialog = tk.Toplevel(self.root)
+            dialog.title("검색 결과 선택")
+            dialog.geometry("520x400")
+            dialog.resizable(False, False)
+            
+            # 모달 설정 (부모 창 위에 고정 및 포커스 뺏기)
+            dialog.transient(self.root)
+            dialog.grab_set()
+            
+            # 다이얼로그 창도 모니터 중앙 부근에 배치
+            x = self.root.winfo_x() + 80
+            y = self.root.winfo_y() + 40
+            dialog.geometry(f"520x400+{x}+{y}")
+            
+            # 닫기 버튼(X)을 누르면 '건너뛰기'로 간주
+            def on_close():
+                res_queue.put(None)
+                dialog.destroy()
+                
+            dialog.protocol("WM_DELETE_WINDOW", on_close)
+            
+            # 헤더 프레임
+            hdr_frame = tk.Frame(dialog, bg="#F0F6F5", padx=10, pady=10)
+            hdr_frame.pack(fill="x")
+            
+            lbl_title = tk.Label(
+                hdr_frame, 
+                text=f"🔍 '{query}' 검색 결과가 모호합니다.", 
+                font=("맑은 고딕", 11, "bold"), 
+                fg="#2E7D7A", 
+                bg="#F0F6F5"
+            )
+            lbl_title.pack(anchor="w")
+            
+            lbl_sub = tk.Label(
+                hdr_frame, 
+                text="아래 후보 리스트 중 수집할 진짜 매장을 선택해주세요. (더블 클릭 가능)", 
+                font=("맑은 고딕", 9), 
+                fg="#555555",
+                bg="#F0F6F5"
+            )
+            lbl_sub.pack(anchor="w", pady=(2, 0))
+            
+            # 바디 프레임 (리스트박스 & 스크롤바)
+            body_frame = tk.Frame(dialog, padx=15, pady=15)
+            body_frame.pack(fill="both", expand=True)
+            
+            scrollbar = tk.Scrollbar(body_frame)
+            scrollbar.pack(side="right", fill="y")
+            
+            # 후보들을 보여줄 목록
+            listbox = tk.Listbox(
+                body_frame, 
+                yscrollcommand=scrollbar.set, 
+                font=("맑은 고딕", 10), 
+                selectbackground="#2E7D7A",
+                selectforeground="white",
+                activestyle="none",
+                highlightthickness=1,
+                highlightcolor="#2E7D7A"
+            )
+            listbox.pack(fill="both", expand=True)
+            scrollbar.config(command=listbox.yview)
+            
+            for cand in candidates:
+                display_str = f"{cand['name']} [{cand['category']}] - {cand['address']}"
+                listbox.insert("end", display_str)
+                
+            # 선택 완료 처리
+            def on_select():
+                sel = listbox.curselection()
+                if sel:
+                    idx = sel[0]
+                    res_queue.put(candidates[idx]["id"])
+                    dialog.destroy()
+                else:
+                    # 선택된 게 없으면 경고
+                    messagebox.showwarning("경고", "후보를 선택하거나 건너뛰기를 클릭해주세요.", parent=dialog)
+            
+            def on_skip():
+                res_queue.put(None)
+                dialog.destroy()
+                
+            # 더블 클릭 시 바로 선택 완료되게 바인딩
+            listbox.bind("<Double-Button-1>", lambda event: on_select())
+            
+            # 하단 버튼 프레임
+            btn_frame = tk.Frame(dialog, padx=15, pady=10)
+            btn_frame.pack(fill="x")
+            
+            btn_select = ttk.Button(btn_frame, text="선택 완료", command=on_select)
+            btn_select.pack(side="right", padx=(5, 0))
+            
+            btn_skip = ttk.Button(btn_frame, text="수집 건너뛰기", command=on_skip)
+            btn_skip.pack(side="right")
+            
+            # 리스트박스 첫 항목 기본 선택
+            if candidates:
+                listbox.select_set(0)
+                listbox.activate(0)
+                
+        except Exception as e:
+            logger.error(f"GUI 대화상자 생성 오류: {e}")
+            res_queue.put(None)
