@@ -8,6 +8,7 @@ interface ManagementTabProps {
     onDeleteDbPlace: (id: number, name: string, e: React.MouseEvent) => Promise<void>;
     onQuickTogglePublish: (id: number, currentStatus: boolean, name: string) => Promise<void>;
     onBulkTogglePublish: (ids: number[], isPublished: boolean) => Promise<void>;
+    onBulkDeleteDbPlaces: (ids: number[]) => Promise<void>;
     isDbLoading: boolean;
 }
 
@@ -17,6 +18,7 @@ export default function ManagementTab({
     onDeleteDbPlace,
     onQuickTogglePublish,
     onBulkTogglePublish,
+    onBulkDeleteDbPlaces,
     isDbLoading
 }: ManagementTabProps) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +50,15 @@ export default function ManagementTab({
             return;
         }
         await onBulkTogglePublish(selectedIds, isPublished);
+        setSelectedIds([]); // 초기화
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.length === 0) return;
+        if (!confirm(`선택한 ${selectedIds.length}개의 공간을 정말로 데이터베이스에서 일괄 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+            return;
+        }
+        await onBulkDeleteDbPlaces(selectedIds);
         setSelectedIds([]); // 초기화
     };
 
@@ -133,6 +144,13 @@ export default function ManagementTab({
                             className="flex-1 sm:flex-none h-10 px-5 rounded-[10px] bg-orange-500 hover:bg-orange-600 text-white font-bold text-[12.5px] transition-colors cursor-pointer border-none outline-none"
                         >
                             선택 장소 비공개 전환
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleBulkDelete}
+                            className="flex-1 sm:flex-none h-10 px-5 rounded-[10px] bg-red-500 hover:bg-red-600 text-white font-bold text-[12.5px] transition-colors cursor-pointer border-none outline-none"
+                        >
+                            선택 장소 삭제
                         </button>
                     </div>
                 </div>

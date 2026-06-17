@@ -104,6 +104,16 @@ public class AdminPlaceController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "선택한 장소들 일괄 삭제", description = "선택한 장소 ID 목록을 받아 일괄 삭제합니다.")
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<Map<String, Object>> bulkDelete(@RequestBody List<Long> ids) {
+        placeService.deletePlacesBulk(ids);
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "SUCCESS");
+        response.put("message", "성공적으로 " + (ids != null ? ids.size() : 0) + "개의 공간을 삭제했습니다.");
+        return ResponseEntity.ok(response);
+    }
+
     @Operation(summary = "관리자 비밀번호 변경", description = "관리자 비밀번호를 변경하여 DB에 영구 저장합니다.")
     @PutMapping("/settings/password")
     public ResponseEntity<Map<String, String>> changeAdminPassword(

@@ -8,4 +8,6 @@ public interface VibeVoteRepository extends JpaRepository<VibeVote, Long> {
     boolean existsByUserIdAndPlaceId(Long userId, Long placeId);
     Optional<VibeVote> findByUserIdAndPlaceId(Long userId, Long placeId);
     List<VibeVote> findByUserId(Long userId);
+    void deleteByPlaceId(Long placeId);
+    void deleteByPlaceIdIn(List<Long> placeIds);
 }

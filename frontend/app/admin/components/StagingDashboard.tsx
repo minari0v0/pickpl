@@ -260,6 +260,33 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
         }
     };
 
+    // 탭 2 장소 다중 벌크 삭제 핸들러
+    const handleBulkDeleteDbPlaces = async (ids: number[]) => {
+        const adminKey = sessionStorage.getItem('adminSecretKey') || '';
+        try {
+            const res = await fetch('http://localhost:8080/api/v1/admin/places/bulk-delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Admin-Secret-Key': adminKey
+                },
+                body: JSON.stringify(ids)
+            });
+
+            if (res.ok) {
+                setStatusMsg({
+                    type: 'success',
+                    text: `🎉 성공적으로 ${ids.length}개의 공간을 데이터베이스에서 일괄 삭제했습니다.`
+                });
+                fetchDbPlaces(); // 목록 갱신
+            } else {
+                setStatusMsg({ type: 'error', text: '일괄 삭제 실패: HTTP ' + res.status });
+            }
+        } catch (err: any) {
+            setStatusMsg({ type: 'error', text: '서버 통신 실패: ' + err.message });
+        }
+    };
+
     // 탭 1 최종 DB 벌크 주입
     const handleFinalSubmit = async () => {
         const targetPlaces = places.filter(p => p.isPublished);
@@ -512,6 +539,7 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
                                 onDeleteDbPlace={handleDeleteDbPlace}
                                 onQuickTogglePublish={handleQuickTogglePublish}
                                 onBulkTogglePublish={handleBulkTogglePublish}
+                                onBulkDeleteDbPlaces={handleBulkDeleteDbPlaces}
                                 isDbLoading={isDbLoading}
                             />
                         )}
