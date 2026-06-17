@@ -20,6 +20,25 @@ class PortalScraper:
         self.use_mock = use_mock
         self.skipped_queries = []
 
+    def _extract_coords(self, content: str) -> tuple:
+        coord_match = re.search(r'"coordinate"\s*:\s*\{\s*"x"\s*:\s*"([\d\.]+)"\s*,\s*"y"\s*:\s*"([\d\.]+)"\s*\}', content)
+        if not coord_match:
+            coord_match = re.search(r'"coordinate"\s*:\s*\{\s*"x"\s*:\s*([\d\.]+)\s*,\s*"y"\s*:\s*([\d\.]+)\s*\}', content)
+            
+        if coord_match:
+            lng = float(coord_match.group(1))
+            lat = float(coord_match.group(2))
+            return lat, lng
+
+        dlat_match = re.search(r'dlat=([\d\.]+)', content)
+        dlng_match = re.search(r'dlng=([\d\.]+)', content)
+        if dlat_match and dlng_match:
+            lat = float(dlat_match.group(1))
+            lng = float(dlng_match.group(1))
+            return lat, lng
+            
+        return 37.55, 126.92
+
     def _sample_ids(self, ids: List[str], limit: int) -> List[str]:
         """
         상위 랭킹(핫플)과 중하위 랭킹(Cozy 공간)을 고루 섞어 샘플링합니다.
@@ -775,12 +794,13 @@ class PortalScraper:
                         logger.warning(f"⚠️ 지역/주소 미스매치 배제 -> 주소: '{addr}' vs 검색어: '{query}' (ID: {place_id}). 다음 후보로 넘어갑니다.")
                         continue
 
+                    lat, lng = self._extract_coords(page.content())
                     results.append({
                         "name": name,
                         "address": addr,
                         "externalId": f"naver_place_{place_id}",
-                        "latitude": 37.55,
-                        "longitude": 126.92,
+                        "latitude": lat,
+                        "longitude": lng,
                         "category": category,
                         "thumbnailUrl": photo_url,
                         "imageUrls": image_urls_str,

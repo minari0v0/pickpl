@@ -159,6 +159,8 @@ public class Place extends BaseTimeEntity {
     public void setEditorsComment(String editorsComment) { this.editorsComment = editorsComment; }
     public void setPublished(boolean published) { this.isPublished = published; }
     public void setSubCategory(String subCategory) { this.subCategory = subCategory; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
     // --- 비즈니스 로직 ---
     
