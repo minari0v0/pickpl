@@ -35,6 +35,15 @@
 * **원인**: 태그 관계를 갱신할 때 기존의 중간 매핑 엔티티 컬렉션을 완전히 비우는 `place.getPlaceTagMaps().clear()`를 실행하더라도, JPA/Hibernate의 내부 트랜잭션 쓰기 지연(ActionQueue) 동작 순서상 기존 매핑의 `DELETE` 쿼리보다 컬렉션에 임시로 추가된 새 태그들의 `INSERT` 쿼리가 데이터베이스에 먼저 발송됨. 이로 인해 동일한 `(place_id, tag_id)` 조합에 대해 복합 유니크 제약조건 `uk_place_tag` 충돌이 먼저 유발되는 한계 때문임.
 * **해결 방법**: 무조건적인 컬렉션 초기화 방식 대신, 기존에 할당된 태그 목록과 새로 들어온 태그 목록을 비교(Diff/Compare)하는 차분(Delta) 업데이트 방식을 적용함. 삭제할 대상만 `removeTag()`로 솎아내고, 신규 추가할 대상만 `addTag()`로 주입함으로써 데이터베이스 쿼리를 최소화하고, 변경되지 않는 기존 태그 매핑은 그대로 보존해 유니크 키 충돌을 100% 예방함.
 
+### 관리자 공간 일괄 삭제 시 HTTP 500 (외래키 제약조건 위반 에러)
+* **오류 현상**: CMS 공간 관리 탭에서 다수의 공간을 체크박스로 선택하고 일괄 삭제할 때 `일괄 삭제 실패: HTTP 500`과 함께 `SQLIntegrityConstraintViolationException` 및 외래키 오류(Cannot delete or update a parent row: a foreign key constraint fails)가 발생함.
+* **원인**:
+  1. `deleteAllByIdInBatch(ids)`와 같은 벌크 쿼리 메서드는 Hibernate의 영속성 컨텍스트 생명주기(JPA lifecycle)를 완전히 우회하여 direct SQL `DELETE`를 실행하므로, `Place` 엔티티 내에 설정된 `@OneToMany(cascade = CascadeType.ALL)` 설정이 동작하지 않아 연관 매핑 데이터(`PlaceTagMap`, `Scrap`)가 그대로 남은 채 부모를 지우려 했기 때문임.
+  2. 또한 `VibeVote` 엔티티는 `Place`를 단방향으로 참조하고 있어 `Place` 측에서 Cascade 설정을 걸어둘 수 없으므로, 해당 장소에 투표 내역이 하나라도 존재하는 경우 데이터베이스 제약 조건상 삭제가 무조건 차단되는 구조적 원인 때문임.
+* **해결 방법**: 
+  1. 벌크 삭제 실행 시, 먼저 관련 `VibeVote` 데이터를 `vibeVoteRepository.deleteByPlaceIdIn(ids)`를 통해 명시적으로 사전 삭제하도록 구성함.
+  2. 벌크 쿼리(`deleteAllByIdInBatch`) 대신, 영속 객체 목록을 로드하여 `placeRepository.deleteAll(places)`를 실행함으로써 JPA Cascade 영속성 전이를 유도하여 연관된 `PlaceTagMap`, `Scrap` 데이터가 먼저 깨끗하게 청소된 후 정상 삭제되도록 조치함.
+
 ---
 
 ## 데이터 크롤링 (Data Crawling / Pipeline)
@@ -64,5 +73,16 @@
 * **해결 방법**: 
   1. 503 및 UNAVAILABLE 오류 발생 시에도 즉시 죽지 않고 429처럼 25초, 50초 단위의 점진적 백오프 후 최대 3회 자동 재시도하는 예외 복구 로직을 구현함.
   2. 한 번이라도 429 쿼터 초과가 감지되면 해당 실행 생명주기 동안 `use_fallback_model` 스티키 플래그를 `True`로 고정함. 이후 배치 분석에서는 한도가 끝난 3-preview 모델 호출을 생략하고 처음부터 `gemini-2.5-flash` 모델을 즉시 다이렉트 호출하도록(Sticky Fallback) 개선하여 낭비되는 지연 시간을 원천 차단함.
+
+### Playwright 크롤러를 통한 Naver Place 위경도 추출 실패 및 디폴트 좌표 고정
+* **오류 현상**: 파이프라인 좌표 수집 동작 시 일부 장소(예: 헬로오드리, 서울로인 등)의 좌표가 유효한 값 대신 디폴트 좌표인 `37.55, 126.92`로 일괄 강제 설정되는 현상이 발생함.
+* **원인**: 
+  1. 수집기에서 성능 고속화를 위해 Playwright `page.goto` 호출 시 `"commit"` 옵션을 주어 HTML 조각을 파싱하도록 최적화하였으나, 특정 장소의 경우 SSR(Server-Side Rendered) HTML 본문에 Apollo State 좌표 데이터가 아예 누락된 상태로 넘어오는 경우가 있음.
+  2. 해당 공간들은 JavaScript 로딩 완료 후에 동적으로 지도 영역과 길찾기 딥링크(`dlat`/`dlng`)가 렌더링되는데, 웹드라이버가 DOM 완성 전에 즉시 좌표를 추출하려다 매칭에 실패하여 Fallback 기본 위경도가 강제 주입되었기 때문임.
+* **해결 방법**:
+  1. 일차적으로 `"commit"` 시점에 SSR HTML을 긁어 빠르게 파싱하되, 매칭 실패 시 이를 즉각 감지하여 2단계 폴백(Fallback) 프로세스를 구동하도록 보완함.
+  2. 폴백 프로세스에서는 Playwright의 `wait_for_load_state("domcontentloaded")`를 호출하여 DOM 트리를 완전히 수신하고 추가로 2초의 대기 지연 시간을 확보하여 동적 내비게이션 요소가 온전히 렌더링되게 함.
+  3. 그 후 HTML 소스 내에서 `dlat=([\d\.]+)` 및 `dlng=([\d\.]+)` 정규식을 활용해 정확한 위도/경도를 파싱해내도록 예외 처리 체계를 고도화하여 수집률 100%를 달성함.
+
 
 
