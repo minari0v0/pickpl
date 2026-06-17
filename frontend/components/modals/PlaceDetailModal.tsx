@@ -205,8 +205,12 @@ export default function PlaceDetailModal({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <span className="truncate flex-1">{selectedPlace.location}</span>
-                            <span className="text-[#B0B8C1] shrink-0">·</span>
-                            <span className="shrink-0 text-orange-500 font-bold">{selectedPlace.distance}</span>
+                            {selectedPlace.distance && (
+                                <>
+                                    <span className="text-[#B0B8C1] shrink-0">·</span>
+                                    <span className="shrink-0 text-orange-500 font-bold">{selectedPlace.distance}</span>
+                                </>
+                            )}
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                             {selectedPlace.tagInfos && selectedPlace.tagInfos.length > 0 ? (
@@ -366,8 +370,12 @@ export default function PlaceDetailModal({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 <span className="truncate flex-1">{selectedPlace.location}</span>
-                                <span className="text-[#B0B8C1] shrink-0">·</span>
-                                <span className="shrink-0 text-[#E65C00] font-bold">{selectedPlace.distance}</span>
+                                {selectedPlace.distance && (
+                                    <>
+                                        <span className="text-[#B0B8C1] shrink-0">·</span>
+                                        <span className="shrink-0 text-[#E65C00] font-bold">{selectedPlace.distance}</span>
+                                    </>
+                                )}
                             </p>
                             <div className="flex flex-wrap gap-1.5 mb-8">
                                 {selectedPlace.tagInfos && selectedPlace.tagInfos.length > 0 ? (

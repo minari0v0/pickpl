@@ -54,39 +54,77 @@ public class PlaceService {
     }
 
     /**
+     * 두 위경도 좌표 사이의 거리를 미터 단위로 계산 (하버사인 공식)
+     */
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        double R = 6371000; // 지구 반지름 (m)
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    /**
+     * 미터 단위의 거리를 포맷팅된 문자열로 변환 (예: 350m, 1.2km)
+     */
+    private String formatDistance(Double userLat, Double userLon, Double placeLat, Double placeLon) {
+        if (userLat == null || userLon == null || placeLat == null || placeLon == null) {
+            return null;
+        }
+        double distanceInMeters = calculateDistance(userLat, userLon, placeLat, placeLon);
+        if (distanceInMeters < 1000) {
+            return String.format("%dm", Math.round(distanceInMeters));
+        } else {
+            return String.format("%.1fkm", distanceInMeters / 1000.0);
+        }
+    }
+
+    /**
      * 전체 공간 목록을 조회하여 DTO 리스트로 반환합니다.
      */
-    public List<PlaceSummaryResponse> findAllPlaces(Long userId) {
+    public List<PlaceSummaryResponse> findAllPlaces(Long userId, Double latitude, Double longitude) {
         Set<Long> scrappedIds = getScrappedPlaceIds(userId);
         java.util.Map<Long, String> vibeVotesMap = getVibeVotesMap(userId);
         return placeRepository.findAllByIsPublishedTrue().stream()
-                .map(place -> PlaceSummaryResponse.from(place, scrappedIds.contains(place.getId()), vibeVotesMap.get(place.getId())))
+                .map(place -> {
+                    String distanceStr = formatDistance(latitude, longitude, place.getLatitude(), place.getLongitude());
+                    return PlaceSummaryResponse.from(place, scrappedIds.contains(place.getId()), vibeVotesMap.get(place.getId()), distanceStr);
+                })
                 .toList();
     }
 
     /**
      * 특정 태그 리스트를 모두 포함하는 공간 목록을 반환합니다.
      */
-    public List<PlaceSummaryResponse> findPlacesByTags(List<String> tags, Long userId) {
+    public List<PlaceSummaryResponse> findPlacesByTags(List<String> tags, Long userId, Double latitude, Double longitude) {
         if (tags == null || tags.isEmpty()) {
-            return findAllPlaces(userId);
+            return findAllPlaces(userId, latitude, longitude);
         }
         Set<Long> scrappedIds = getScrappedPlaceIds(userId);
         java.util.Map<Long, String> vibeVotesMap = getVibeVotesMap(userId);
         return placeRepository.findPlacesMatchingAllTags(tags, tags.size()).stream()
-                .map(place -> PlaceSummaryResponse.from(place, scrappedIds.contains(place.getId()), vibeVotesMap.get(place.getId())))
+                .map(place -> {
+                    String distanceStr = formatDistance(latitude, longitude, place.getLatitude(), place.getLongitude());
+                    return PlaceSummaryResponse.from(place, scrappedIds.contains(place.getId()), vibeVotesMap.get(place.getId()), distanceStr);
+                })
                 .toList();
     }
 
     /**
      * ID로 단건 공간 상세 조회.
      */
-    public com.pickpl.app.place.dto.PlaceDetailResponse findPlaceById(Long id, Long userId) {
+    public com.pickpl.app.place.dto.PlaceDetailResponse findPlaceById(Long id, Long userId, Double latitude, Double longitude) {
         boolean isScrapped = userId != null && scrapRepository.existsByUserIdAndPlaceId(userId, id);
         String userVotedVibe = userId != null ? vibeVoteRepository.findByUserIdAndPlaceId(userId, id)
                 .map(vote -> vote.getVibeType().name()).orElse(null) : null;
         return placeRepository.findById(id)
-                .map(place -> com.pickpl.app.place.dto.PlaceDetailResponse.from(place, isScrapped, userVotedVibe))
+                .map(place -> {
+                    String distanceStr = formatDistance(latitude, longitude, place.getLatitude(), place.getLongitude());
+                    return com.pickpl.app.place.dto.PlaceDetailResponse.from(place, isScrapped, userVotedVibe, distanceStr);
+                })
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공간입니다: " + id));
     }
 
@@ -98,7 +136,13 @@ public class PlaceService {
         int count = 0;
         for (com.pickpl.app.place.dto.PlaceBatchRequest.PlaceData data : request.places()) {
             // 이미 존재하는 장소(externalId 기준)는 건너뛰거나 업데이트 (여기선 건너뜀)
-            if (placeRepository.findByExternalId(data.externalId()).isPresent()) {
+            java.util.Optional<com.pickpl.app.domain.place.Place> existingOpt = placeRepository.findByExternalId(data.externalId());
+            if (existingOpt.isPresent()) {
+                com.pickpl.app.domain.place.Place place = existingOpt.get();
+                place.setLatitude(data.latitude());
+                place.setLongitude(data.longitude());
+                placeRepository.save(place);
+                count++;
                 continue;
             }
 
@@ -272,6 +316,7 @@ public class PlaceService {
         if (!placeRepository.existsById(id)) {
             throw new IllegalArgumentException("존재하지 않는 공간입니다: " + id);
         }
+        vibeVoteRepository.deleteByPlaceId(id);
         placeRepository.deleteById(id);
     }
 
@@ -304,6 +349,17 @@ public class PlaceService {
             placeRepository.save(place);
         }
         return places.size();
+    }
+
+    /**
+     * 어드민용 선택한 장소들 일괄 삭제.
+     */
+    @Transactional
+    public void deletePlacesBulk(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        vibeVoteRepository.deleteByPlaceIdIn(ids);
+        List<com.pickpl.app.domain.place.Place> places = placeRepository.findAllById(ids);
+        placeRepository.deleteAll(places);
     }
 }
 

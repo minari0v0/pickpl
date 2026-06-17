@@ -1,6 +1,7 @@
 import React from 'react';
 import DraggableScroll from '../ui/DraggableScroll';
 import { getCategoryIcon, getVibeBadge } from '../ui/Helpers';
+import { useLocationStore } from '../../store/locationStore';
 
 export const TAG_CATEGORIES = [
     { id: 'popular', title: "요즘 뜨는 취향", tags: ["대형카페", "노트북하기좋은", "햇살맛집", "디저트맛집", "뷰맛집", "데이트코스"] },
@@ -33,6 +34,21 @@ export default function ExploreView({
     onViewChange,
     setSelectedTags
 }: ExploreViewProps) {
+    const locationStore = useLocationStore();
+
+    const handleLocationToggle = () => {
+        if (locationStore.permissionStatus === 'denied' || locationStore.permissionStatus === 'error' || locationStore.permissionStatus === 'prompt') {
+            const nextPlace = locationStore.fallbackPlace === 'seongsu' ? 'gangnam' : 'seongsu';
+            locationStore.setFallbackPlace(nextPlace);
+        }
+    };
+
+    const getLocationLabel = () => {
+        if (locationStore.permissionStatus === 'granted') {
+            return '내 위치 주변';
+        }
+        return locationStore.fallbackPlace === 'seongsu' ? '성수역' : '강남역';
+    };
     
     return (
         <div 
@@ -40,19 +56,56 @@ export default function ExploreView({
             className="flex-1 h-full w-full overflow-y-auto no-scrollbar bg-[#F9FAFB] animate-slide-in-right lg:animate-fade-in flex flex-col absolute lg:relative inset-0 z-30 lg:z-auto items-center"
         >
             {/* 모바일 헤더 */}
-            <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#F2F4F6] px-2 py-4 flex items-center w-full shadow-sm">
-                <button onClick={() => onViewChange('home')} className="w-12 h-12 flex items-center justify-center text-[#191F28] active:scale-90 relative z-50">
+            <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#F2F4F6] px-2 py-4 flex items-center w-full shadow-sm justify-between">
+                <button onClick={() => onViewChange('home')} className="w-12 h-12 flex items-center justify-center text-[#191F28] active:scale-90 relative z-50 shrink-0">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
-                <h1 className="font-logo font-extrabold text-[22px] flex-1 text-center -ml-12 tracking-tight text-[#191F28]">Pick<span className="text-orange-500 font-logo">Pl</span></h1>
+                <div className="flex items-center gap-2 flex-1 justify-center -ml-6">
+                    <h1 className="font-logo font-extrabold text-[22px] tracking-tight text-[#191F28]">Pick<span className="text-orange-500 font-logo">Pl</span></h1>
+                    
+                    {/* 위치 칩 */}
+                    <div 
+                        onClick={handleLocationToggle}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-[10px] cursor-pointer transition-all border select-none active:scale-95 shrink-0 ${
+                            locationStore.permissionStatus === 'granted' 
+                            ? 'bg-orange-50 text-orange-600 border-orange-100' 
+                            : 'bg-[#F2F4F6] text-[#4E5968] border-transparent hover:bg-[#E5E8EB]'
+                        }`}
+                    >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-[10.5px] font-bold">{getLocationLabel()}</span>
+                    </div>
+                </div>
+                <div className="w-6 shrink-0 lg:hidden"></div>
             </header>
 
             <div className="w-full lg:max-w-[880px] px-5 lg:px-8 py-6 lg:py-12 flex-1 flex flex-col">
                 {/* PC 헤더: 비주얼 배너 */}
                 <header className="hidden lg:flex flex-col gap-2 mb-10">
-                    <span className="text-orange-500 font-extrabold text-[13px] tracking-widest uppercase">Mood & Space Curation</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-orange-500 font-extrabold text-[13px] tracking-widest uppercase">Mood & Space Curation</span>
+                        
+                        {/* 위치 칩 */}
+                        <div 
+                            onClick={handleLocationToggle}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-[12px] cursor-pointer transition-all border select-none active:scale-95 ${
+                                locationStore.permissionStatus === 'granted' 
+                                ? 'bg-orange-50 text-orange-600 border-orange-100' 
+                                : 'bg-[#F2F4F6] text-[#4E5968] border-transparent hover:bg-[#E5E8EB]'
+                            }`}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-[11px] font-bold">{getLocationLabel()}</span>
+                        </div>
+                    </div>
                     <h1 className="font-bold text-[34px] tracking-tight text-[#191F28] leading-tight">
                         나만의 감성 공간을 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">픽(Pick)하다</span>
                     </h1>
@@ -222,8 +275,12 @@ export default function ExploreView({
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                                     </svg>
                                                     <span className="truncate flex-1">{place.location ? place.location.split(' ').slice(0, 2).join(' ') : '서울'}</span>
-                                                    <span className="text-[#B0B8C1] shrink-0">·</span>
-                                                    <span className="shrink-0 text-orange-500/90 font-bold">{place.distance}</span>
+                                                    {place.distance && (
+                                                        <>
+                                                            <span className="text-[#B0B8C1] shrink-0">·</span>
+                                                            <span className="shrink-0 text-orange-500/90 font-bold">{place.distance}</span>
+                                                        </>
+                                                    )}
                                                 </p>
                                             </div>
                                             
@@ -290,8 +347,12 @@ export default function ExploreView({
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                                         </svg>
                                                         <span className="truncate flex-1">{place.location}</span>
-                                                        <span className="text-[#B0B8C1] shrink-0">·</span>
-                                                        <span className="shrink-0 text-[#E65C00] font-bold">{place.distance}</span>
+                                                        {place.distance && (
+                                                            <>
+                                                                <span className="text-[#B0B8C1] shrink-0">·</span>
+                                                                <span className="shrink-0 text-[#E65C00] font-bold">{place.distance}</span>
+                                                            </>
+                                                        )}
                                                     </p>
                                                 </div>
                                                 

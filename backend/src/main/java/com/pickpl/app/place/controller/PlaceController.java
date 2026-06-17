@@ -44,15 +44,19 @@ public class PlaceController {
     @GetMapping
     public ResponseEntity<List<PlaceSummaryResponse>> getPlaces(
             @org.springframework.web.bind.annotation.RequestParam(required = false) List<String> tags,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Double latitude,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Double longitude,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(placeService.findPlacesByTags(tags, getUserIdOrNull(user)));
+        return ResponseEntity.ok(placeService.findPlacesByTags(tags, getUserIdOrNull(user), latitude, longitude));
     }
 
     @Operation(summary = "공간 상세 조회", description = "특정 공간의 상세 정보를 조회합니다.")
     @GetMapping("/{id}")
     public ResponseEntity<com.pickpl.app.place.dto.PlaceDetailResponse> getPlace(
             @org.springframework.web.bind.annotation.PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Double latitude,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Double longitude,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(placeService.findPlaceById(id, getUserIdOrNull(user)));
+        return ResponseEntity.ok(placeService.findPlaceById(id, getUserIdOrNull(user), latitude, longitude));
     }
 }

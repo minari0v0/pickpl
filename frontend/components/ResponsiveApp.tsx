@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/authStore';
+import { useLocationStore } from '../store/locationStore';
 import axiosInstance from '../api/axios';
 import TermsAndPrivacyModal from './TermsAndPrivacyModal';
 
@@ -33,6 +34,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [activeView, setActiveView] = useState<string>('home');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const authStore = useAuthStore();
+    const locationStore = useLocationStore();
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [nickname, setNickname] = useState("미나리");
     const [userEmail, setUserEmail] = useState("");
@@ -78,6 +80,33 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         setToast({ message, type });
         setTimeout(() => setToast(null), 3000);
     };
+
+    // 실시간 GPS 및 에러/Fallback 처리
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        locationStore.setPermissionStatus('granted');
+                        locationStore.setLocation(position.coords.latitude, position.coords.longitude);
+                    },
+                    (error) => {
+                        console.warn("Geolocation API Error or Denied:", error);
+                        if (error.code === error.PERMISSION_DENIED) {
+                            locationStore.setPermissionStatus('denied');
+                        } else {
+                            locationStore.setPermissionStatus('error');
+                        }
+                        locationStore.useFallbackCoordinates();
+                    },
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+            } else {
+                locationStore.setPermissionStatus('error');
+                locationStore.useFallbackCoordinates();
+            }
+        }
+    }, []);
 
     // 로컬 스토리지 설정 및 로그인 상태 마운트 동기화
     useEffect(() => {
@@ -149,12 +178,22 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     );
 
     // SWR 장소 리스트 조회
-    const queryString = selectedTags.length > 0 
-        ? `?tags=${selectedTags.map(encodeURIComponent).join(',')}` 
-        : '';
+    const queryString = useMemo(() => {
+        const params: string[] = [];
+        if (selectedTags.length > 0) {
+            params.push(`tags=${selectedTags.map(encodeURIComponent).join(',')}`);
+        }
+        if (locationStore.latitude !== null) {
+            params.push(`latitude=${locationStore.latitude}`);
+        }
+        if (locationStore.longitude !== null) {
+            params.push(`longitude=${locationStore.longitude}`);
+        }
+        return params.length > 0 ? `?${params.join('&')}` : '';
+    }, [selectedTags, locationStore.latitude, locationStore.longitude]);
         
     const { data: fetchedPlaces } = useSWR(`http://localhost:8080/api/v1/places${queryString}`, fetcher, {
-        fallbackData: selectedTags.length === 0 ? initialPlaces : undefined,
+        fallbackData: selectedTags.length === 0 && locationStore.latitude === null ? initialPlaces : undefined,
         keepPreviousData: true
     });
     
@@ -174,8 +213,20 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
     // 장소 데이터 디자인 속성 매핑
     const placesData = useMemo(() => {
-        return currentPlaces.map(mapPlaceToData);
-    }, [currentPlaces]);
+        const prefix = locationStore.permissionStatus === 'granted' 
+            ? '내 위치에서' 
+            : locationStore.fallbackPlace === 'seongsu' ? '성수역에서' : '강남역에서';
+
+        return currentPlaces.map(place => {
+            const mapped = mapPlaceToData(place);
+            if (place.distance) {
+                mapped.distance = `${prefix} ${place.distance}`;
+            } else {
+                mapped.distance = null;
+            }
+            return mapped;
+        });
+    }, [currentPlaces, locationStore.permissionStatus, locationStore.fallbackPlace]);
 
     // 검색 결과 가공
     const filteredPlaces = useMemo(() => {
@@ -208,9 +259,20 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             setIsDetailOpen(true);
 
             try {
-                const res = await axiosInstance.get(`/places/${place.id}`);
+                const latParam = locationStore.latitude !== null ? `latitude=${locationStore.latitude}` : '';
+                const lonParam = locationStore.longitude !== null ? `longitude=${locationStore.longitude}` : '';
+                const query = [latParam, lonParam].filter(Boolean).join('&');
+                const res = await axiosInstance.get(`/places/${place.id}${query ? `?${query}` : ''}`);
                 if (res.data) {
                     const detailed = mapPlaceToData(res.data);
+                    const prefix = locationStore.permissionStatus === 'granted' 
+                        ? '내 위치에서' 
+                        : locationStore.fallbackPlace === 'seongsu' ? '성수역에서' : '강남역에서';
+                    if (res.data.distance) {
+                        detailed.distance = `${prefix} ${res.data.distance}`;
+                    } else {
+                        detailed.distance = null;
+                    }
                     setSelectedPlace(detailed);
                     setVibeStats(detailed.initialVibe);
                     setIsSaved(!!detailed.isScrapped);

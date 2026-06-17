@@ -27,7 +27,8 @@ public record PlaceSummaryResponse(
         VibeStats vibeStats,
         String userVotedVibe,
         String editorsComment,
-        boolean isPublished
+        boolean isPublished,
+        String distance
 ) {
 
     public record VibeStats(int quiet, int chatty) {}
@@ -35,8 +36,13 @@ public record PlaceSummaryResponse(
     /** 태그 정보 내부 레코드 */
     public record TagInfo(Long id, String name, String type) {}
 
-    /** Place 엔티티 → DTO 변환 정적 팩토리 메서드 */
+    /** Place 엔티티 → DTO 변환 정적 팩토리 메서드 (거리 없음) */
     public static PlaceSummaryResponse from(Place place, boolean isScrapped, String userVotedVibe) {
+        return from(place, isScrapped, userVotedVibe, null);
+    }
+
+    /** Place 엔티티 → DTO 변환 정적 팩토리 메서드 (거리 포함) */
+    public static PlaceSummaryResponse from(Place place, boolean isScrapped, String userVotedVibe, String distance) {
         List<TagInfo> tagInfos = place.getPlaceTagMaps().stream()
                 .map(PlaceTagMap::getTag)
                 .map(t -> new TagInfo(t.getId(), t.getName(), t.getType().name()))
@@ -56,7 +62,8 @@ public record PlaceSummaryResponse(
                 new VibeStats(place.getQuietVoteCount(), place.getChattyVoteCount()),
                 userVotedVibe,
                 place.getEditorsComment(),
-                place.isPublished()
+                place.isPublished(),
+                distance
         );
     }
 }

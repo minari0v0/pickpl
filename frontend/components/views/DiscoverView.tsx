@@ -1,6 +1,7 @@
 import React from 'react';
 import DraggableScroll from '../ui/DraggableScroll';
 import { getCategoryIcon } from '../ui/Helpers';
+import { useLocationStore } from '../../store/locationStore';
 
 interface DiscoverViewProps {
     hidden: boolean;
@@ -19,6 +20,22 @@ export default function DiscoverView({
     onViewChange,
     onShowTermsModal
 }: DiscoverViewProps) {
+    const locationStore = useLocationStore();
+
+    const handleLocationToggle = () => {
+        if (locationStore.permissionStatus === 'denied' || locationStore.permissionStatus === 'error' || locationStore.permissionStatus === 'prompt') {
+            const nextPlace = locationStore.fallbackPlace === 'seongsu' ? 'gangnam' : 'seongsu';
+            locationStore.setFallbackPlace(nextPlace);
+        }
+    };
+
+    const getLocationLabel = () => {
+        if (locationStore.permissionStatus === 'granted') {
+            return '내 위치 주변';
+        }
+        return locationStore.fallbackPlace === 'seongsu' ? '성수역' : '강남역';
+    };
+
     return (
         <div style={{ display: hidden ? 'none' : 'flex' }} className="w-full h-full flex flex-col lg:flex-row overflow-hidden">
             {/* 스크롤 가능한 메인 피드 */}
@@ -26,8 +43,26 @@ export default function DiscoverView({
 
                 {/* 헤더 (모바일/PC) */}
                 <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-xl px-6 py-4 lg:px-10 lg:py-8 flex items-center justify-between border-b lg:border-b border-[#F2F4F6]/50">
-                    <h1 className="lg:hidden font-logo font-extrabold text-[28px] tracking-tight text-[#191F28]">Pick<span className="text-orange-500 text-[1em] font-logo">Pl</span></h1>
-                    <h1 className="hidden lg:block font-bold text-[28px] tracking-tight text-[#191F28]">발견</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="lg:hidden font-logo font-extrabold text-[28px] tracking-tight text-[#191F28]">Pick<span className="text-orange-500 text-[1em] font-logo">Pl</span></h1>
+                        <h1 className="hidden lg:block font-bold text-[28px] tracking-tight text-[#191F28]">발견</h1>
+                        
+                        {/* 위치 칩 */}
+                        <div 
+                            onClick={handleLocationToggle}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] cursor-pointer transition-all border select-none active:scale-95 ${
+                                locationStore.permissionStatus === 'granted' 
+                                ? 'bg-orange-50 text-orange-600 border-orange-100' 
+                                : 'bg-[#F2F4F6] text-[#4E5968] border-transparent hover:bg-[#E5E8EB]'
+                            }`}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-[12px] font-bold">{getLocationLabel()}</span>
+                        </div>
+                    </div>
                     {/* 모바일에서만 보이는 탐색 버튼 */}
                     <button onClick={() => onViewChange('explore')} className="lg:hidden w-10 h-10 bg-[#F2F4F6] rounded-full flex items-center justify-center hover:bg-[#E5E8EB] transition-colors">
                         <svg className="w-5 h-5 text-[#4E5968]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -90,7 +125,8 @@ export default function DiscoverView({
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-bold text-[16px] text-[#191F28] tracking-tight truncate group-hover:text-orange-500 transition-colors">{place.name}</h3>
                                             <p className="text-[12px] font-semibold text-[#8B95A1] mt-0.5 truncate">
-                                                {place.location ? place.location.split(' ').slice(0, 2).join(' ') : '서울'} · {place.distance}
+                                                {place.location ? place.location.split(' ').slice(0, 2).join(' ') : '서울'}
+                                                {place.distance ? ` · ${place.distance}` : ''}
                                             </p>
                                         </div>
                                         <button 

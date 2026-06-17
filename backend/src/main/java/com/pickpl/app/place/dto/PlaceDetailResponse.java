@@ -21,9 +21,16 @@ public record PlaceDetailResponse(
         List<PlaceSummaryResponse.TagInfo> tags,
         PlaceSummaryResponse.VibeStats vibeStats,
         String userVotedVibe,
-        String editorsComment
+        String editorsComment,
+        String distance
 ) {
+    /** Place 엔티티 → DTO 변환 정적 팩토리 메서드 (거리 없음) */
     public static PlaceDetailResponse from(Place place, boolean isScrapped, String userVotedVibe) {
+        return from(place, isScrapped, userVotedVibe, null);
+    }
+
+    /** Place 엔티티 → DTO 변환 정적 팩토리 메서드 (거리 포함) */
+    public static PlaceDetailResponse from(Place place, boolean isScrapped, String userVotedVibe, String distance) {
         List<PlaceSummaryResponse.TagInfo> tagInfos = place.getPlaceTagMaps().stream()
                 .map(PlaceTagMap::getTag)
                 .map(t -> new PlaceSummaryResponse.TagInfo(t.getId(), t.getName(), t.getType().name()))
@@ -49,7 +56,8 @@ public record PlaceDetailResponse(
                 tagInfos,
                 new PlaceSummaryResponse.VibeStats(place.getQuietVoteCount(), place.getChattyVoteCount()),
                 userVotedVibe,
-                place.getEditorsComment()
+                place.getEditorsComment(),
+                distance
         );
     }
 }

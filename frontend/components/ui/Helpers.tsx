@@ -201,7 +201,7 @@ export const mapPlaceToData = (place: any) => {
         location: place.address,
         category: place.category,
         subCategory: place.subCategory,
-        distance: "내 위치에서 " + ((place.id % 10) + 1) + "km",
+        distance: place.distance,
         imageUrl: finalThumbnail,
         imageUrls: imageUrls,
         aspectRatio: "aspect-[4/5]",
