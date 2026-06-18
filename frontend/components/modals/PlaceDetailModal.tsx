@@ -137,7 +137,7 @@ export default function PlaceDetailModal({
                         className="absolute inset-0 w-full h-full object-cover blur-[24px] opacity-45 scale-110 pointer-events-none select-none" 
                         alt="" 
                         onError={(e) => {
-                            e.currentTarget.src = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800";
+                            e.currentTarget.src = "/default_place.png";
                         }}
                     />
                     <div className="w-full h-full relative z-10 flex items-center justify-center p-6 pb-10">
@@ -146,7 +146,7 @@ export default function PlaceDetailModal({
                             className="max-w-full max-h-full object-contain rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.25)] border border-white/10 transition-all duration-300 ease-in-out" 
                             alt="" 
                             onError={(e) => {
-                                e.currentTarget.src = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800";
+                                e.currentTarget.src = "/default_place.png";
                             }}
                         />
                     </div>
@@ -246,6 +246,25 @@ export default function PlaceDetailModal({
                             </div>
                         )}
                         <p className="text-[15px] text-[#4E5968] leading-relaxed mt-4">{selectedPlace.description}</p>
+                        {selectedPlace.category && (() => {
+                            const catInfo = getCategoryIcon(selectedPlace.category, selectedPlace.name);
+                            return (
+                                <div className="mt-8 border-t border-[#F2F4F6] pt-6">
+                                    <h3 className="font-bold text-[19px] mb-4 tracking-tight text-[#191F28]">이 공간의 특징</h3>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-14 h-14 rounded-[16px] ${catInfo.bg || 'bg-[#F2F4F6]'} border border-[#E5E8EB] flex items-center justify-center shadow-sm`}>
+                                            {React.cloneElement(catInfo.icon as React.ReactElement<any>, { className: `w-6 h-6 ${catInfo.text}` })}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-[15.5px] text-[#4E5968]">{selectedPlace.category}</p>
+                                            {selectedPlace.subCategory && (
+                                                <p className="font-medium text-[13.5px] text-[#8B95A1] mt-0.5">{selectedPlace.subCategory}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                     <div className="w-full h-2 bg-[#F2F4F6]"></div>
                     <div className="px-6 py-8">
@@ -310,7 +329,7 @@ export default function PlaceDetailModal({
                             className="absolute inset-0 w-full h-full object-cover blur-[32px] opacity-40 scale-110 pointer-events-none select-none" 
                             alt="" 
                             onError={(e) => {
-                                e.currentTarget.src = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800";
+                                e.currentTarget.src = "/default_place.png";
                             }}
                         />
                         <div className="w-full h-full relative z-10 flex items-center justify-center p-8">
@@ -319,7 +338,7 @@ export default function PlaceDetailModal({
                                 className="max-w-full max-h-full object-contain rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.3)] border border-white/10 transition-all duration-500 ease-in-out" 
                                 alt={`${selectedPlace.name} - ${currentImgIdx + 1}`} 
                                 onError={(e) => {
-                                    e.currentTarget.src = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800";
+                                    e.currentTarget.src = "/default_place.png";
                                 }}
                             />
                         </div>
@@ -414,25 +433,25 @@ export default function PlaceDetailModal({
                                 {selectedPlace.description}
                             </p>
                             <div className="w-full h-[1px] bg-[#F2F4F6] mb-10"></div>
-                            <h3 className="font-bold text-[20px] mb-5 tracking-tight text-[#191F28]">이 공간의 특징</h3>
-                            <div className="flex flex-col gap-5 mb-10">
-                                {selectedPlace.features.map((feat: any, idx: number) => {
-                                    const catInfo = getCategoryIcon(selectedPlace.category, selectedPlace.name);
-                                    return (
-                                        <div key={idx} className="flex items-center gap-4">
+                            {selectedPlace.category && (() => {
+                                const catInfo = getCategoryIcon(selectedPlace.category, selectedPlace.name);
+                                return (
+                                    <>
+                                        <h3 className="font-bold text-[20px] mb-5 tracking-tight text-[#191F28]">이 공간의 특징</h3>
+                                        <div className="flex items-center gap-4 mb-10">
                                             <div className={`w-16 h-16 rounded-[18px] ${catInfo.bg || 'bg-[#F2F4F6]'} border border-[#E5E8EB] flex items-center justify-center shadow-sm`}>
                                                 {React.cloneElement(catInfo.icon as React.ReactElement<any>, { className: `w-7 h-7 ${catInfo.text}` })}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-[16px] text-[#4E5968]">{selectedPlace.category || feat.title}</p>
+                                                <p className="font-bold text-[16px] text-[#4E5968]">{selectedPlace.category}</p>
                                                 {selectedPlace.subCategory && (
                                                     <p className="font-medium text-[14px] text-[#8B95A1] mt-0.5">{selectedPlace.subCategory}</p>
                                                 )}
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    </>
+                                );
+                            })()}
                             <div className="bg-[#F9FAFB] p-8 rounded-[32px] border border-[#F2F4F6]">
                                 <div className="flex justify-between items-center mb-3">
                                     <h3 className="font-bold text-[20px] tracking-tight">지금 분위기는?</h3>

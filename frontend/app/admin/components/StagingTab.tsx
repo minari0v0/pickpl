@@ -41,11 +41,11 @@ export default function StagingTab({
                 latitude: Number(p.latitude) || 37.55,
                 longitude: Number(p.longitude) || 126.92,
                 category: p.category || '공간',
-                thumbnailUrl: p.thumbnailUrl || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500',
+                thumbnailUrl: p.thumbnailUrl || '/default_place.png',
                 imageUrls: p.imageUrls || p.thumbnailUrl || '',
                 reviews: Array.isArray(p.reviews) ? p.reviews : [],
                 aiMoodSummary: p.aiMoodSummary || '',
-                tags: Array.isArray(p.tags) ? p.tags : [],
+                tags: Array.isArray(p.tags) ? Array.from(new Set(p.tags.map((t: any) => String(t).trim()))) : [],
                 editorsComment: p.editorsComment || '',
                 isPublished: true,
                 isDuplicate: false
@@ -267,7 +267,14 @@ export default function StagingTab({
 
                                 <div className="flex gap-4">
                                     <div className="w-20 h-20 rounded-[16px] overflow-hidden shrink-0 bg-[#F2F4F6]">
-                                        <img src={place.thumbnailUrl} className="w-full h-full object-cover" alt="" />
+                                        <img 
+                                            src={place.thumbnailUrl} 
+                                            className="w-full h-full object-cover" 
+                                            alt="" 
+                                            onError={(e) => {
+                                                e.currentTarget.src = '/default_place.png';
+                                            }}
+                                        />
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                                         <span className="text-[11px] font-bold text-[#8B95A1] uppercase tracking-wider">{place.category}</span>
@@ -279,8 +286,8 @@ export default function StagingTab({
                                 </div>
 
                                 <div className="flex flex-wrap gap-1.5 overflow-hidden h-[26px]">
-                                    {place.tags.map(t => (
-                                        <span key={t} className="px-2 py-0.5 rounded-[6px] bg-[#F2F4F6] text-[#4E5968] text-[11px] font-bold">
+                                    {Array.from(new Set(place.tags)).map((t, tagIdx) => (
+                                        <span key={`${t}-${tagIdx}`} className="px-2 py-0.5 rounded-[6px] bg-[#F2F4F6] text-[#4E5968] text-[11px] font-bold">
                                             #{t}
                                         </span>
                                     ))}

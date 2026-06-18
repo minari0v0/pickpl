@@ -2,6 +2,7 @@ import React from 'react';
 import DraggableScroll from '../ui/DraggableScroll';
 import { getCategoryIcon } from '../ui/Helpers';
 import { useLocationStore } from '../../store/locationStore';
+import InfiniteScrollTrigger from '../ui/InfiniteScrollTrigger';
 
 interface DiscoverViewProps {
     hidden: boolean;
@@ -10,6 +11,10 @@ interface DiscoverViewProps {
     onCardSaveClick: (place: any, e: React.MouseEvent) => void;
     onViewChange: (view: string) => void;
     onShowTermsModal: (type: 'terms' | 'privacy' | null) => void;
+    loadMore: () => void;
+    hasMore: boolean;
+    isLoadingMore: boolean;
+    isValidating: boolean;
 }
 
 export default function DiscoverView({
@@ -18,7 +23,11 @@ export default function DiscoverView({
     onPlaceClick,
     onCardSaveClick,
     onViewChange,
-    onShowTermsModal
+    onShowTermsModal,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    isValidating
 }: DiscoverViewProps) {
     const locationStore = useLocationStore();
 
@@ -182,6 +191,14 @@ export default function DiscoverView({
                                 </article>
                             );
                         })}
+                        {placesData.length > 0 && (
+                            <InfiniteScrollTrigger 
+                                onLoadMore={loadMore} 
+                                hasMore={hasMore} 
+                                isLoadingMore={isLoadingMore} 
+                                isValidating={isValidating}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

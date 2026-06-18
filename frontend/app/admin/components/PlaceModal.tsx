@@ -30,7 +30,7 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
     const [name, setName] = useState(place.name);
     const [category, setCategory] = useState(place.category);
     const [editorsComment, setEditorsComment] = useState(place.editorsComment || '');
-    const [tags, setTags] = useState<string[]>(place.tags);
+    const [tags, setTags] = useState<string[]>(Array.from(new Set(place.tags)));
     const [isPublished, setIsPublished] = useState<boolean>(place.isPublished !== false);
     const [newTagInput, setNewTagInput] = useState('');
 
@@ -76,7 +76,7 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
                 </div>
 
                 {/* 에디팅 폼 바디 (스크롤 가능) */}
-                <form onSubmit={handleSaveSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 no-scrollbar">
+                <form onSubmit={handleSaveSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 admin-scrollbar">
                     {/* 장소 기본 메타데이터 카드 */}
                     <div className="bg-[#F9FAFB] p-4.5 rounded-[18px] border border-[#F2F4F6] flex gap-4">
                         <div className="w-14 h-14 rounded-[12px] overflow-hidden shrink-0 bg-[#F2F4F6]">
@@ -167,9 +167,9 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
                         </div>
 
                         <div className="flex flex-wrap gap-2 mt-1">
-                            {tags.map(t => (
+                            {tags.map((t, tagIdx) => (
                                 <span
-                                    key={t}
+                                    key={`${t}-${tagIdx}`}
                                     className="px-2.5 py-1.5 rounded-[8px] bg-orange-50 border border-orange-100/60 text-orange-600 text-[12px] font-bold flex items-center gap-1.5"
                                 >
                                     #{t}

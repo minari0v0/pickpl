@@ -72,6 +72,19 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
     // 검색 필터 상태
     const [searchKeyword, setSearchKeyword] = useState("");
+    const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState("");
+    const [placesList, setPlacesList] = useState<any[]>(initialPlaces);
+    const [page, setPage] = useState<number>(0);
+    const [hasMore, setHasMore] = useState<boolean>(true);
+    const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+
+    // 검색어 디바운싱 (300ms)
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchKeyword(searchKeyword);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [searchKeyword]);
 
     // 토스트 관련 상태
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
@@ -183,6 +196,9 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         if (selectedTags.length > 0) {
             params.push(`tags=${selectedTags.map(encodeURIComponent).join(',')}`);
         }
+        if (debouncedSearchKeyword.trim() !== "") {
+            params.push(`keyword=${encodeURIComponent(debouncedSearchKeyword.trim())}`);
+        }
         if (locationStore.latitude !== null) {
             params.push(`latitude=${locationStore.latitude}`);
         }
@@ -190,14 +206,62 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             params.push(`longitude=${locationStore.longitude}`);
         }
         return params.length > 0 ? `?${params.join('&')}` : '';
-    }, [selectedTags, locationStore.latitude, locationStore.longitude]);
+    }, [selectedTags, debouncedSearchKeyword, locationStore.latitude, locationStore.longitude]);
+
+    // 필터 조건 변경 시 page=0 리셋 및 리스트 초기화
+    const filterKey = `${selectedTags.join(',')}_${debouncedSearchKeyword}_${locationStore.latitude}_${locationStore.longitude}`;
+    useEffect(() => {
+        setPage(0);
+        setHasMore(true);
         
-    const { data: fetchedPlaces } = useSWR(`http://localhost:8080/api/v1/places${queryString}`, fetcher, {
-        fallbackData: selectedTags.length === 0 && locationStore.latitude === null ? initialPlaces : undefined,
-        keepPreviousData: true
-    });
-    
-    const currentPlaces = fetchedPlaces || initialPlaces;
+        // 사용자가 검색어를 입력했거나 태그를 선택했을 때만 리스트를 비웁니다.
+        // 위치 갱신(마운트 직후 GPS 수신) 등 단순히 지도 정렬 기준만 바뀔 때는 리스트를 비우지 않고 유지하여 깜빡임을 방지합니다.
+        const isUserFiltering = selectedTags.length > 0 || debouncedSearchKeyword.trim() !== "";
+        if (isUserFiltering) {
+            setPlacesList([]);
+        }
+    }, [filterKey]);
+
+    // 최초 진입 시 필터가 없으면 page 0에 대해 SWR 호출 비활성화 (SSR 데이터 즉시 표시)
+    const isInitialLoad = page === 0 && selectedTags.length === 0 && debouncedSearchKeyword.trim() === "" && locationStore.latitude === null;
+
+    const { data: fetchedPageData, isValidating } = useSWR(
+        isInitialLoad ? null : `http://localhost:8080/api/v1/places${queryString}${queryString ? '&' : '?'}page=${page}&size=20`,
+        fetcher,
+        { keepPreviousData: false }
+    );
+
+    useEffect(() => {
+        if (isInitialLoad) {
+            setHasMore(initialPlaces.length >= 20);
+            return;
+        }
+
+        if (fetchedPageData) {
+            const newPlaces = fetchedPageData.content || [];
+            const isLast = fetchedPageData.last;
+            
+            setPlacesList(prev => {
+                if (page === 0) {
+                    return newPlaces;
+                } else {
+                    const existingIds = new Set(prev.map(p => p.id));
+                    const filteredNew = newPlaces.filter((p: any) => !existingIds.has(p.id));
+                    return [...prev, ...filteredNew];
+                }
+            });
+            setHasMore(!isLast);
+            setIsLoadingMore(false);
+        }
+    }, [fetchedPageData, page, isInitialLoad]);
+
+    const loadMore = () => {
+        if (!hasMore || isLoadingMore || isValidating) return;
+        setIsLoadingMore(true);
+        setPage(prev => prev + 1);
+    };
+        
+    const currentPlaces = placesList;
 
     // 북마크 폴더 구조 맵 변환
     const foldersMap = useMemo(() => {
@@ -229,19 +293,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     }, [currentPlaces, locationStore.permissionStatus, locationStore.fallbackPlace]);
 
     // 검색 결과 가공
-    const filteredPlaces = useMemo(() => {
-        let result = placesData;
-        if (searchKeyword.trim() !== "") {
-            const k = searchKeyword.toLowerCase();
-            result = result.filter((p: any) => 
-                p.name.toLowerCase().includes(k) || 
-                p.description.toLowerCase().includes(k) || 
-                p.tags.some((t: string) => t.toLowerCase().includes(k)) ||
-                (p.location && p.location.toLowerCase().includes(k))
-            );
-        }
-        return result;
-    }, [placesData, searchKeyword]);
+    const filteredPlaces = placesData;
 
     const toggleTag = (tag: string) => {
         setSelectedTags(prev => prev.includes(tag) ? prev.filter((t: string) => t !== tag) : [...prev, tag]);
@@ -676,6 +728,10 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         onCardSaveClick={handleCardSaveClick}
                         onViewChange={setActiveView}
                         onShowTermsModal={setShowTermsModal}
+                        loadMore={loadMore}
+                        hasMore={hasMore}
+                        isLoadingMore={isLoadingMore}
+                        isValidating={isValidating}
                     />
 
                     <ExploreView
@@ -689,6 +745,10 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         onCardSaveClick={handleCardSaveClick}
                         onViewChange={setActiveView}
                         setSelectedTags={setSelectedTags}
+                        loadMore={loadMore}
+                        hasMore={hasMore}
+                        isLoadingMore={isLoadingMore}
+                        isValidating={isValidating}
                     />
 
                     <CollectionView

@@ -86,11 +86,46 @@ body {
 .font-logo    { font-family: var(--font-logo); }
 
 /* ── Scrollbar ──────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background: #D1D5DB;
   border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* ── Admin Dashboard Scrollbar ──────────────────────────────────── */
+.admin-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.admin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-scrollbar::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.admin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.admin-scrollbar::-webkit-scrollbar-thumb:active {
+  background: #4B5563;
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
 
 /* ── Transitions ────────────────────────────────────────────────── */

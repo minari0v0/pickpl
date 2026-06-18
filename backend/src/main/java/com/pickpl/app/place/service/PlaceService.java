@@ -114,6 +114,40 @@ public class PlaceService {
     }
 
     /**
+     * 태그와 키워드 필터링 및 페이징이 통합된 공간 목록 조회 메소드.
+     */
+    public org.springframework.data.domain.Page<PlaceSummaryResponse> findPlacesByTagsAndKeyword(
+            List<String> tags,
+            String keyword,
+            Long userId,
+            Double latitude,
+            Double longitude,
+            org.springframework.data.domain.Pageable pageable) {
+        Set<Long> scrappedIds = getScrappedPlaceIds(userId);
+        java.util.Map<Long, String> vibeVotesMap = getVibeVotesMap(userId);
+
+        boolean hasTags = tags != null && !tags.isEmpty();
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+
+        org.springframework.data.domain.Page<com.pickpl.app.domain.place.Place> placesPage;
+
+        if (hasTags && hasKeyword) {
+            placesPage = placeRepository.findPlacesMatchingAllTagsAndKeyword(tags, tags.size(), keyword.trim(), pageable);
+        } else if (hasTags) {
+            placesPage = placeRepository.findPlacesMatchingAllTags(tags, tags.size(), pageable);
+        } else if (hasKeyword) {
+            placesPage = placeRepository.findPlacesByKeyword(keyword.trim(), pageable);
+        } else {
+            placesPage = placeRepository.findAllByIsPublishedTrue(pageable);
+        }
+
+        return placesPage.map(place -> {
+            String distanceStr = formatDistance(latitude, longitude, place.getLatitude(), place.getLongitude());
+            return PlaceSummaryResponse.from(place, scrappedIds.contains(place.getId()), vibeVotesMap.get(place.getId()), distanceStr);
+        });
+    }
+
+    /**
      * ID로 단건 공간 상세 조회.
      */
     public com.pickpl.app.place.dto.PlaceDetailResponse findPlaceById(Long id, Long userId, Double latitude, Double longitude) {

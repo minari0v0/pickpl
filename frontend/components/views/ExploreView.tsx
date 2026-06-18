@@ -2,6 +2,7 @@ import React from 'react';
 import DraggableScroll from '../ui/DraggableScroll';
 import { getCategoryIcon, getVibeBadge } from '../ui/Helpers';
 import { useLocationStore } from '../../store/locationStore';
+import InfiniteScrollTrigger from '../ui/InfiniteScrollTrigger';
 
 export const TAG_CATEGORIES = [
     { id: 'popular', title: "요즘 뜨는 취향", tags: ["대형카페", "노트북하기좋은", "햇살맛집", "디저트맛집", "뷰맛집", "데이트코스"] },
@@ -20,6 +21,10 @@ interface ExploreViewProps {
     onCardSaveClick: (place: any, e: React.MouseEvent) => void;
     onViewChange: (view: string) => void;
     setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
+    loadMore: () => void;
+    hasMore: boolean;
+    isLoadingMore: boolean;
+    isValidating: boolean;
 }
 
 export default function ExploreView({
@@ -32,7 +37,11 @@ export default function ExploreView({
     onPlaceClick,
     onCardSaveClick,
     onViewChange,
-    setSelectedTags
+    setSelectedTags,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    isValidating
 }: ExploreViewProps) {
     const locationStore = useLocationStore();
 
@@ -415,6 +424,14 @@ export default function ExploreView({
                                 </article>
                             );
                         })}
+                        {filteredPlaces.length > 0 && (
+                            <InfiniteScrollTrigger 
+                                onLoadMore={loadMore} 
+                                hasMore={hasMore} 
+                                isLoadingMore={isLoadingMore} 
+                                isValidating={isValidating}
+                            />
+                        )}
 
                         {filteredPlaces.length === 0 && (
                             <div className="text-center py-20 lg:py-24 bg-white lg:rounded-[32px] lg:border border-[#F2F4F6] mt-4 shadow-sm">

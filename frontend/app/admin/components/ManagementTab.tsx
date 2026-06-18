@@ -255,7 +255,14 @@ export default function ManagementTab({
 
                                     <div className="flex gap-4">
                                         <div className="w-20 h-20 rounded-[16px] overflow-hidden shrink-0 bg-[#F2F4F6]">
-                                            <img src={place.thumbnailUrl} className="w-full h-full object-cover" alt="" />
+                                            <img 
+                                                src={place.thumbnailUrl} 
+                                                className="w-full h-full object-cover" 
+                                                alt="" 
+                                                onError={(e) => {
+                                                    e.currentTarget.src = '/default_place.png';
+                                                }}
+                                            />
                                         </div>
                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                                             <span className="text-[11px] font-bold text-[#8B95A1] uppercase tracking-wider">{place.category}</span>

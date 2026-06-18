@@ -34,7 +34,8 @@ async function getPlaces(): Promise<Place[]> {
       console.error(`[API] /api/places 오류: ${res.status}`);
       return [];
     }
-    return res.json();
+    const data = await res.json();
+    return data.content || [];
   } catch (err) {
     console.error("[API] 백엔드 연결 실패 (localhost:8080)", err);
     return [];

@@ -62,4 +62,12 @@ export const TentIcon = ({ className = "w-5 h-5" }: IconProps) => (
     </svg>
 );
 
+export const CultureIcon = ({ className = "w-5 h-5" }: IconProps) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z" fill="currentColor" fillOpacity="0.15" />
+        <line x1="9" y1="9" x2="9" y2="15" strokeDasharray="2 2" />
+        <line x1="15" y1="9" x2="15" y2="15" strokeDasharray="2 2" />
+    </svg>
+);
+
 

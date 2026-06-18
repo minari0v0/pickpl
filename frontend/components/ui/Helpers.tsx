@@ -1,5 +1,5 @@
 import React from 'react';
-import { CafeIcon, RestaurantIcon, StudyIcon, CocktailIcon, SparkleIcon, NatureIcon, TentIcon } from './Icons';
+import { CafeIcon, RestaurantIcon, StudyIcon, CocktailIcon, SparkleIcon, NatureIcon, TentIcon, CultureIcon } from './Icons';
 
 // --- 썸네일 콜라주 (Collage) 생성 함수 ---
 export const renderFolderCover = (scraps: any[]) => {
@@ -13,7 +13,7 @@ export const renderFolderCover = (scraps: any[]) => {
         );
     }
     
-    const imageUrls = scraps.map(s => s.place?.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800");
+    const imageUrls = scraps.map(s => s.place?.thumbnailUrl || "/default_place.png");
     
     if (imageUrls.length === 1) {
         return (
@@ -78,6 +78,9 @@ export const getCategoryIcon = (category: string = '', name: string = '') => {
     if (cat === '술집') {
         return { icon: <CocktailIcon />, bg: "bg-[#FFF9E6]", text: "text-[#B38000]" }; // Muted Gold
     }
+    if (cat === '문화/체험') {
+        return { icon: <CultureIcon />, bg: "bg-[#F5F3FF]", text: "text-[#7C3AED]" }; // Violet / Purple
+    }
 
     const combined = `${category} ${name}`.toLowerCase();
     
@@ -106,6 +109,24 @@ export const getCategoryIcon = (category: string = '', name: string = '') => {
         combined.includes('캠핑')
     ) {
         return { icon: <TentIcon />, bg: "bg-[#F3E8FF]", text: "text-[#8B5CF6]" }; // Deep Neon Purple (Midnight vibe)
+    }
+
+    // 3. 문화 / 예술 / 전시 / 클래스 (미술관, 박물관, 팝업, 공방 등)
+    if (
+        combined.includes('미술관') || 
+        combined.includes('박물관') || 
+        combined.includes('전시관') || 
+        combined.includes('아쿠아리움') || 
+        combined.includes('갤러리') || 
+        combined.includes('공방') || 
+        combined.includes('클래스') || 
+        combined.includes('체험') ||
+        combined.includes('뮤지엄') ||
+        combined.includes('아트') ||
+        combined.includes('시네마') ||
+        combined.includes('영화관')
+    ) {
+        return { icon: <CultureIcon />, bg: "bg-[#F5F3FF]", text: "text-[#7C3AED]" }; // Violet / Purple
     }
 
     if (combined.includes('카페') || combined.includes('디저트') || combined.includes('커피') || combined.includes('베이커리')) {
@@ -189,7 +210,7 @@ export const mapPlaceToData = (place: any) => {
 
     const finalThumbnail = place.thumbnailUrl && (place.thumbnailUrl.includes('pstatic.net') || place.thumbnailUrl.includes('naver.net'))
         ? place.thumbnailUrl.replace(/type=[a-zA-Z0-9_]+/g, 'type=w560_sharpen')
-        : (place.thumbnailUrl || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800");
+        : (place.thumbnailUrl || "/default_place.png");
 
     if (imageUrls.length === 0) {
         imageUrls = [finalThumbnail];

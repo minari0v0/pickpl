@@ -488,7 +488,7 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
                 </header>
 
                 {/* 뷰 콘텐츠 컨테이너 */}
-                <div className="flex-1 p-8 overflow-y-auto no-scrollbar relative z-0">
+                <div className="flex-1 p-8 overflow-y-auto admin-scrollbar relative z-0">
                     <div className="max-w-[1440px] mx-auto w-full flex flex-col gap-6 bg-white border border-[#E5E8EB] p-8 rounded-[32px] shadow-sm mb-10">
                         {/* 전역 피드백 메세지 */}
                         {statusMsg && (
