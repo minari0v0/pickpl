@@ -44,6 +44,15 @@
   1. 벌크 삭제 실행 시, 먼저 관련 `VibeVote` 데이터를 `vibeVoteRepository.deleteByPlaceIdIn(ids)`를 통해 명시적으로 사전 삭제하도록 구성함.
   2. 벌크 쿼리(`deleteAllByIdInBatch`) 대신, 영속 객체 목록을 로드하여 `placeRepository.deleteAll(places)`를 실행함으로써 JPA Cascade 영속성 전이를 유도하여 연관된 `PlaceTagMap`, `Scrap` 데이터가 먼저 깨끗하게 청소된 후 정상 삭제되도록 조치함.
 
+### 페이징 무한 스크롤 도입 시 JPQL 비표준 LIKE 구문으로 인한 백엔드 컨텍스트 초기화 실패 및 프론트 데이터 증발 현상
+* **오류 현상**: 페이징 및 무한 스크롤 기능을 도입한 후 메인 화면(홈/발견)에 처음 접속하거나 F5 새로고침을 하면 약 0.1초 동안만 데이터가 잠깐 노출되었다가 즉시 사라진 뒤, `"데이터가 없습니다. 백엔드를 확인해주세요."` 문구가 표시되고 더 이상 장소 리스트가 노출되지 않으며 스크롤 로딩도 되지 않는 현상. 백엔드 터미널에서도 2~3회 조회 로그가 찍힌 후 먹통이 됨.
+* **원인**:
+  1. **백엔드 원인**: `PlaceRepository.java` 내에 추가된 페이징용 JPQL 쿼리(`findPlacesByKeyword`, `findPlacesMatchingAllTagsAndKeyword`) 작성 시 `LIKE %:keyword%`와 같은 비표준 바인딩 형식을 사용함. 이로 인해 Spring Boot 기동 시 Hibernate의 JPQL 파서가 구문 검증(Query Syntax Validation) 과정에서 에러를 유발해 애플리케이션 컨텍스트 초기화가 정상적으로 완수되지 않고 예외가 발생함.
+  2. **프론트엔드 원인**: 브라우저에서 최초 접속 시 SSR을 통해 초기 데이터를 0.1초 동안 표시하는 것에는 성공하지만, 컴포넌트 마운트가 완료되자마자 브라우저의 GPS Geolocation API 센서 작동(또는 Fallback 좌표 로딩)에 의해 사용자 위경도 정보가 업데이트됨. 이에 따라 필터 기준이 변경되어 `isInitialLoad` 조건이 `false`로 풀리게 되고 `page=0`에 대한 SWR API 갱신 요청이 백엔드로 즉시 날아감. 그러나 백엔드 서버가 위 JPQL 구문 오류로 인해 비정상 상태이거나 쿼리 실행 실패를 반환하므로, SWR이 빈 응답 또는 에러를 반환받아 화면상에서 기존에 표시되던 SSR 데이터(`initialPlaces`)를 싹 덮어써 증발시키는 현상이 일어남.
+* **해결 방법**:
+  1. `PlaceRepository.java`의 JPQL 문법 내 `LIKE %:keyword%`로 선언된 모든 구문을 데이터베이스 및 Hibernate 표준 형식인 `LIKE CONCAT('%', :keyword, '%')` 형태로 치환함.
+  2. Gradle 빌드 명령(`.\gradlew.bat compileJava`)을 실행해 수정된 쿼리 선언 및 컴파일에 오류가 없음을 1차 확인한 뒤, 사용자에게 작동 중인 백엔드 서버 프로세스(`make back`)를 완전히 끄고 재기동하도록 가이드하여 수정을 백엔드 런타임에 최종 반영함. 이후 F5 새로고침 시 무한 스크롤 및 초기 로딩이 매끄럽고 안정적으로 작동하는 것을 검증함.
+
 ---
 
 ## 데이터 크롤링 (Data Crawling / Pipeline)

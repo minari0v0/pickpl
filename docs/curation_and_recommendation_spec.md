@@ -281,8 +281,94 @@ CREATE TABLE vibe_planner_session (
 
 ---
 
-## 4. 결론 및 향후 로드맵
+## 4. 실시간 인기 무드 집계 및 캐싱 아키텍처 (Real-time Popular Moods)
+
+사용자들의 실시간 공간 관심도 및 검색 트렌드를 분석하여 메인 페이지와 공간 탐색 탭에 '실시간 인기 무드(태그)' 순위를 제공합니다. 대용량 트래픽 상황에서도 데이터베이스 부하를 최소화하기 위해 **슬라이딩 윈도우 기반 배치 캐싱(Batch Caching) 아키텍처**를 사용합니다.
+
+### 4.1 시스템 아키텍처 흐름 (Data Flow)
+
+사용자가 페이지를 조회할 때마다 매번 수만 건의 로그 데이터를 직접 집계(`GROUP BY`)하지 않고, 백엔드 스케줄러가 주기적으로 집계해 둔 요약본을 캐싱 조회하는 구조입니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 사용자 앱
+    participant App as Spring Boot 백엔드
+    participant DB_Log as 로그 테이블 (RDB)
+    participant DB_Cache as 집계 캐시 테이블 (RDB)
+
+    Note over User, DB_Log: 1. 이벤트 로그 수집 (사용자 행동 발생 시)
+    User->>App: 특정 무드 태그 클릭 / 검색
+    App-->>DB_Log: INSERT INTO tag_click_log (비동기 로그 기록)
+
+    Note over App, DB_Cache: 2. 배치 집계 및 캐싱 (30분 주기)
+    loop Every 30 Minutes
+        App->>DB_Log: SELECT COUNT (최근 24시간 범위 집계)
+        DB_Log-->>App: 태그별 누적 수치 반환
+        App->>DB_Cache: TRUNCATE & INSERT (인기 무드 Top 10 저장)
+    end
+
+    Note over User, DB_Cache: 3. 인기 무드 조회 (홈페이지 접속 시)
+    User->>App: 메인 페이지 / 탐색 탭 진입 (인기 무드 요청)
+    App->>DB_Cache: SELECT * FROM popular_mood_summary (인덱싱 고속 조회)
+    DB_Cache-->>App: Top 10 태그 리스트 반환 (1ms 이내)
+    App-->>User: 실시간 인기 무드 렌더링
+```
+
+### 4.2 데이터베이스 스키마 설계
+
+#### A. tag_click_log (사용자 이벤트 로그 테이블 - 무제한 적재)
+사용자의 실시간 행동 패턴을 로깅하는 물리 테이블입니다. (추후 데이터 분석을 위해 파티셔닝 적용 가능)
+```sql
+CREATE TABLE tag_click_log (
+    log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NULL,               -- 비로그인 유저인 경우 NULL 허용
+    tag_name VARCHAR(50) NOT NULL,     -- 클릭된 태그명 (예: '코지한')
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_created_at (created_at)  -- 배치 쿼리 속도 향상을 위한 인덱스
+);
+```
+
+#### B. popular_mood_summary (집계 캐시 테이블 - 최대 10~20행)
+홈페이지 접속 시 조회되는 고속 읽기 전용 테이블입니다.
+```sql
+CREATE TABLE popular_mood_summary (
+    ranking INT PRIMARY KEY,           -- 1위부터 10위까지 순위 (1~10)
+    tag_name VARCHAR(50) NOT NULL,     -- 태그명
+    score INT NOT NULL,                -- 가중치 점수 또는 클릭 횟수
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 4.3 배치 집계 알고리즘 (Spring Boot Scheduler)
+
+스케줄러는 30분 단위로 최근 24시간 동안 축적된 로그를 스캔하여 결과를 교체(TRUNCATE & INSERT) 처리합니다.
+```java
+@Scheduled(cron = "0 0/30 * * * *") // 30분 간격 실행
+@Transactional
+public void refreshPopularMoods() {
+    // 1. 최근 24시간 동안의 클릭 횟수 집계
+    List<PopularMoodDto> topMoods = tagClickLogRepository.findTop10MoodsInLast24Hours();
+
+    // 2. 캐시 테이블 갱신
+    popularMoodSummaryRepository.truncateTable();
+    for (int i = 0; i < topMoods.size(); i++) {
+        popularMoodSummaryRepository.save(new PopularMoodSummary(
+            i + 1, // ranking
+            topMoods.get(i).getTagName(),
+            topMoods.get(i).getClickCount()
+        ));
+    }
+}
+```
+
+---
+
+## 5. 결론 및 향후 로드맵
+
 본 명세서는 픽플의 프리미엄 감성 정체성을 기술적으로 뒷받침하는 핵심 근간이 될 것입니다. 
 1. **1단계**: 본 설계에 기반한 데이터 바인딩 스키마를 MySQL에 반영.
 2. **2단계**: Spring Boot WebSocket 설정 및 STOMP 메시지 브로커 통합.
 3. **3단계**: 외부 기상 정보 연계 크론잡 개발 및 사용자 무드 프로파일링 TF-IDF 유사도 모델 구현.
+4. **4단계**: 시간 감쇠를 반영한 인기 무드 스케줄러 및 배치 캐싱 기능 개발.
+
