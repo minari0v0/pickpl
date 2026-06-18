@@ -19,7 +19,7 @@ class QuotaExhaustedError(Exception):
 # Pydantic을 활용한 Gemini Structured Output 스키마 정의
 class PlaceAnalysis(BaseModel):
     externalId: str = Field(description="장소의 고유 식별자(externalId)")
-    category: str = Field(description="1차 카테고리 대분류. 반드시 다음 4개 중 하나여야 함: '음식점', '카페/디저트', '술집', '자연명소'")
+    category: str = Field(description="1차 카테고리 대분류. 반드시 다음 5개 중 하나여야 함: '음식점', '카페/디저트', '술집', '자연명소', '문화/체험'")
     subCategory: str = Field(description="2차 카테고리 소분류. 예: '한식', '일식', '중식', '양식', '아시안', '이자카야', '오뎅바', '바(Bar)', '와인바', '펍/맥주', '요리주점', '포장마차', '기타술집', '공원', '산', '바다' 등 정형화된 분류")
     aiMoodSummary: str = Field(description="장소의 분위기를 트렌디하게 요약한 1~2줄 글 (최대 100자)")
     moodTags: List[str] = Field(description="감성 분위기 태그 풀에서 선정한 1~3개 태그 리스트")

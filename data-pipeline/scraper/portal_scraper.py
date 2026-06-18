@@ -616,7 +616,7 @@ class PortalScraper:
                     logger.info(f"네이버 플레이스 상세 로드 중: {detail_url}")
                     name = "네이버 공간"
                     addr = "서울 마포구"
-                    photo_url = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500"
+                    photo_url = "/default_place.png"
                     category = "공간"
                     reviews = []
                     
@@ -834,8 +834,8 @@ class PortalScraper:
                 "latitude": 37.5489,
                 "longitude": 126.9182,
                 "category": "mood",
-                "thumbnailUrl": "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80",
-                "imageUrls": "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80",
+                "thumbnailUrl": "/default_place.png",
+                "imageUrls": "/default_place.png",
                 "reviews": [
                     "매장 내부에 식물이 가득해서 힐링되는 기분이에요. 완전 플랜테리어 정석!",
                     "햇살이 엄청 잘 들어오는 햇살맛집입니다. 통창 뷰가 예술이에요.",
