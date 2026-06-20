@@ -15,12 +15,15 @@ export const CafeIcon = ({ className = "w-5 h-5" }: IconProps) => (
 );
 
 export const RestaurantIcon = ({ className = "w-5 h-5" }: IconProps) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 17h20" />
-        <path d="M20 17c0-4.418-3.582-8-8-8s-8 3.582-8 8" fill="currentColor" fillOpacity="0.15" />
-        <path d="M12 9V6" />
-        <circle cx="12" cy="5" r="1.5" fill="currentColor" />
-        <path d="M4 17v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        {/* 왼쪽 포크 (Fork) - 스케일을 위아래/좌우로 조금 더 키우고 선 두께는 1.5 유지 */}
+        <path d="M5 2.5v5.5c0 1.8 1.5 2.8 3 2.8s3-1 3-2.8V2.5" />
+        <line x1="8" y1="2.5" x2="8" y2="8" />
+        <line x1="8" y1="10.8" x2="8" y2="21.5" />
+        
+        {/* 오른쪽 나이프 (Knife) - 스케일을 위아래/좌우로 조금 더 키우고 선 두께는 1.5 유지 */}
+        <path d="M17.5 2.5v10a2 2 0 0 1-2 2h-0.5V2.5c1.2-0.5 2.5 0 2.5 0z" />
+        <line x1="16.5" y1="14.5" x2="16.5" y2="21.5" />
     </svg>
 );
 

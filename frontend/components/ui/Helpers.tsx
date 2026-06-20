@@ -73,7 +73,7 @@ export const getCategoryIcon = (category: string = '', name: string = '') => {
         return { icon: <CafeIcon />, bg: "bg-[#FFF4EE]", text: "text-[#E65C00]" }; // Warm Terracotta
     }
     if (cat === '음식점') {
-        return { icon: <RestaurantIcon />, bg: "bg-[#FFF0F0]", text: "text-[#E63939]" }; // Warm Coral
+        return { icon: <RestaurantIcon />, bg: "bg-[#FFF0F2]", text: "text-[#E94E77]" }; // Soft Pastel Rose / Pink
     }
     if (cat === '술집') {
         return { icon: <CocktailIcon />, bg: "bg-[#FFF9E6]", text: "text-[#B38000]" }; // Muted Gold
