@@ -35,4 +35,6 @@ public interface ScrapRepository extends JpaRepository<Scrap, Long> {
     @org.springframework.data.jpa.repository.Query("DELETE FROM Scrap s WHERE s.userId = :userId AND s.folderName = :folderName")
     void deleteFolder(@org.springframework.data.repository.query.Param("userId") Long userId, 
                       @org.springframework.data.repository.query.Param("folderName") String folderName);
+
+    void deleteByUserId(Long userId);
 }

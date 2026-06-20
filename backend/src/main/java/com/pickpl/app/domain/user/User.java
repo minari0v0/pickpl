@@ -40,8 +40,11 @@ public class User extends BaseTimeEntity {
     @Column
     private String providerId; // ID from OAuth provider (Google sub, Kakao id, etc.)
 
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
     @Builder
-    public User(String email, String password, String nickname, String profileImageUrl, Role role, AuthProvider provider, String providerId) {
+    public User(String email, String password, String nickname, String profileImageUrl, Role role, AuthProvider provider, String providerId, Boolean emailVerified) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
@@ -49,6 +52,7 @@ public class User extends BaseTimeEntity {
         this.role = role != null ? role : Role.USER;
         this.provider = provider != null ? provider : AuthProvider.LOCAL;
         this.providerId = providerId;
+        this.emailVerified = emailVerified != null ? emailVerified : (this.provider != AuthProvider.LOCAL);
     }
 
     public void updateProfile(String nickname, String profileImageUrl) {
@@ -62,5 +66,13 @@ public class User extends BaseTimeEntity {
 
     public void updateRole(Role role) {
         this.role = role;
+    }
+
+    public void changePassword(String password) {
+        this.password = password;
+    }
+
+    public void verifyEmail() {
+        this.emailVerified = true;
     }
 }

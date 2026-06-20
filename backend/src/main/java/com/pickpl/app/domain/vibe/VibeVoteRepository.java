@@ -10,4 +10,5 @@ public interface VibeVoteRepository extends JpaRepository<VibeVote, Long> {
     List<VibeVote> findByUserId(Long userId);
     void deleteByPlaceId(Long placeId);
     void deleteByPlaceIdIn(List<Long> placeIds);
+    void deleteByUserId(Long userId);
 }
