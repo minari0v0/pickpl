@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { getProfileBgClass } from '../ui/Helpers';
+import MyPageAccountSettingsView from './MyPageAccountSettingsView';
 
 interface MyPageViewProps {
     hidden: boolean;
     nickname: string;
     profileImage: string;
+    userEmail: string;
+    provider: string;
+    emailVerified: boolean;
+    linkedProviders: string[];
+    refreshUserInfo: () => Promise<void>;
     scrapsData: any[] | undefined;
     foldersMap: { [key: string]: any[] };
     onViewChange: (view: string) => void;
@@ -13,12 +19,18 @@ interface MyPageViewProps {
     onAppSettingsClick: () => void;
     onLogout: () => void;
     onShowTermsModal: (type: 'terms' | 'privacy' | null) => void;
+    showToast: (msg: string, type?: 'success' | 'warning' | 'error') => void;
 }
 
 export default function MyPageView({
     hidden,
     nickname,
     profileImage,
+    userEmail,
+    provider,
+    emailVerified,
+    linkedProviders,
+    refreshUserInfo,
     scrapsData,
     foldersMap,
     onViewChange,
@@ -26,8 +38,35 @@ export default function MyPageView({
     onAccountSettingsClick,
     onAppSettingsClick,
     onLogout,
-    onShowTermsModal
+    onShowTermsModal,
+    showToast
 }: MyPageViewProps) {
+    const [activeSubView, setActiveSubView] = useState<'main' | 'accountSettings'>('main');
+
+    const handleProfileEditClick = () => {
+        if (provider === 'LOCAL' && !emailVerified) {
+            showToast("이메일 인증을 완료해야 프로필 수정을 이용할 수 있습니다.", "warning");
+            setActiveSubView('accountSettings');
+        } else {
+            onAccountSettingsClick();
+        }
+    };
+
+    if (activeSubView === 'accountSettings') {
+        return (
+            <MyPageAccountSettingsView
+                hidden={hidden}
+                userEmail={userEmail}
+                provider={provider}
+                emailVerified={emailVerified}
+                linkedProviders={linkedProviders}
+                refreshUserInfo={refreshUserInfo}
+                onBack={() => setActiveSubView('main')}
+                onLogout={onLogout}
+                showToast={showToast}
+            />
+        );
+    }
     
     return (
         <div 
@@ -50,9 +89,40 @@ export default function MyPageView({
             </header>
 
             <div className="w-full lg:max-w-[800px] px-5 lg:px-8 py-6 lg:py-10 flex-1 flex flex-col gap-6 lg:gap-8 pb-[120px]">
+                {/* 미인증 경고 배너 */}
+                {provider === 'LOCAL' && !emailVerified && (
+                    <div 
+                        onClick={() => setActiveSubView('accountSettings')}
+                        className="w-full bg-[#FFF0EB] hover:bg-[#FFE5DC] border border-[#FFD2C4] rounded-[20px] p-4 flex items-center justify-between cursor-pointer transition-all duration-200 shadow-sm animate-fade-in group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className="text-[20px]">⚠️</span>
+                            <div className="text-left">
+                                <p className="font-bold text-[14px] text-[#FF5F2E]">이메일 미인증 안내</p>
+                                <p className="text-[12.5px] text-[#8C5240] font-medium mt-0.5">안전한 프로필 설정 및 소셜 통합 연동을 위해 인증을 완료해 주세요.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-[#FF5F2E] font-bold text-[13px] shrink-0 group-hover:translate-x-1 transition-transform">
+                            <span>인증하러 가기</span>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                    </div>
+                )}
+
                 {/* 1. 프로필 카드 */}
                 <div className="bg-white rounded-[28px] lg:rounded-[32px] p-6 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.015)] border border-[#F2F4F6] flex flex-col sm:flex-row items-center gap-6 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl"></div>
+                    <button 
+                        onClick={handleProfileEditClick}
+                        className="absolute top-4 right-4 sm:top-6 sm:right-6 px-3 py-1.5 rounded-[12px] bg-[#F2F4F6] hover:bg-[#E5E8EB] active:scale-95 text-[#4E5968] font-bold text-[12px] transition-all flex items-center gap-1 shadow-sm"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        <span className="hidden sm:inline">프로필 수정</span>
+                    </button>
                     <div className={`w-20 h-20 lg:w-24 lg:h-24 rounded-full overflow-hidden shrink-0 border-4 border-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-colors duration-300 ${getProfileBgClass(profileImage)}`}>
                         <img src={profileImage ? profileImage.split('?')[0] : "/profile_cat.png"} alt="profile" className="w-full h-full object-cover" />
                     </div>
@@ -182,12 +252,12 @@ export default function MyPageView({
                     
                     <div className="flex flex-col">
                         <button 
-                            onClick={onAccountSettingsClick}
+                            onClick={() => setActiveSubView('accountSettings')}
                             className="flex items-center justify-between w-full py-4 px-2 hover:bg-[#F9FAFB] rounded-[14px] transition-colors group text-left"
                         >
                             <span className="font-bold text-[15px] text-[#4E5968] group-hover:text-[#191F28] transition-colors">계정 설정</span>
                             <div className="flex items-center gap-1.5">
-                                <span className="text-[13px] text-[#8B95A1] font-semibold">계정 조회 및 수정</span>
+                                <span className="text-[13px] text-[#8B95A1] font-semibold">비밀번호 변경, 탈퇴 등</span>
                                 <svg className="w-4 h-4 text-[#8B95A1]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                                 </svg>

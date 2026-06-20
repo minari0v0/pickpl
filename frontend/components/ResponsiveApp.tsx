@@ -38,8 +38,11 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [nickname, setNickname] = useState("미나리");
     const [userEmail, setUserEmail] = useState("");
+    const [provider, setProvider] = useState("LOCAL");
     const [profileImage, setProfileImage] = useState("/profile_cat.png");
     const [isMounted, setIsMounted] = useState(false);
+    const [emailVerified, setEmailVerified] = useState(false);
+    const [linkedProviders, setLinkedProviders] = useState<string[]>([]);
     
     // 모달 표시 상태
     const [showAccountModal, setShowAccountModal] = useState(false);
@@ -150,28 +153,39 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         }
     }, [authStore.isLoggedIn, authStore.nickname]);
 
+    const refreshUserInfo = async () => {
+        if (!isLoggedIn) return;
+        try {
+            const res = await axiosInstance.get('/auth/me');
+            if (res.data) {
+                if (res.data.nickname) {
+                    setNickname(res.data.nickname);
+                    localStorage.setItem("nickname", res.data.nickname);
+                }
+                if (res.data.email) {
+                    setUserEmail(res.data.email);
+                }
+                if (res.data.profileImageUrl) {
+                    setProfileImage(res.data.profileImageUrl);
+                }
+                if (res.data.provider) {
+                    setProvider(res.data.provider);
+                }
+                if (res.data.emailVerified !== undefined) {
+                    setEmailVerified(res.data.emailVerified);
+                }
+                if (res.data.linkedProviders) {
+                    setLinkedProviders(res.data.linkedProviders);
+                }
+            }
+        } catch (err) {
+            console.error("사용자 정보 조회 실패:", err);
+        }
+    };
+
     // 내 정보 로드
     useEffect(() => {
-        if (isLoggedIn) {
-            axiosInstance.get('/auth/me')
-                .then(res => {
-                    if (res.data) {
-                        if (res.data.nickname) {
-                            setNickname(res.data.nickname);
-                            localStorage.setItem("nickname", res.data.nickname);
-                        }
-                        if (res.data.email) {
-                            setUserEmail(res.data.email);
-                        }
-                        if (res.data.profileImageUrl) {
-                            setProfileImage(res.data.profileImageUrl);
-                        }
-                    }
-                })
-                .catch(err => {
-                    console.error("사용자 정보 조회 실패:", err);
-                });
-        }
+        refreshUserInfo();
     }, [isLoggedIn]);
 
     // 로그인 완료 토스트 확인
@@ -773,6 +787,11 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         hidden={activeView !== 'mypage'}
                         nickname={nickname}
                         profileImage={profileImage}
+                        userEmail={userEmail}
+                        provider={provider}
+                        emailVerified={emailVerified}
+                        linkedProviders={linkedProviders}
+                        refreshUserInfo={refreshUserInfo}
                         scrapsData={scrapsData}
                         foldersMap={foldersMap}
                         onViewChange={setActiveView}
@@ -781,6 +800,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         onAppSettingsClick={() => setShowSettingsModal(true)}
                         onLogout={handleLogout}
                         onShowTermsModal={setShowTermsModal}
+                        showToast={showToast}
                     />
                 </main>
             </div>
