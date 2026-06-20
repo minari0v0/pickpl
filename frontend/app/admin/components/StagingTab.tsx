@@ -41,6 +41,7 @@ export default function StagingTab({
                 latitude: Number(p.latitude) || 37.55,
                 longitude: Number(p.longitude) || 126.92,
                 category: p.category || '공간',
+                subCategory: p.subCategory || '',
                 thumbnailUrl: p.thumbnailUrl || '/default_place.png',
                 imageUrls: p.imageUrls || p.thumbnailUrl || '',
                 reviews: Array.isArray(p.reviews) ? p.reviews : [],

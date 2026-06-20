@@ -10,6 +10,7 @@ export interface PlaceStagingData {
     latitude: number;
     longitude: number;
     category: string;
+    subCategory?: string;
     thumbnailUrl: string;
     imageUrls: string;
     reviews: string[];

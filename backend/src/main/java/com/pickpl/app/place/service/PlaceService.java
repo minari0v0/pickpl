@@ -175,6 +175,12 @@ public class PlaceService {
                 com.pickpl.app.domain.place.Place place = existingOpt.get();
                 place.setLatitude(data.latitude());
                 place.setLongitude(data.longitude());
+                if (data.subCategory() != null) {
+                    place.setSubCategory(data.subCategory());
+                }
+                if (data.aiMoodSummary() != null) {
+                    place.setAiMoodSummary(data.aiMoodSummary());
+                }
                 placeRepository.save(place);
                 count++;
                 continue;
@@ -228,6 +234,17 @@ public class PlaceService {
             java.util.Optional<com.pickpl.app.domain.place.Place> existingPlaceOpt = placeRepository.findByExternalId(data.externalId());
 
             if (existingPlaceOpt.isPresent()) {
+                com.pickpl.app.domain.place.Place place = existingPlaceOpt.get();
+                place.setLatitude(data.latitude());
+                place.setLongitude(data.longitude());
+                if (data.subCategory() != null) {
+                    place.setSubCategory(data.subCategory());
+                }
+                if (data.aiMoodSummary() != null) {
+                    place.setAiMoodSummary(data.aiMoodSummary());
+                }
+                placeRepository.save(place);
+                count++;
                 continue;
             }
 
