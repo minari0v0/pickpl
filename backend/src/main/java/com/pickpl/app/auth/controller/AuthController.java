@@ -94,4 +94,100 @@ public class AuthController {
         com.pickpl.app.auth.dto.UserResponse response = authService.updateProfile(userId, request);
         return ResponseEntity.ok(response);
     }
+
+    @Operation(summary = "비밀번호 변경", description = "일반 로그인 회원의 비밀번호를 변경합니다.")
+    @PostMapping("/password")
+    public ResponseEntity<Void> changePassword(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails,
+            @RequestBody com.pickpl.app.auth.dto.PasswordChangeRequest request) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        authService.changePassword(userId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "회원 탈퇴", description = "현재 로그인된 회원의 계정을 삭제하고 로그아웃 처리합니다.")
+    @org.springframework.web.bind.annotation.DeleteMapping("/me")
+    public ResponseEntity<Void> withdraw(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        authService.withdraw(userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "외부 이미지 CORS 우회 프록시", description = "네이버 등 외부 프로필 이미지 로드 시 CORS 이슈를 우회하기 위한 프록시 API입니다.")
+    @org.springframework.web.bind.annotation.GetMapping("/profile-proxy")
+    public ResponseEntity<byte[]> getProfileImageProxy(@org.springframework.web.bind.annotation.RequestParam String url) {
+        try {
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            byte[] imageBytes = restTemplate.getForObject(url, byte[].class);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            
+            if (url.toLowerCase().contains(".png")) {
+                headers.setContentType(org.springframework.http.MediaType.IMAGE_PNG);
+            } else if (url.toLowerCase().contains(".gif")) {
+                headers.setContentType(org.springframework.http.MediaType.IMAGE_GIF);
+            } else {
+                headers.setContentType(org.springframework.http.MediaType.IMAGE_JPEG);
+            }
+            
+            headers.setCacheControl(org.springframework.http.CacheControl.maxAge(1, java.util.concurrent.TimeUnit.DAYS));
+            return new ResponseEntity<>(imageBytes, headers, org.springframework.http.HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @Operation(summary = "이메일 인증 메일 발송")
+    @PostMapping("/email/verification-request")
+    public ResponseEntity<Void> sendVerificationEmail(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        com.pickpl.app.auth.dto.UserResponse profile = authService.getProfile(userId);
+        authService.sendVerificationEmail(profile.email());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "이메일 인증 코드 검증")
+    @PostMapping("/email/verify")
+    public ResponseEntity<Void> verifyEmail(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails,
+            @RequestBody java.util.Map<String, String> payload) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        String code = payload.get("code");
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("인증 코드를 입력해주세요.");
+        }
+        authService.verifyEmailCode(userId, code);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "소셜 계정 수동 연동")
+    @PostMapping("/link/{provider}")
+    public ResponseEntity<Void> linkSocialAccount(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails,
+            @org.springframework.web.bind.annotation.PathVariable String provider,
+            @RequestBody java.util.Map<String, String> payload) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        String providerId = payload.get("providerId");
+        if (providerId == null || providerId.isBlank()) {
+            throw new IllegalArgumentException("소셜 연동 정보가 올바르지 않습니다.");
+        }
+        authService.linkSocialAccount(userId, provider, providerId);
+        return ResponseEntity.ok().build();
+    }
 }

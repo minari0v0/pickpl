@@ -4,6 +4,8 @@ import com.pickpl.app.domain.user.AuthProvider;
 import com.pickpl.app.domain.user.Role;
 import com.pickpl.app.domain.user.User;
 import com.pickpl.app.domain.user.UserRepository;
+import com.pickpl.app.domain.user.SocialConnection;
+import com.pickpl.app.domain.user.SocialConnectionRepository;
 import com.pickpl.app.security.oauth2.userinfo.GoogleOAuth2UserInfo;
 import com.pickpl.app.security.oauth2.userinfo.KakaoOAuth2UserInfo;
 import com.pickpl.app.security.oauth2.userinfo.NaverOAuth2UserInfo;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
+    private final SocialConnectionRepository socialConnectionRepository;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
@@ -35,18 +38,52 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         OAuth2UserInfo oAuth2UserInfo = getOAuth2UserInfo(registrationId, oAuth2User.getAttributes());
 
-        // providerId를 기반으로 기존 유저 여부 확인
-        Optional<User> userOptional = userRepository.findByProviderAndProviderId(provider, oAuth2UserInfo.getProviderId());
+        String providerStr = provider.name();
+        String providerId = oAuth2UserInfo.getProviderId();
 
         User user;
-        if (userOptional.isPresent()) {
-            // 기존 유저 (정보 업데이트)
-            user = userOptional.get();
-            user.updateProfile(oAuth2UserInfo.getName(), oAuth2UserInfo.getImageUrl());
-            userRepository.save(user);
+
+        // 1. SocialConnection에 연동 정보가 있는지 확인
+        Optional<SocialConnection> socialConnOpt = socialConnectionRepository.findByProviderAndProviderId(providerStr, providerId);
+
+        if (socialConnOpt.isPresent()) {
+            // 이미 연동된 마스터 유저로 로그인
+            user = socialConnOpt.get().getUser();
+            log.info("Social Account matched via SocialConnection: User ID {}", user.getId());
         } else {
-            // 신규 유저 가입 처리 (GUEST 롤 부여)
-            user = registerNewUser(provider, oAuth2UserInfo);
+            // 2. 레거시 단일 소셜 회원 호환성을 위해 UserRepository에서 직접 조회
+            Optional<User> legacyUserOpt = userRepository.findByProviderAndProviderId(provider, providerId);
+
+            if (legacyUserOpt.isPresent()) {
+                user = legacyUserOpt.get();
+                user.updateProfile(oAuth2UserInfo.getName(), oAuth2UserInfo.getImageUrl());
+                userRepository.save(user);
+                log.info("Social Account matched via legacy provider information: User ID {}", user.getId());
+            } else {
+                // 3. 연동 및 레거시 정보가 없지만, 동일 이메일을 가진 로컬 마스터 유저(LOCAL)가 있는지 확인
+                String email = oAuth2UserInfo.getEmail();
+                Optional<User> localUserOpt = Optional.empty();
+                if (email != null && !email.isBlank()) {
+                    localUserOpt = userRepository.findByEmail(email);
+                }
+
+                if (localUserOpt.isPresent() && localUserOpt.get().getProvider() == AuthProvider.LOCAL) {
+                    // 동일 이메일의 로컬 회원 계정을 찾아 자동 연동 처리
+                    User localUser = localUserOpt.get();
+                    SocialConnection newConn = SocialConnection.builder()
+                            .user(localUser)
+                            .provider(providerStr)
+                            .providerId(providerId)
+                            .build();
+                    socialConnectionRepository.save(newConn);
+                    user = localUser;
+                    log.info("Social Account auto-linked to Local Account: User ID {}", user.getId());
+                } else {
+                    // 4. 신규 소셜 유저로 가입 처리 (GUEST 롤 부여)
+                    user = registerNewUser(provider, oAuth2UserInfo);
+                    log.info("Registered a new OAuth2 user: User ID {}", user.getId());
+                }
+            }
         }
 
         return new CustomOAuth2User(user, oAuth2User.getAttributes());
