@@ -121,7 +121,7 @@ def save_and_merge_results(new_places: list, output_file: str):
         json.dump(merged_places, f, ensure_ascii=False, indent=2)
     logger.info(f"병합 완료. 기존 장소에 신규 {added_count}개 추가됨. (총 {len(merged_places)}개 저장 위치: {output_file})")
 
-def run_scraping(query: str = None, source: str = "naver", limit: int = 3, region: str = None, category: str = None, query_all: bool = False, output_file: str = None, delay: float = 5.0, delay_random: bool = False, gui: bool = False):
+def run_scraping(query: str = None, source: str = "naver", limit: int = 3, region: str = None, category: str = None, query_all: bool = False, output_file: str = None, delay: float = 5.0, delay_random: bool = False, gui: bool = False, curation_theme: str = None):
     logger.info("=========================================")
     logger.info("1단계: 공간 정보 크롤링 (No AI) 시작")
     logger.info("=========================================")
@@ -132,8 +132,32 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
     scraper = PortalScraper(use_mock=False)
     queries_to_run = []
     
+    # 0. --curation-theme 플래그 처리
+    if curation_theme:
+        curation_file = os.path.join(os.path.dirname(__file__), "curation_queries.json")
+        if not os.path.exists(curation_file):
+            logger.error(f"에러: curation_queries.json 파일이 존재하지 않습니다: {curation_file}")
+            sys.exit(1)
+        try:
+            with open(curation_file, "r", encoding="utf-8") as f:
+                curation_data = json.load(f)
+            
+            themes = []
+            if curation_theme == "all":
+                themes = list(curation_data.keys())
+            elif curation_theme in curation_data:
+                themes = [curation_theme]
+            
+            for theme in themes:
+                theme_queries = curation_data[theme].get("queries", [])
+                logger.info(f"큐레이션 테마 '{theme}' ({curation_data[theme].get('title')}) 에서 {len(theme_queries)}개 쿼리 로드")
+                queries_to_run.extend(theme_queries)
+        except Exception as e:
+            logger.error(f"curation_queries.json 로드 중 오류 발생: {e}")
+            sys.exit(1)
+            
     # 1. --query-all 플래그 처리
-    if query_all:
+    elif query_all:
         if not REGIONS_MAP:
             logger.error("에러: regions.json에서 지역 정보를 찾을 수 없어 --query-all을 수행할 수 없습니다.")
             sys.exit(1)
@@ -457,6 +481,7 @@ def main():
     parser.add_argument("--region", type=str, default=None, help="지역명 필터 (영문/한글 매핑 지원)")
     parser.add_argument("--category", type=str, default=None, choices=["맛집", "술집", "카페", "핫플레이스", "디저트", "명소"], help="수집 대상 카테고리")
     parser.add_argument("--query-all", action="store_true", help="regions.json의 모든 지역과 6대 업종 키워드 조합 순회 수집")
+    parser.add_argument("--curation-theme", type=str, default=None, choices=["all", "summer", "autumn", "winter", "rainy_indoor"], help="큐레이션 테마 수집 사전 지정")
     parser.add_argument("--file", type=str, default=None, help="저장하거나 로드할 파일명 또는 날짜(YYYY-MM-DD). 미지정 시 오늘 날짜 또는 가장 최신 파일 자동 선택")
     parser.add_argument("--delay", type=float, default=5.0, help="쿼리 간 대기 시간 (초) (기본 5.0)")
     parser.add_argument("--delay-random", action="store_true", help="대기 시간을 지정한 delay값 기반으로 무작위화 (delay ~ delay*2.5 사이)")
@@ -476,7 +501,8 @@ def main():
             output_file=output_file,
             delay=args.delay,
             delay_random=args.delay_random,
-            gui=args.gui
+            gui=args.gui,
+            curation_theme=args.curation_theme
         )
     elif args.analyze:
         raw_file = get_raw_output_path(file_arg=args.file, default_to_latest=True)
