@@ -6,8 +6,9 @@ import InfiniteScrollTrigger from '../ui/InfiniteScrollTrigger';
 
 export const TAG_CATEGORIES = [
     { id: 'popular', title: "요즘 뜨는 취향", tags: ["대형카페", "노트북하기좋은", "햇살맛집", "디저트맛집", "뷰맛집", "데이트코스"] },
-    { id: 'mood', title: "공간의 무드", tags: ["코지한", "따뜻한우드톤", "힙한/인더스트리얼", "조용한", "미니멀한", "식물가득", "나만아는"] },
-    { id: 'facility', title: "목적과 시설", tags: ["콘센트석", "편안한쇼파", "주차가능", "반려동물동반", "루프탑", "단체석"] }
+    { id: 'mood', title: "공간의 무드", tags: ["코지한", "따뜻한우드톤", "힙한/인더스트리얼", "조용한", "미니멀한", "식물가득", "나만아는", "숨겨진보석", "힙한레트로"] },
+    { id: 'context', title: "상황과 동행", tags: ["비오는날", "실내데이트", "혼자구경하기좋은", "데이트추천", "주말나들이", "작업하기좋은", "사진남기기좋은", "피크닉하기좋은", "겨울온천여행", "여름휴가", "단풍구경", "눈오는날"] },
+    { id: 'facility', title: "목적과 시설", tags: ["콘센트석", "편안한쇼파", "주차가능", "반려동물동반", "루프탑", "단체석", "에메랄드빛바다", "독채", "풀빌라", "바비큐가능", "스파/온천", "어메니티완비"] }
 ];
 
 interface ExploreViewProps {
@@ -174,6 +175,10 @@ export default function ExploreView({
                                             chipStyle = isSelected 
                                                 ? "bg-[#2E7D7A] text-white border-[#2E7D7A] shadow-[0_8px_20px_rgba(46,125,122,0.18)] scale-[1.03]" 
                                                 : "bg-[#F0F6F5]/70 text-[#2E7D7A] border-[#D1E6E4] hover:bg-[#F0F6F5]";
+                                        } else if (category.id === 'context') {
+                                            chipStyle = isSelected 
+                                                ? "bg-[#4B5EAA] text-white border-[#4B5EAA] shadow-[0_8px_20px_rgba(75,94,170,0.18)] scale-[1.03]" 
+                                                : "bg-[#EEF1FC]/70 text-[#4B5EAA] border-[#D6DBF5] hover:bg-[#EEF1FC]";
                                         } else {
                                             chipStyle = isSelected 
                                                 ? "bg-[#B38000] text-white border-[#B38000] shadow-[0_8px_20px_rgba(179,128,0,0.18)] scale-[1.03]" 
@@ -238,6 +243,18 @@ export default function ExploreView({
                         {filteredPlaces.map((place: any) => {
                             const iconData = getCategoryIcon(place.category, place.name);
                             const vibe = getVibeBadge(place.initialVibe);
+                            
+                            const commentToUse = place.editorsComment || place.aiMoodSummary;
+                            const hasHeadline = commentToUse && commentToUse.includes('|');
+                            let headline = '';
+                            let commentBody = commentToUse || '';
+
+                            if (hasHeadline && commentToUse) {
+                                const parts = commentToUse.split('|');
+                                headline = parts[0].trim();
+                                commentBody = parts[1].trim();
+                            }
+                            
                             return (
                                 <article 
                                     key={place.id} 
@@ -321,16 +338,27 @@ export default function ExploreView({
                                         </div>
                                         
                                         {/* 모바일 큐레이터 감성 리뷰 카드 */}
-                                        {place.editorsComment && (
+                                        {commentToUse && (
                                             <div className="bg-[#FAF9F6] border border-[#F2ECE5] p-4 rounded-[16px] text-[13px] text-[#5A4F43] flex items-start gap-3 relative overflow-hidden">
                                                 <div className="w-5 h-5 rounded-full bg-[#FFF0E6] flex items-center justify-center text-orange-500 font-serif text-[15px] select-none mt-0.5 shrink-0">
                                                     “
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] font-bold text-orange-500/90 tracking-widest uppercase mb-0.5">Editor's Pick Review</p>
-                                                    <p className="line-clamp-3 font-semibold text-[#4E4338] leading-relaxed">
-                                                        {place.editorsComment}
-                                                    </p>
+                                                    {hasHeadline ? (
+                                                        <>
+                                                            <p className="text-[12px] font-extrabold text-[#E65C00] tracking-tight mb-1">{headline}</p>
+                                                            <p className="line-clamp-3 font-semibold text-[#4E4338] leading-relaxed text-[12.5px]">
+                                                                {commentBody}
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <p className="text-[10px] font-bold text-orange-500/90 tracking-widest uppercase mb-0.5">Editor's Pick Review</p>
+                                                            <p className="line-clamp-3 font-semibold text-[#4E4338] leading-relaxed">
+                                                                {commentBody}
+                                                            </p>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -393,6 +421,8 @@ export default function ExploreView({
                                                             activeStyle = "bg-[#FFF4EE] text-[#E65C00] border-[#FFD2B8] shadow-sm";
                                                         } else if (category?.id === 'mood') {
                                                             activeStyle = "bg-[#F0F6F5] text-[#2E7D7A] border-[#D1E6E4] shadow-sm";
+                                                        } else if (category?.id === 'context') {
+                                                            activeStyle = "bg-[hsl(225,50%,95%)] text-[hsl(225,40%,45%)] border-[hsl(225,30%,85%)] shadow-sm";
                                                         } else {
                                                             activeStyle = "bg-[#FFF9E6] text-[#B38000] border-[#FFE9A3] shadow-sm";
                                                         }
@@ -407,16 +437,27 @@ export default function ExploreView({
                                         </div>
                                         
                                         {/* PC 큐레이터 감성 리뷰 카드 */}
-                                        {place.editorsComment && (
+                                        {commentToUse && (
                                             <div className="mt-6 bg-[#FAF9F6] border border-[#F2ECE5] px-5 py-4 rounded-[18px] text-[13.5px] text-[#5A4F43] flex items-start gap-3.5 relative overflow-hidden select-none">
                                                 <div className="w-6 h-6 rounded-full bg-[#FFF0E6] flex items-center justify-center text-orange-500 font-serif text-[18px] select-none mt-0.5 shrink-0">
                                                     “
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-[11px] font-bold text-orange-500/90 tracking-widest uppercase mb-1">Editor's Pick Review</p>
-                                                    <p className="line-clamp-3 font-semibold text-[#4E4338] leading-relaxed">
-                                                        {place.editorsComment}
-                                                    </p>
+                                                    {hasHeadline ? (
+                                                        <>
+                                                            <p className="text-[13.5px] font-extrabold text-[#E65C00] tracking-tight mb-1">{headline}</p>
+                                                            <p className="line-clamp-3 font-semibold text-[#4E4338] leading-relaxed text-[13px]">
+                                                                {commentBody}
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <p className="text-[11px] font-bold text-orange-500/90 tracking-widest uppercase mb-1">Editor's Pick Review</p>
+                                                            <p className="line-clamp-3 font-semibold text-[#4E4338] leading-relaxed">
+                                                                {commentBody}
+                                                            </p>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
