@@ -24,11 +24,15 @@ public class PlaceService {
     private final jakarta.persistence.EntityManager entityManager;
 
     private static final java.util.List<String> FACILITY_TAGS = java.util.List.of(
-            "콘센트석", "노트북하기좋은", "화장실깨끗", "반려동물동반", "주차가능", "단체석", "와이파이"
+            "콘센트석", "노트북하기좋은", "화장실깨끗", "반려동물동반", "주차가능", "편안한쇼파", 
+            "단체석", "와이파이", "키즈존", "웨이팅있음", "에메랄드빛바다", "실내데이트", 
+            "독채", "풀빌라", "바비큐가능", "스파/온천", "어메니티완비"
     );
 
     private static final java.util.List<String> WEATHER_TAGS = java.util.List.of(
-            "비오는날", "야외테라스", "루프탑"
+            "비오는날", "야외테라스", "루프탑", "맑은날가기좋은", "실내데이트", "야장",
+            "혼자구경하기좋은", "데이트추천", "주말나들이", "작업하기좋은", "사진남기기좋은", 
+            "피크닉하기좋은", "겨울온천여행", "여름휴가", "단풍구경", "눈오는날"
     );
 
     public PlaceService(PlaceRepository placeRepository, com.pickpl.app.domain.tag.TagRepository tagRepository, ScrapRepository scrapRepository, com.pickpl.app.domain.vibe.VibeVoteRepository vibeVoteRepository, jakarta.persistence.EntityManager entityManager) {
