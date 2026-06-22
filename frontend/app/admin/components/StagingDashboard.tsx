@@ -132,7 +132,8 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
             aiMoodSummary: target.aiMoodSummary,
             tags: updatedData.tags || target.tags.map((t: any) => t.name),
             editorsComment: updatedData.editorsComment || '',
-            isPublished: updatedData.isPublished !== undefined ? updatedData.isPublished : target.isPublished
+            isPublished: updatedData.isPublished !== undefined ? updatedData.isPublished : target.isPublished,
+            curationTheme: updatedData.curationTheme !== undefined ? updatedData.curationTheme : target.curationTheme
         };
 
         try {
@@ -203,7 +204,8 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
             aiMoodSummary: target.aiMoodSummary,
             tags: target.tags ? target.tags.map((t: any) => t.name) : [],
             editorsComment: target.editorsComment || '',
-            isPublished: !currentStatus
+            isPublished: !currentStatus,
+            curationTheme: target.curationTheme
         };
 
         try {
@@ -315,7 +317,8 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
                 aiMoodSummary: p.aiMoodSummary,
                 tags: p.tags,
                 editorsComment: p.editorsComment || '',
-                isPublished: true // 승인 적재 처리
+                isPublished: true, // 승인 적재 처리
+                curationTheme: p.curationTheme || null
             }))
         };
 
@@ -369,7 +372,8 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
         aiMoodSummary: dbPlaces[selectedDbPlaceIndex].aiMoodSummary || '',
         tags: dbPlaces[selectedDbPlaceIndex].tags ? dbPlaces[selectedDbPlaceIndex].tags.map((t: any) => t.name) : [],
         editorsComment: dbPlaces[selectedDbPlaceIndex].editorsComment || '',
-        isPublished: dbPlaces[selectedDbPlaceIndex].isPublished
+        isPublished: dbPlaces[selectedDbPlaceIndex].isPublished,
+        curationTheme: dbPlaces[selectedDbPlaceIndex].curationTheme || ''
     } : null;
 
     return (

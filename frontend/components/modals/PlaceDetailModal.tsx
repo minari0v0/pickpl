@@ -245,7 +245,26 @@ export default function PlaceDetailModal({
                                 </div>
                             </div>
                         )}
-                        <p className="text-[15px] text-[#4E5968] leading-relaxed mt-4">{selectedPlace.description}</p>
+                        {(() => {
+                            const desc = selectedPlace.description || '';
+                            const hasPipe = desc.includes('|');
+                            if (hasPipe) {
+                                const parts = desc.split('|');
+                                const headline = parts[0].trim();
+                                const summary = parts[1].trim();
+                                return (
+                                    <div className="mt-4 flex flex-col gap-2">
+                                        <h4 className="text-[16px] font-extrabold text-[#E65C00] tracking-tight leading-snug">
+                                            {headline}
+                                        </h4>
+                                        <p className="text-[14.5px] text-[#4E5968] leading-relaxed font-semibold">
+                                            {summary}
+                                        </p>
+                                    </div>
+                                );
+                            }
+                            return <p className="text-[15px] text-[#4E5968] leading-relaxed mt-4">{selectedPlace.description}</p>;
+                        })()}
                         {selectedPlace.category && (() => {
                             const catInfo = getCategoryIcon(selectedPlace.category, selectedPlace.name);
                             return (
@@ -429,9 +448,30 @@ export default function PlaceDetailModal({
                                     </div>
                                 </div>
                             )}
-                            <p className="text-[16px] text-[#4E5968] leading-[1.7] mb-10 bg-[#F9FAFB] p-6 rounded-[24px] border border-[#F2F4F6]">
-                                {selectedPlace.description}
-                            </p>
+                            {(() => {
+                                const desc = selectedPlace.description || '';
+                                const hasPipe = desc.includes('|');
+                                if (hasPipe) {
+                                    const parts = desc.split('|');
+                                    const headline = parts[0].trim();
+                                    const summary = parts[1].trim();
+                                    return (
+                                        <div className="mb-10 bg-[#F9FAFB] p-6 rounded-[24px] border border-[#F2F4F6] flex flex-col gap-2.5">
+                                            <h4 className="text-[17px] font-extrabold text-[#E65C00] tracking-tight leading-snug">
+                                                {headline}
+                                            </h4>
+                                            <p className="text-[15.5px] text-[#4E5968] leading-[1.7] font-semibold">
+                                                {summary}
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <p className="text-[16px] text-[#4E5968] leading-[1.7] mb-10 bg-[#F9FAFB] p-6 rounded-[24px] border border-[#F2F4F6]">
+                                        {selectedPlace.description}
+                                    </p>
+                                );
+                            })()}
                             <div className="w-full h-[1px] bg-[#F2F4F6] mb-10"></div>
                             {selectedPlace.category && (() => {
                                 const catInfo = getCategoryIcon(selectedPlace.category, selectedPlace.name);

@@ -19,6 +19,7 @@ export interface PlaceStagingData {
     editorsComment?: string;
     isPublished?: boolean;
     isDuplicate?: boolean;
+    curationTheme?: string;
 }
 
 interface PlaceModalProps {
@@ -33,6 +34,7 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
     const [editorsComment, setEditorsComment] = useState(place.editorsComment || '');
     const [tags, setTags] = useState<string[]>(Array.from(new Set(place.tags)));
     const [isPublished, setIsPublished] = useState<boolean>(place.isPublished !== false);
+    const [curationTheme, setCurationTheme] = useState<string>(place.curationTheme || '');
     const [newTagInput, setNewTagInput] = useState('');
 
     const handleAddTag = (e: React.FormEvent) => {
@@ -55,7 +57,8 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
             category,
             editorsComment,
             tags,
-            isPublished
+            isPublished,
+            curationTheme: curationTheme || undefined
         });
     };
 
@@ -130,6 +133,44 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
                                 isPublished ? 'translate-x-6' : 'translate-x-0'
                             }`} />
                         </button>
+                    </div>
+
+                    {/* 큐레이션 테마 설정 (칩 스타일 라디오버튼) */}
+                    <div className="flex flex-col gap-2.5">
+                        <label className="text-[13px] font-bold text-[#8B95A1] pl-1">큐레이션 테마 분류</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { value: 'spring', label: '봄 피크닉 🌸' },
+                                { value: 'summer', label: '여름 바캉스 🌊' },
+                                { value: 'autumn', label: '가을 단풍 🍁' },
+                                { value: 'winter', label: '겨울 온천 ♨️' },
+                                { value: 'rainy_indoor', label: '비오는 날 ☔' },
+                                { value: 'wellness', label: '웰니스 다도 🍵' },
+                                { value: 'pet_friendly', label: '반려동물 🐶' },
+                                { value: 'night_market', label: '로컬 야시장 🍺' },
+                                { value: '', label: '설정 안 함 ✕' }
+                            ].map((opt) => {
+                                const isSelected = curationTheme === opt.value;
+                                let activeClass = 'bg-[#F2F4F6] hover:bg-[#E5E8EB] text-[#4E5968] border border-transparent';
+                                if (isSelected) {
+                                    if (opt.value === '') {
+                                        activeClass = 'bg-slate-100 text-slate-600 border border-slate-300 font-bold';
+                                    } else {
+                                        activeClass = 'bg-orange-50 text-orange-600 border border-orange-500/50 font-bold shadow-[0_2px_8px_rgba(249,115,22,0.08)]';
+                                    }
+                                }
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setCurationTheme(opt.value)}
+                                        className={`h-11 rounded-[12px] text-[12px] transition-all flex items-center justify-center cursor-pointer active:scale-95 ${activeClass}`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* 에디터의 한 마디 */}

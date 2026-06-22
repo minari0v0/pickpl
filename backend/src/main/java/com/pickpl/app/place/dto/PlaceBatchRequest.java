@@ -16,6 +16,7 @@ public record PlaceBatchRequest(
             String thumbnailUrl,
             String imageUrls,
             String aiMoodSummary,
-            List<String> tags
+            List<String> tags,
+            String curationTheme
     ) {}
 }

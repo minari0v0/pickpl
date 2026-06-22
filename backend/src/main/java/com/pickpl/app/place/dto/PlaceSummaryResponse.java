@@ -28,7 +28,8 @@ public record PlaceSummaryResponse(
         String userVotedVibe,
         String editorsComment,
         boolean isPublished,
-        String distance
+        String distance,
+        String curationTheme
 ) {
 
     public record VibeStats(int quiet, int chatty) {}
@@ -63,7 +64,8 @@ public record PlaceSummaryResponse(
                 userVotedVibe,
                 place.getEditorsComment(),
                 place.isPublished(),
-                distance
+                distance,
+                place.getCurationTheme()
         );
     }
 }

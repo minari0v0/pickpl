@@ -21,7 +21,7 @@ class PlaceAnalysis(BaseModel):
     externalId: str = Field(description="장소의 고유 식별자(externalId)")
     category: str = Field(description="1차 카테고리 대분류. 반드시 다음 5개 중 하나여야 함: '음식점', '카페/디저트', '술집', '자연명소', '문화/체험'")
     subCategory: str = Field(description="2차 카테고리 소분류. 예: '한식', '일식', '중식', '양식', '아시안', '이자카야', '오뎅바', '바(Bar)', '와인바', '펍/맥주', '요리주점', '포장마차', '기타술집', '공원', '산', '바다' 등 정형화된 분류")
-    aiMoodSummary: str = Field(description="장소의 분위기를 트렌디하게 요약한 1~2줄 글 (최대 100자)")
+    aiMoodSummary: str = Field(description="장소의 분위기를 반영한 큐레이터 한 줄 추천 문구. 특별한 곳(Level 1)은 '[상황별 추천 헤드라인]|[공간 특징 요약]'처럼 세로 파이프 '|' 구분자를 필수로 사용하고, 일반/평범한 곳(Level 2, 3)은 구분자 없이 단일 문장으로 작성하십시오. 마침표와 설명체 종결어미 금지.")
     moodTags: List[str] = Field(description="감성 분위기 태그 풀에서 선정한 1~3개 태그 리스트")
     facilityTags: List[str] = Field(description="시설/편의 태그 풀에서 선정한 0~3개 태그 리스트")
     weatherTags: List[str] = Field(description="날씨/상황 태그 풀에서 선정한 0~2개 태그 리스트")

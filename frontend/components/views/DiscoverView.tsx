@@ -167,10 +167,31 @@ export default function DiscoverView({
                                     </div>
 
                                     {/* 카드 바디 */}
-                                    <div className="flex flex-col gap-2.5">
-                                        <p className="text-[14px] text-[#4E5968] leading-relaxed font-medium line-clamp-2">
-                                            {place.description}
-                                        </p>
+                                    <div className="flex flex-col gap-2">
+                                        {(() => {
+                                            const desc = place.description || '';
+                                            const hasPipe = desc.includes('|');
+                                            if (hasPipe) {
+                                                const parts = desc.split('|');
+                                                const headline = parts[0].trim();
+                                                const summary = parts[1].trim();
+                                                return (
+                                                    <>
+                                                        <h4 className="text-[14.5px] font-extrabold text-[#E65C00] tracking-tight leading-snug">
+                                                            {headline}
+                                                        </h4>
+                                                        <p className="text-[13.5px] text-[#4E5968] leading-relaxed font-semibold line-clamp-2">
+                                                            {summary}
+                                                        </p>
+                                                    </>
+                                                );
+                                            }
+                                            return (
+                                                <p className="text-[14px] text-[#4E5968] leading-relaxed font-medium line-clamp-2">
+                                                    {place.description}
+                                                </p>
+                                            );
+                                        })()}
                                         <div className="flex flex-wrap gap-1.5 mt-0.5">
                                             {(() => {
                                                 const displayTags = (place.tagInfos || []).filter((tag: any) => {

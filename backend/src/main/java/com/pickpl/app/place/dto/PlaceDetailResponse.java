@@ -22,7 +22,8 @@ public record PlaceDetailResponse(
         PlaceSummaryResponse.VibeStats vibeStats,
         String userVotedVibe,
         String editorsComment,
-        String distance
+        String distance,
+        String curationTheme
 ) {
     /** Place 엔티티 → DTO 변환 정적 팩토리 메서드 (거리 없음) */
     public static PlaceDetailResponse from(Place place, boolean isScrapped, String userVotedVibe) {
@@ -57,7 +58,8 @@ public record PlaceDetailResponse(
                 new PlaceSummaryResponse.VibeStats(place.getQuietVoteCount(), place.getChattyVoteCount()),
                 userVotedVibe,
                 place.getEditorsComment(),
-                distance
+                distance,
+                place.getCurationTheme()
         );
     }
 }

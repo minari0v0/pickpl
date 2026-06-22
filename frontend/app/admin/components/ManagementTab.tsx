@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { THEME_MAP } from './StagingTab';
 
 interface ManagementTabProps {
     dbPlaces: any[];
@@ -224,6 +225,12 @@ export default function ManagementTab({
                                             <span className="text-[11px] font-extrabold text-[#8B95A1] bg-[#F2F4F6] px-2.5 py-1 rounded-[6px]">
                                                 ID: {place.id}
                                             </span>
+                                            
+                                            {place.curationTheme && THEME_MAP[place.curationTheme] && (
+                                                <span className={`px-2 py-0.5 rounded-[6px] border text-[10px] font-bold ${THEME_MAP[place.curationTheme].style}`}>
+                                                    {THEME_MAP[place.curationTheme].label}
+                                                </span>
+                                            )}
                                         </div>
                                         
                                         <div className="flex items-center gap-2">

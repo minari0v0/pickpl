@@ -3,6 +3,17 @@
 import React, { useState, useRef } from 'react';
 import { PlaceStagingData } from './PlaceModal';
 
+export const THEME_MAP: Record<string, { label: string; style: string }> = {
+    spring: { label: '봄 피크닉 🌸', style: 'bg-rose-50 border-rose-100/60 text-rose-600' },
+    summer: { label: '여름 바캉스 🌊', style: 'bg-blue-50 border-blue-100/60 text-blue-600' },
+    autumn: { label: '가을 단풍 🍁', style: 'bg-amber-50 border-amber-100/60 text-amber-600' },
+    winter: { label: '겨울 온천 ♨️', style: 'bg-teal-50 border-teal-100/60 text-teal-600' },
+    rainy_indoor: { label: '비오는 날 ☔', style: 'bg-indigo-50 border-indigo-100/60 text-indigo-600' },
+    wellness: { label: '웰니스 다도 🍵', style: 'bg-emerald-50 border-emerald-100/60 text-emerald-600' },
+    pet_friendly: { label: '반려동물 🐶', style: 'bg-violet-50 border-violet-100/60 text-violet-600' },
+    night_market: { label: '로컬 야시장 🍺', style: 'bg-amber-50 border-amber-100/60 text-amber-800' }
+};
+
 interface StagingTabProps {
     places: PlaceStagingData[];
     setPlaces: React.Dispatch<React.SetStateAction<PlaceStagingData[]>>;
@@ -49,7 +60,8 @@ export default function StagingTab({
                 tags: Array.isArray(p.tags) ? Array.from(new Set(p.tags.map((t: any) => String(t).trim()))) : [],
                 editorsComment: p.editorsComment || '',
                 isPublished: true,
-                isDuplicate: false
+                isDuplicate: false,
+                curationTheme: p.curationTheme || ''
             }));
 
             checkDuplicates(stagingPlaces);
@@ -235,19 +247,27 @@ export default function StagingTab({
                                 }`}
                             >
                                 <div className="flex justify-between items-center relative z-10">
-                                    <button
-                                        type="button"
-                                        onClick={(e) => togglePlaceCheck(idx, e)}
-                                        className={`w-6 h-6 rounded-[8px] flex items-center justify-center border transition-all ${
-                                            place.isPublished ? 'bg-orange-500 border-orange-500 text-white' : 'border-[#D1D5DB] bg-white hover:border-[#9CA3AF]'
-                                        }`}
-                                    >
-                                        {place.isPublished && (
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                            </svg>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => togglePlaceCheck(idx, e)}
+                                            className={`w-6 h-6 rounded-[8px] flex items-center justify-center border transition-all ${
+                                                place.isPublished ? 'bg-orange-500 border-orange-500 text-white' : 'border-[#D1D5DB] bg-white hover:border-[#9CA3AF]'
+                                            }`}
+                                        >
+                                            {place.isPublished && (
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                        
+                                        {place.curationTheme && THEME_MAP[place.curationTheme] && (
+                                            <span className={`px-2 py-0.5 rounded-[6px] border text-[10px] font-bold ${THEME_MAP[place.curationTheme].style}`}>
+                                                {THEME_MAP[place.curationTheme].label}
+                                            </span>
                                         )}
-                                    </button>
+                                    </div>
 
                                     {place.isDuplicate ? (
                                         <span className="px-2.5 py-1 rounded-[6px] bg-red-50 border border-red-100 text-red-600 text-[10px] font-extrabold tracking-tight flex items-center gap-1">

@@ -21,6 +21,7 @@ public record AdminPlacePublishRequest(
             String aiMoodSummary,
             List<String> tags,
             String editorsComment,
-            boolean isPublished
+            boolean isPublished,
+            String curationTheme
     ) {}
 }
