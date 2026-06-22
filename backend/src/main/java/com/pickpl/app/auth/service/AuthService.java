@@ -13,6 +13,7 @@ import com.pickpl.app.domain.scrap.ScrapRepository;
 import com.pickpl.app.domain.vibe.VibeVoteRepository;
 import com.pickpl.app.domain.user.SocialConnection;
 import com.pickpl.app.domain.user.SocialConnectionRepository;
+import com.pickpl.app.domain.user.UserSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,6 +37,7 @@ public class AuthService {
     private final VibeVoteRepository vibeVoteRepository;
     private final SocialConnectionRepository socialConnectionRepository;
     private final JavaMailSender mailSender;
+    private final UserSessionRepository userSessionRepository;
 
     @org.springframework.beans.factory.annotation.Value("${spring.mail.username:}")
     private String mailUsername;
@@ -60,7 +62,7 @@ public class AuthService {
         return userRepository.save(user).getId();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
@@ -77,13 +79,16 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createToken(String.valueOf(user.getId()), user.getRole().name());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 
-        // Refresh Token을 Redis에 저장 (유효기간 설정)
+        // Refresh Token을 Redis에 저장 (다중 세션: RT:userId:token)
         redisTemplate.opsForValue().set(
-                "RT:" + user.getId(),
+                "RT:" + user.getId() + ":" + refreshToken,
                 refreshToken,
                 14, // 14일
                 java.util.concurrent.TimeUnit.DAYS
         );
+
+        // 기기 세션 정보 기록
+        recordUserSession(user, refreshToken);
 
         return AuthResponse.of(accessToken, refreshToken, user.getId(), user.getNickname());
     }
@@ -99,13 +104,11 @@ public class AuthService {
         org.springframework.security.core.Authentication authentication = jwtTokenProvider.getAuthentication(request.accessToken());
         String userIdStr = authentication.getName();
 
-        // 3. Redis 에서 User ID 를 기반으로 저장된 Refresh Token 값을 가져옵니다.
-        String redisRefreshToken = redisTemplate.opsForValue().get("RT:" + userIdStr);
+        // 3. Redis 에서 다중 기기 토큰 검증
+        String redisKey = "RT:" + userIdStr + ":" + request.refreshToken();
+        String redisRefreshToken = redisTemplate.opsForValue().get(redisKey);
         if (org.springframework.util.ObjectUtils.isEmpty(redisRefreshToken)) {
             throw new IllegalArgumentException("로그아웃 된 사용자입니다.");
-        }
-        if (!redisRefreshToken.equals(request.refreshToken())) {
-            throw new IllegalArgumentException("토큰의 유저 정보가 일치하지 않습니다.");
         }
 
         // 4. 새로운 토큰 생성
@@ -116,12 +119,19 @@ public class AuthService {
         String newRefreshToken = jwtTokenProvider.createRefreshToken();
 
         // 5. Refresh Token Redis 업데이트
+        redisTemplate.delete(redisKey);
         redisTemplate.opsForValue().set(
-                "RT:" + user.getId(),
+                "RT:" + user.getId() + ":" + newRefreshToken,
                 newRefreshToken,
                 14,
                 java.util.concurrent.TimeUnit.DAYS
         );
+
+        // 6. DB UserSession 업데이트
+        userSessionRepository.findByRefreshTokenUuid(request.refreshToken()).ifPresent(session -> {
+            session.updateAccessTime(java.time.LocalDateTime.now(), newRefreshToken);
+            userSessionRepository.save(session);
+        });
 
         return AuthResponse.of(newAccessToken, newRefreshToken, user.getId(), user.getNickname());
     }
@@ -160,8 +170,13 @@ public class AuthService {
         return !userRepository.existsByNickname(nickname); // true면 사용 가능(중복 아님)
     }
 
+    @Transactional
     public void logout(String userId) {
-        redisTemplate.delete("RT:" + userId);
+        List<com.pickpl.app.domain.user.UserSession> sessions = userSessionRepository.findByUserId(Long.valueOf(userId));
+        for (com.pickpl.app.domain.user.UserSession session : sessions) {
+            redisTemplate.delete("RT:" + userId + ":" + session.getRefreshTokenUuid());
+        }
+        userSessionRepository.deleteByUserId(Long.valueOf(userId));
     }
 
     @Transactional(readOnly = true)
@@ -225,11 +240,14 @@ public class AuthService {
         vibeVoteRepository.deleteByUserId(userLongId);
         socialConnectionRepository.deleteByUserId(userLongId);
 
+        List<com.pickpl.app.domain.user.UserSession> sessions = userSessionRepository.findByUserId(userLongId);
+        for (com.pickpl.app.domain.user.UserSession session : sessions) {
+            redisTemplate.delete("RT:" + userId + ":" + session.getRefreshTokenUuid());
+        }
+        userSessionRepository.deleteByUserId(userLongId);
+
         // 2. 유저 삭제
         userRepository.delete(user);
-
-        // 3. Redis 토큰 삭제
-        redisTemplate.delete("RT:" + userId);
     }
 
     @Transactional
@@ -377,5 +395,98 @@ public class AuthService {
                 .build();
 
         socialConnectionRepository.save(socialConnection);
+    }
+
+    @Transactional
+    public void recordUserSession(User user, String refreshToken) {
+        try {
+            org.springframework.web.context.request.ServletRequestAttributes attributes = 
+                (org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                jakarta.servlet.http.HttpServletRequest req = attributes.getRequest();
+                String ip = getClientIp(req);
+                String userAgent = req.getHeader("User-Agent");
+                
+                com.pickpl.app.domain.user.UserSession userSession = com.pickpl.app.domain.user.UserSession.builder()
+                        .user(user)
+                        .refreshTokenUuid(refreshToken)
+                        .ipAddress(ip)
+                        .location(getIpLocation(ip))
+                        .device(parseDevice(userAgent))
+                        .browser(parseBrowser(userAgent))
+                        .lastAccessedAt(java.time.LocalDateTime.now())
+                        .build();
+                
+                userSessionRepository.save(userSession);
+            }
+        } catch (Exception e) {
+            System.err.println("세션 기록 중 예외 발생: " + e.getMessage());
+        }
+    }
+
+    private String getClientIp(jakarta.servlet.http.HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
+    }
+
+    private String parseDevice(String userAgent) {
+        if (userAgent == null) return "Unknown OS";
+        String ua = userAgent.toLowerCase();
+        if (ua.contains("windows")) return "Windows";
+        if (ua.contains("macintosh") || ua.contains("mac os x")) return "macOS";
+        if (ua.contains("iphone") || ua.contains("ipad")) return "iOS";
+        if (ua.contains("android")) return "Android";
+        if (ua.contains("linux")) return "Linux";
+        return "Unknown OS";
+    }
+
+    private String parseBrowser(String userAgent) {
+        if (userAgent == null) return "Unknown Browser";
+        String ua = userAgent.toLowerCase();
+        if (ua.contains("chrome")) return "Chrome";
+        if (ua.contains("safari") && !ua.contains("chrome")) return "Safari";
+        if (ua.contains("firefox")) return "Firefox";
+        if (ua.contains("edge")) return "Edge";
+        return "Browser";
+    }
+
+    private String getIpLocation(String ip) {
+        if (ip == null || ip.equals("127.0.0.1") || ip.equals("0:0:0:0:0:0:0:1")) {
+            return "Seoul";
+        }
+        return "Seoul";
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.pickpl.app.auth.dto.UserSessionResponse> getActiveSessions(String userId, String currentRefreshToken) {
+        return userSessionRepository.findByUserId(Long.valueOf(userId))
+                .stream()
+                .map(session -> com.pickpl.app.auth.dto.UserSessionResponse.of(session, currentRefreshToken))
+                .toList();
+    }
+
+    @Transactional
+    public void removeSession(String userId, Long sessionId) {
+        com.pickpl.app.domain.user.UserSession session = userSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 세션입니다."));
+
+        if (!session.getUser().getId().equals(Long.valueOf(userId))) {
+            throw new org.springframework.security.access.AccessDeniedException("본인의 세션만 로그아웃할 수 있습니다.");
+        }
+
+        redisTemplate.delete("RT:" + userId + ":" + session.getRefreshTokenUuid());
+        userSessionRepository.delete(session);
     }
 }
