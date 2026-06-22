@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.pickpl.app.security.jwt.JwtTokenProvider;
 
 @Tag(name = "Auth", description = "인증 API")
 @RestController
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Operation(summary = "일반 회원가입")
     @PostMapping("/signup")
@@ -189,5 +191,52 @@ public class AuthController {
         }
         authService.linkSocialAccount(userId, provider, providerId);
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "로그인 기기 세션 목록 조회")
+    @org.springframework.web.bind.annotation.GetMapping("/sessions")
+    public ResponseEntity<java.util.List<com.pickpl.app.auth.dto.UserSessionResponse>> getActiveSessions(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String currentRefreshToken) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        java.util.List<com.pickpl.app.auth.dto.UserSessionResponse> sessions = authService.getActiveSessions(userId, currentRefreshToken);
+        return ResponseEntity.ok(sessions);
+    }
+
+    @Operation(summary = "특정 로그인 기기 원격 로그아웃")
+    @org.springframework.web.bind.annotation.DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> removeSession(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails,
+            @org.springframework.web.bind.annotation.PathVariable Long sessionId) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        authService.removeSession(userId, sessionId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "소셜 계정 실제 연동 시작")
+    @org.springframework.web.bind.annotation.GetMapping("/link/{provider}/init")
+    public void initSocialLink(
+            @org.springframework.web.bind.annotation.RequestParam String token,
+            @org.springframework.web.bind.annotation.PathVariable String provider,
+            jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+        
+        if (token == null || token.isBlank() || !jwtTokenProvider.validateToken(token)) {
+            response.sendRedirect("http://localhost:3000/mypage?linkError=" + java.net.URLEncoder.encode("인증 토큰이 올바르지 않습니다.", "UTF-8"));
+            return;
+        }
+        org.springframework.security.core.Authentication authentication = jwtTokenProvider.getAuthentication(token);
+        String userId = authentication.getName();
+        
+        jakarta.servlet.http.HttpSession session = request.getSession(true);
+        session.setAttribute("link_user_id", userId);
+        
+        response.sendRedirect("/oauth2/authorization/" + provider.toLowerCase());
     }
 }
