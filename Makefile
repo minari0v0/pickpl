@@ -41,9 +41,10 @@ FILE ?=
 DELAY ?= 5
 DELAY_RANDOM ?=
 GUI ?= Y
+CURATION_THEME ?=
 
 pipe-scrape:
-	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --scrape --query "$(QUERY)" --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,) $(if $(filter Y y,$(GUI)),--gui,)
+	@set PYTHONUTF8=1&& cd data-pipeline && .venv\Scripts\python main.py --scrape $(if $(QUERY),--query "$(QUERY)",) --source $(SOURCE) --limit $(LIMIT) $(if $(FILE),--file "$(FILE)",) --delay $(DELAY) $(if $(DELAY_RANDOM),--delay-random,) $(if $(filter Y y,$(GUI)),--gui,) $(if $(CURATION_THEME),--curation-theme "$(CURATION_THEME)",)
 
 # regions.json 내 전체 지역 x 6대 키워드 자동 일괄 순회 크롤링
 pipe-scrape-all:

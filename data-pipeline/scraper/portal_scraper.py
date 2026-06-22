@@ -177,6 +177,21 @@ class PortalScraper:
             
         return raw_ids
 
+    def _clean_review_text(self, text: str) -> str:
+        if not text:
+            return ""
+        
+        lines = text.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            line_strip = line.strip()
+            if line_strip:
+                cleaned_lines.append(line_strip)
+            
+        return " ".join(cleaned_lines).strip()
+
+
     def _clean_target_name(self, target: str) -> str:
         if not target:
             return ""
@@ -331,6 +346,7 @@ class PortalScraper:
         네이버 모바일 통합 검색 우회 방식으로 플레이스 ID 획득 후 Playwright 리뷰 파싱
         """
         results = []
+        is_manually_selected = False
         
         # 특정 장소 지정을 위한 진짜 장소명 타겟 추출
         target_name = None
@@ -451,7 +467,7 @@ class PortalScraper:
                 )
                 page = context.new_page()
                 # 웹드라이버 감지 우회 스크립트 실행
-                page.add_init_script("delete navigator.__proto__.webdriver;")
+                page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
                 # Playwright 광속 로딩 설정 (이미지/미디어/폰트 차단으로 텍스트 DOM만 광속 파싱)
                 page.route("**/*.{png,jpg,jpeg,gif,webp,svg,mp4,mp3,woff,ttf}", lambda route: route.abort())
 
@@ -606,6 +622,7 @@ class PortalScraper:
                                     
                         if selected_id:
                             unique_ids = [selected_id]
+                            is_manually_selected = True
                         else:
                             unique_ids = []
 
@@ -613,40 +630,306 @@ class PortalScraper:
                     detail_url = f"https://m.place.naver.com/place/{place_id}/home"
                     review_url = f"https://m.place.naver.com/place/{place_id}/review/visitor"
                     
-                    logger.info(f"네이버 플레이스 상세 로드 중: {detail_url}")
+                    logger.info(f"네이버 플레이스 수집 시작 (ID: {place_id})")
                     name = "네이버 공간"
                     addr = "서울 마포구"
                     photo_url = "/default_place.png"
                     category = "공간"
                     reviews = []
+                    lat, lng = 37.55, 126.92
+                    place_images = []
+                    
+                    # --- 1. 리뷰 텍스트 파싱 (Isolated Context) - 최우선 실행 ---
+                    is_bot_blocked = False
+                    has_raw_elements = False
+                    
+                    rev_context = browser.new_context(
+                        user_agent=modern_ua,
+                        viewport={"width": 375, "height": 812},
+                        is_mobile=True
+                    )
+                    rev_page = rev_context.new_page()
+                    rev_page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                    rev_page.route("**/*.{png,jpg,jpeg,gif,webp,svg,mp4,mp3,woff,ttf}", lambda route: route.abort())
                     
                     try:
-                        # 기본 정보 파싱
-                        page.goto(detail_url, timeout=20000)
-                        # attached로 DOM 안착 대기 후 1.5초간 React hydration 물리 대기
-                        page.wait_for_selector("h1, h2, [class*='Fc1yf'], [class*='GHAhO'], [class*='bh9OH']", state="attached", timeout=10000)
-                        page.wait_for_timeout(1500)
+                        logger.info(f"네이버 플레이스 리뷰 로드 중: {review_url}")
+                        rev_page.goto(review_url, timeout=20000)
+                        rev_page.wait_for_timeout(3000) # SPA 라우팅 및 렌더링 물리 대기
+                        
+                        # 1단계: 레이지 로딩 활성화를 위해 고정 픽셀 단위로 다단계 스크롤 수행 (화면 밖 리뷰 요소를 뷰포트 내로 강제 인입)
+                        for i in range(3):
+                            rev_page.evaluate(f"window.scrollTo(0, {1200 + i * 1000})")
+                            rev_page.wait_for_timeout(1000)
+                        
+                        logger.info(f"[DEBUG] rev_page Loaded URL: {rev_page.url} | Title: {rev_page.title()}")
+                        if not is_bot_blocked:
+                            # 리뷰를 충분히(20-30개) 확보하기 위해 "더보기" 버튼 1-2회 클릭 시도
+                            try:
+                                for _ in range(2):
+                                    more_btn = rev_page.locator("a:has-text('더보기'), button:has-text('더보기'), [class*='fvw7F'], .lf7jh").first
+                                    if more_btn.is_visible():
+                                        more_btn.click(force=True, timeout=2000)
+                                        rev_page.wait_for_timeout(1000) # 로딩 대기
+                                    else:
+                                        break
+                            except Exception as btn_err:
+                                logger.debug(f"리뷰 더보기 버튼 클릭 시도 중 건너뜀 (이미 끝이거나 없음): {btn_err}")
+                            
+                            review_elements = rev_page.query_selector_all("li.place_apply_pui")
+                            logger.info(f"[DEBUG] First-pass Found review elements: {len(review_elements)}")
+                            
+                            # [재시도 메커니즘] 만약 리뷰 요소가 0개 검출되었을 경우, 탭 클릭을 통해 강제 진입 시도
+                            if not review_elements:
+                                logger.info("⚠️ 리뷰가 0개 검출되었습니다. 탭 리다이렉트 Glitch 해소를 위해 리뷰 탭 강제 클릭 후 재수집을 시도합니다.")
+                                tab_selectors = [
+                                    "a[role='tab']:has-text('리뷰')",
+                                    "a:has-text('리뷰')",
+                                    "span:has-text('리뷰')",
+                                    "div:has-text('리뷰')"
+                                ]
+                                clicked = False
+                                for sel in tab_selectors:
+                                    try:
+                                        locator = rev_page.locator(sel).first
+                                        if locator.is_visible(timeout=1500):
+                                            logger.info(f"-> 셀렉터 '{sel}' 클릭 시도...")
+                                            locator.click(force=True, timeout=2000)
+                                            clicked = True
+                                            break
+                                    except Exception as click_err:
+                                        logger.debug(f"셀렉터 '{sel}' 클릭 실패: {click_err}")
+                                
+                                if not clicked:
+                                    try:
+                                        logger.info("-> Playwright 클릭 실패. 자바스크립트 직접 클릭 시도...")
+                                        rev_page.evaluate("""
+                                            () => {
+                                                const elList = document.querySelectorAll('a, span, div');
+                                                for (const el of elList) {
+                                                    if (el.textContent && el.textContent.trim() === '리뷰') {
+                                                        el.click();
+                                                        const parentA = el.closest('a');
+                                                        if (parentA) parentA.click();
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        """)
+                                        clicked = True
+                                    except Exception as js_err:
+                                        logger.warning(f"자바스크립트 직접 클릭 실패: {js_err}")
+                                
+                                if clicked:
+                                    rev_page.wait_for_timeout(3000) # 탭 전환 렌더링 대기
+                                    # 다시 스크롤 수행
+                                    for i in range(3):
+                                        rev_page.evaluate(f"window.scrollTo(0, {1200 + i * 1000})")
+                                        rev_page.wait_for_timeout(1000)
+                                    # 다시 리뷰 엘리먼트 획득 시도
+                                    review_elements = rev_page.query_selector_all("li.place_apply_pui")
+                                    logger.info(f"[DEBUG] Retry-pass Found review elements: {len(review_elements)}")
+                            
+                            if review_elements:
+                                has_raw_elements = True
+                                for el in review_elements:
+                                    # Playwright evaluate를 사용해 예약 정보 및 불필요한 메타 데이터를 모두 제거하고 순수 리뷰 본문 추출
+                                    try:
+                                        txt = el.evaluate("""
+                                            (liElement) => {
+                                                const clone = liElement.cloneNode(true);
+                                                
+                                                // 1. 클래스명 및 태그 기반으로 불필요한 메타/예약 정보 일괄 제거
+                                                const selectorsToRemove = [
+                                                    "[class*='pui__q2fg8o']", ".pui__q2fg8o", // Profile wrapper
+                                                    "[class*='pui__F2t42c']", ".pui__F2t42c", // Booking ticket title
+                                                    "[class*='pui__-0Ter1']", ".pui__-0Ter1", // Booking keywords/tags
+                                                    "[class*='pui__HLNvmI']", ".pui__HLNvmI", // Badges/keywords ("아이와 가기 좋아요")
+                                                    "[class*='pui__QztK4Q']", ".pui__QztK4Q", // Date/visit/reactions
+                                                    "[class*='lazyload']", ".lazyload-wrapper", // Thumbnail/media container
+                                                    "[class*='pui__sRNfrm']", ".pui__sRNfrm", // Owner response container
+                                                    "svg", "img", "time", "button"
+                                                ];
+                                                
+                                                selectorsToRemove.forEach(sel => {
+                                                    clone.querySelectorAll(sel).forEach(child => child.remove());
+                                                });
+                                                
+                                                // 2. "더보기" (More) 및 "접기" (Fold) 버튼 제거
+                                                clone.querySelectorAll('a').forEach(a => {
+                                                    const txt = (a.textContent || '').trim();
+                                                    if (txt === '더보기' || txt === '접기') {
+                                                        a.remove();
+                                                    }
+                                                });
+                                                
+                                                return clone.textContent ? clone.textContent.trim() : "";
+                                            }
+                                        """)
+                                    except Exception:
+                                        txt = el.text_content()
+                                    if txt:
+                                        # 사장님 답글(답글/답변 영역) 텍스트가 포함되어 있다면 본문에서 제거
+                                        try:
+                                            for div in el.locator("div").all():
+                                                has_svg = div.locator("svg").count() > 0
+                                                has_time = div.locator("time").count() > 0
+                                                has_fold = False
+                                                for a_tag in div.locator("a").all():
+                                                    if a_tag.text_content() == "접기":
+                                                        has_fold = True
+                                                        break
+                                                if has_svg and has_time and has_fold:
+                                                    r_txt = div.text_content()
+                                                    if r_txt:
+                                                        txt = txt.replace(r_txt, "")
+                                        except Exception:
+                                            pass
+
+                                        clean_rev = self._clean_review_text(txt)
+                                        # '더보기' 꼬리말 제거
+                                        if clean_rev.endswith("더보기"):
+                                            clean_rev = clean_rev[:-3].strip()
+
+                                        # 디버깅 파일에 원본 및 스킵 과정 기록
+                                        debug_path = os.path.join(os.path.dirname(__file__), "..", "skipped_reviews_debug.log")
+                                        try:
+                                            with open(debug_path, "a", encoding="utf-8") as df:
+                                                df.write(f"\n[{name}] Raw text: {repr(txt.strip())}\n")
+                                                df.write(f"[{name}] Cleaned: {repr(clean_rev)}\n")
+                                        except Exception:
+                                            pass
+
+                                        # 사장님 답글 단독 노출 필터링
+                                        if clean_rev.startswith("안녕하세요") and (name in clean_rev or "저희" in clean_rev or "방문해" in clean_rev or "답글" in clean_rev or "답변" in clean_rev):
+                                            try:
+                                                with open(debug_path, "a", encoding="utf-8") as df:
+                                                    df.write(" => Skip: Owner response\n")
+                                            except Exception: pass
+                                            continue
+
+                                        if not (15 < len(clean_rev) < 300):
+                                            try:
+                                                with open(debug_path, "a", encoding="utf-8") as df:
+                                                    df.write(f" => Skip: Length filter fail ({len(clean_rev)} chars)\n")
+                                            except Exception: pass
+                                            continue
+
+                                        if any(x in clean_rev for x in ["게스트하우스", "체험단", "무료숙박", "무료 숙박", "이벤트중", "제공받아", "포스팅", "서이추", "협찬"]):
+                                            try:
+                                                with open(debug_path, "a", encoding="utf-8") as df:
+                                                    df.write(" => Skip: Sponsored pattern\n")
+                                            except Exception: pass
+                                            continue
+
+                                        # 2. 탭 이동 문구, 날짜, 태그, 방문 옵션 등 노이즈 제외 필터링
+                                        if any(x in clean_rev for x in ["방문자리뷰", "블로그리뷰", "펼쳐보기", "다녀오셨나요", "경험을 남겨보세요"]):
+                                            try:
+                                                with open(debug_path, "a", encoding="utf-8") as df:
+                                                    df.write(" => Skip: Tab noise\n")
+                                            except Exception: pass
+                                            continue
+
+                                        # 띄어쓰기가 충분하여 완전한 문장 구조를 갖추고 있는지 체크 (태그 나열 필터링)
+                                        if len(clean_rev.split()) < 3:
+                                            try:
+                                                with open(debug_path, "a", encoding="utf-8") as df:
+                                                    df.write(f" => Skip: Split count fail ({len(clean_rev.split())} words)\n")
+                                            except Exception: pass
+                                            continue
+
+                                        if clean_rev in reviews:
+                                            try:
+                                                with open(debug_path, "a", encoding="utf-8") as df:
+                                                    df.write(" => Skip: Duplicate review\n")
+                                            except Exception: pass
+                                            continue
+
+                                        reviews.append(clean_rev)
+                                        try:
+                                            with open(debug_path, "a", encoding="utf-8") as df:
+                                                df.write(" => OK (Added)\n")
+                                        except Exception: pass
+                                        if len(reviews) >= 5: # 최대 5개 리뷰 수집
+                                            break
+                            else:
+                                logger.warning(f"리뷰 엘리먼트 획득 실패 (0개 검출 - 봇 차단 의심): {review_url}")
+                                is_bot_blocked = True
+                                try:
+                                    debug_ss_path = os.path.join(os.path.dirname(__file__), "..", "raw_data", f"debug_review_fail_{place_id}.png")
+                                    rev_page.screenshot(path=debug_ss_path)
+                                    logger.info(f"디버그 실패 스크린샷 저장 완료: {debug_ss_path}")
+                                except Exception as ss_err:
+                                    logger.warning(f"디버그 스크린샷 저장 실패: {ss_err}")
+                        else:
+                            logger.warning(f"리뷰 엘리먼트 획득 실패 (0개 검출 - 봇 차단 의심): {review_url}")
+                            is_bot_blocked = True
+                            try:
+                                debug_ss_path = os.path.join(os.path.dirname(__file__), "..", "raw_data", f"debug_review_fail_{place_id}.png")
+                                rev_page.screenshot(path=debug_ss_path)
+                                logger.info(f"디버그 실패 스크린샷 저장 완료: {debug_ss_path}")
+                            except Exception as ss_err:
+                                logger.warning(f"디버그 스크린샷 저장 실패: {ss_err}")
+                    except Exception as err:
+                        logger.warning(f"ID {place_id} 리뷰 파싱 중 예외 발생: {err}")
+                        is_bot_blocked = True
+                        try:
+                            debug_ss_path = os.path.join(os.path.dirname(__file__), "..", "raw_data", f"debug_review_fail_{place_id}.png")
+                            rev_page.screenshot(path=debug_ss_path)
+                            logger.info(f"디버그 실패 스크린샷 저장 완료: {debug_ss_path}")
+                        except Exception as ss_err:
+                            logger.warning(f"디버그 스크린샷 저장 실패: {ss_err}")
+                        try: rev_context.close()
+                        except: pass
+
+                    if not reviews:
+                        if is_bot_blocked or not has_raw_elements:
+                            reviews = [
+                                "네이버 정책으로 봇 차단(또는 네트워크 오류)되어 이 디폴트 리뷰가 삽입되었습니다.",
+                                "네이버 정책으로 봇 차단되어 수집이 실패한 상태입니다."
+                            ]
+                        else:
+                            reviews = [
+                                "필터값으로 인해 이 디폴트 리뷰가 삽입되었습니다.",
+                                "수집된 모든 리뷰가 필터값(길이 제한 및 노이즈 필터)에 의해 제외되었습니다."
+                            ]
+                            
+                    # --- 2. 상세정보 파싱 (Isolated Context) - 후순위 실행 ---
+                    det_context = browser.new_context(
+                        user_agent=modern_ua,
+                        viewport={"width": 375, "height": 812},
+                        is_mobile=True
+                    )
+                    det_page = det_context.new_page()
+                    det_page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                    det_page.route("**/*.{png,jpg,jpeg,gif,webp,svg,mp4,mp3,woff,ttf}", lambda route: route.abort())
+                    
+                    try:
+                        logger.info(f"네이버 플레이스 상세 로드 중: {detail_url}")
+                        det_page.goto(detail_url, timeout=20000)
+                        det_page.wait_for_selector("h1, h2, [class*='Fc1yf'], [class*='GHAhO'], [class*='bh9OH']", state="attached", timeout=10000)
+                        det_page.wait_for_timeout(1500)
                         
                         # 상호명 셀렉터 (정밀 클래스 매칭 우선 후 h1/h2 결합)
-                        name_els = page.locator("[class*='bh9OH'], [class*='GHAhO'], [class*='Fc1yf']").all()
+                        name_els = det_page.locator("[class*='bh9OH'], [class*='GHAhO'], [class*='Fc1yf']").all()
                         for el in name_els:
                             txt = el.text_content()
                             if txt and txt.strip() and "네이버" not in txt and "플레이스" not in txt:
                                 name = txt.strip()
                                 break
                         else:
-                            for el in page.locator("h1, h2").all():
+                            for el in det_page.locator("h1, h2").all():
                                 txt = el.text_content()
                                 if txt and txt.strip() and "네이버" not in txt and "플레이스" not in txt:
                                     name = txt.strip()
                                     break
                             else:
-                                title = page.title()
+                                title = det_page.title()
                                 if title and "네이버" not in title:
                                     name = title.split(" - ")[0].strip() if " - " in title else title
                             
                         # 주소 셀렉터 (시맨틱 & 정규식 하이브리드 파싱)
-                        addr_els = page.locator("[class*='PkgBl'], [class*='pz7wy'], [class*='LDgXM'], [class*='nNn1j'], [class*='IHcha'], .PkgBl, .pz7wy, .LDgXM, .nNn1j").all()
+                        addr_els = det_page.locator("[class*='PkgBl'], [class*='pz7wy'], [class*='LDgXM'], [class*='nNn1j'], [class*='IHcha'], .PkgBl, .pz7wy, .LDgXM, .nNn1j").all()
                         for el in addr_els:
                             txt = el.text_content()
                             if txt and txt.strip():
@@ -660,13 +943,13 @@ class PortalScraper:
                                     break
                         else:
                             # 전국 주소 정규식 폴백 검색 (지번/도로명 모두 포함)
-                            body_text = page.locator("body").text_content() or ""
+                            body_text = det_page.locator("body").text_content() or ""
                             match = re.search(r'((?:서울|인천|부산|대구|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[가-힣\s\d~\-\(\),]+(?:동|읍|면|길|로|리)\s\d+)', body_text)
                             if match:
                                 addr = match.group(1).strip()
 
                         # 대표 이미지 1장만 파싱 (썸네일용)
-                        all_imgs = page.locator("img").all()
+                        all_imgs = det_page.locator("img").all()
                         for img in all_imgs:
                             src = img.get_attribute("src") or ""
                             if "naver.net" in src or "navercdn" in src or "pstatic.net" in src:
@@ -677,14 +960,12 @@ class PortalScraper:
 
                         # 업체 등록 공식 이미지 수집으로 이동 (동적 개수 수집)
                         photo_owner_url = f"https://m.place.naver.com/place/{place_id}/photo?filterType=owner"
-                        place_images = []
                         try:
-                            # 15초 타임아웃으로 안정성 확보 후 이동
-                            page.goto(photo_owner_url, timeout=15000)
-                            page.wait_for_selector("img", state="attached", timeout=8000)
-                            page.wait_for_timeout(1000)
+                            det_page.goto(photo_owner_url, timeout=15000)
+                            det_page.wait_for_selector("img", state="attached", timeout=8000)
+                            det_page.wait_for_timeout(1000)
                             
-                            owner_imgs = page.locator("img").all()
+                            owner_imgs = det_page.locator("img").all()
                             for img in owner_imgs:
                                 src = img.get_attribute("src") or ""
                                 if "naver.net" in src or "navercdn" in src or "pstatic.net" in src:
@@ -705,96 +986,40 @@ class PortalScraper:
                         image_urls_str = ",".join(place_images)
 
                         # 카테고리 업종명 파싱
-                        cat_els = page.locator("span.lnJFt, [class*='lnJFt'], span[class*='category']").all()
+                        cat_els = det_page.locator("span.lnJFt, [class*='lnJFt'], span[class*='category']").all()
                         for el in cat_els:
                             txt = el.text_content()
                             if txt and txt.strip() and len(txt.strip()) < 15:
                                 category = txt.strip()
                                 break
 
+                        # 위경도 좌표 추출
+                        try:
+                            lat_extracted, lng_extracted = self._extract_coords(det_page.content())
+                            if not (lat_extracted == 37.55 and lng_extracted == 126.92):
+                                lat, lng = lat_extracted, lng_extracted
+                        except Exception:
+                            pass
+
+                        det_context.close()
                     except Exception as e:
                         logger.warning(f"ID {place_id} 상세 기본정보 파싱 중 예외 발생: {e}")
-
-                    # 리뷰 텍스트 파싱
-                    try:
-                        page.goto(review_url, timeout=20000)
-                        # 최신 네이버 PUI 컴포넌트(class*=pui__) 및 zPfyi / LwUKe 멀티 대기
-                        page.wait_for_selector("[class*='pui__'], [class*='zPfyi'], [class*='LwUKe'], .zPfyi", state="attached", timeout=10000)
-                        page.wait_for_timeout(1000)
-                        
-                        # 1단계: 특정 리뷰 텍스트 클래스(.zPfyi, .LwUKe)로 먼저 시도하여 노이즈(예약 버튼, 사장님 UI 블록 등) 최소화
-                        review_elements = page.locator(".zPfyi, .LwUKe").all()
-                        if not review_elements:
-                            # 2단계: 실패 시 포괄적인 PUI 디자인 시스템 클래스까지 포함하여 폴백
-                            review_elements = page.locator("[class*='pui__'], [class*='zPfyi'], [class*='LwUKe'], .zPfyi, .LwUKe").all()
-
-                        for el in review_elements:
-                            txt = el.text_content()
-                            if txt:
-                                # 사장님 답글(답글/답변 영역) 텍스트가 포함되어 있다면 본문에서 제거
-                                try:
-                                    for div in el.locator("div").all():
-                                        has_svg = div.locator("svg").count() > 0
-                                        has_time = div.locator("time").count() > 0
-                                        has_fold = False
-                                        for a_tag in div.locator("a").all():
-                                            if a_tag.text_content() == "접기":
-                                                has_fold = True
-                                                break
-                                        if has_svg and has_time and has_fold:
-                                            r_txt = div.text_content()
-                                            if r_txt:
-                                                txt = txt.replace(r_txt, "")
-                                except Exception:
-                                    pass
-
-                                clean_rev = txt.strip()
-                                # '더보기' 꼬리말 제거
-                                if clean_rev.endswith("더보기"):
-                                    clean_rev = clean_rev[:-3].strip()
-
-                                # 사장님 답글 단독 노출 필터링
-                                if clean_rev.startswith("안녕하세요") and (name in clean_rev or "저희" in clean_rev or "방문해" in clean_rev or "답글" in clean_rev or "답변" in clean_rev):
-                                    continue
-
-                                # 예약/예매 정보 링크/버튼 텍스트 필터링
-                                if clean_rev.endswith("예약") or "예약 (" in clean_rev or (("[" in clean_rev or "]" in clean_rev) and "예약" in clean_rev):
-                                    continue
-
-                                if 15 < len(clean_rev) < 200:
-                                    # 1. 영수증/결제내역 인증 날짜 정보 필터링
-                                    if re.search(r'\d+년\s*\d+월\s*\d+일', clean_rev) or re.search(r'\d+\.\d+\.[월화수목금토일]', clean_rev):
-                                        continue
-                                    if any(x in clean_rev for x in ["방문일", "방문인증", "인증수단", "인증 수단", "영수증", "결제내역", "반응 남기기", "번째 방문", "표정을 눌러", "반응을 남겨"]):
-                                        continue
-                                    if any(x in clean_rev for x in ["게스트하우스", "체험단", "무료숙박", "무료 숙박", "이벤트중", "제공받아", "포스팅", "서이추", "협찬"]):
-                                        continue
-
-                                    # 2. 탭 이동 문구, 날짜, 태그, 방문 옵션 등 노이즈 제외 필터링
-                                    if not any(x in clean_rev for x in ["방문자리뷰", "블로그리뷰", "블로그", "리뷰", "등록", "별점", "네이버", "펼쳐보기", "팔로워", "사진", "일자", "방문예약", "대기 시간", "다녀오셨나요", "경험을 남겨보세요", "표정을 눌러", "반응을 남겨"]):
-                                        # 띄어쓰기가 충분하여 완전한 문장 구조를 갖추고 있는지 체크 (태그 나열 필터링)
-                                        if len(clean_rev.split()) >= 3:
-                                            if clean_rev not in reviews:
-                                                reviews.append(clean_rev)
-                                                if len(reviews) >= 5: # 최대 5개 리뷰 수집
-                                                    break
-                    except Exception as err:
-                        logger.warning(f"ID {place_id} 리뷰 파싱 실패: {err}")
-
-                    if not reviews:
-                        reviews = ["아늑하고 분위기가 좋은 따뜻한 공간입니다.", "인테리어가 감각적이고 커피 맛이 마음에 듭니다."]
+                        try: det_context.close()
+                        except: pass
+                        if not place_images:
+                            place_images = [photo_url]
+                        image_urls_str = ",".join(place_images)
 
                     # 장소명 일치 검증
-                    if target_name and not is_name_matched(name, target_name):
+                    if target_name and not is_manually_selected and not is_name_matched(name, target_name):
                         logger.warning(f"⚠️ 장소명 미스매치 배제 -> 수집명: '{name}' vs 대상명: '{target_name}' (ID: {place_id}). 다음 후보로 넘어갑니다.")
                         continue
                         
                     # 지역/주소 일치 검증
-                    if target_name and not self._is_region_matched(addr, query):
+                    if target_name and not is_manually_selected and not self._is_region_matched(addr, query):
                         logger.warning(f"⚠️ 지역/주소 미스매치 배제 -> 주소: '{addr}' vs 검색어: '{query}' (ID: {place_id}). 다음 후보로 넘어갑니다.")
                         continue
 
-                    lat, lng = self._extract_coords(page.content())
                     results.append({
                         "name": name,
                         "address": addr,

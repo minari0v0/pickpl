@@ -131,6 +131,7 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
     
     scraper = PortalScraper(use_mock=False)
     queries_to_run = []
+    query_to_theme_map = {}
     
     # 0. --curation-theme 플래그 처리
     if curation_theme:
@@ -151,7 +152,9 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
             for theme in themes:
                 theme_queries = curation_data[theme].get("queries", [])
                 logger.info(f"큐레이션 테마 '{theme}' ({curation_data[theme].get('title')}) 에서 {len(theme_queries)}개 쿼리 로드")
-                queries_to_run.extend(theme_queries)
+                for tq in theme_queries:
+                    queries_to_run.append(tq)
+                    query_to_theme_map[tq] = theme
         except Exception as e:
             logger.error(f"curation_queries.json 로드 중 오류 발생: {e}")
             sys.exit(1)
@@ -265,6 +268,7 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
                     
                     for p in filtered_places:
                         p["searchQuery"] = q
+                        p["curationTheme"] = query_to_theme_map.get(q, None)
                     
                     if filtered_places:
                         save_and_merge_results(filtered_places, output_file)
