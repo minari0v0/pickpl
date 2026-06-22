@@ -797,10 +797,15 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         onViewChange={setActiveView}
                         setSelectedFolder={setSelectedFolder}
                         onAccountSettingsClick={() => setShowAccountModal(true)}
-                        onAppSettingsClick={() => setShowSettingsModal(true)}
+                        onAppSettingsClick={() => {}}
                         onLogout={handleLogout}
                         onShowTermsModal={setShowTermsModal}
                         showToast={showToast}
+                        defaultScrapFolder={defaultScrapFolder}
+                        appTheme={appTheme}
+                        newThemeNotification={newThemeNotification}
+                        plannerNotification={plannerNotification}
+                        onSaveSettings={handleSaveSettings}
                     />
                 </main>
             </div>
@@ -935,17 +940,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 showToast={showToast} 
             />
 
-            {/* 설정 모달 */}
-            <AppSettingsModal 
-                isOpen={showSettingsModal} 
-                onClose={() => setShowSettingsModal(false)} 
-                foldersMap={foldersMap} 
-                defaultScrapFolder={defaultScrapFolder} 
-                appTheme={appTheme} 
-                newThemeNotification={newThemeNotification} 
-                plannerNotification={plannerNotification} 
-                onSave={handleSaveSettings} 
-            />
+
 
             {/* 토스트 알림창 */}
             {toast && (

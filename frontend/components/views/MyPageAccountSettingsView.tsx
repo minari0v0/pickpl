@@ -9,7 +9,7 @@ interface MyPageAccountSettingsViewProps {
     emailVerified: boolean;
     linkedProviders: string[];
     refreshUserInfo: () => Promise<void>;
-    onBack: () => void;
+    onBack?: () => void;
     onLogout: () => void;
     showToast: (msg: string, type?: 'success' | 'warning' | 'error') => void;
 }
@@ -271,34 +271,26 @@ export default function MyPageAccountSettingsView({
     return (
         <div 
             style={{ display: hidden ? 'none' : 'flex' }} 
-            className="flex-1 h-full w-full overflow-y-auto no-scrollbar bg-[#F9FAFB] animate-slide-in-right lg:animate-fade-in flex flex-col absolute lg:relative inset-0 z-30 lg:z-auto items-center"
+            className="bg-white rounded-[28px] lg:rounded-[32px] p-6 lg:p-8 border border-[#F2F4F6] shadow-sm flex flex-col gap-6 relative overflow-hidden animate-fade-in w-full shrink-0"
         >
-            {/* 헤더 */}
-            <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-[#F2F4F6]/50 px-6 py-4 lg:px-10 lg:py-8 flex items-center w-full shrink-0">
-                <button 
-                    onClick={() => {
-                        onBack();
-                        setCurrentPassword('');
-                        setNewPassword('');
-                        setConfirmPassword('');
-                    }}
-                    className="w-10 h-10 rounded-full bg-[#F2F4F6] hover:bg-[#E5E8EB] flex items-center justify-center text-[#4E5968] active:scale-95 transition-all mr-3"
-                >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
-                </button>
-                <h1 className="font-bold text-[20px] lg:text-[28px] tracking-tight text-[#191F28]">계정 설정</h1>
-            </header>
+            <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/[0.01] rounded-full blur-3xl pointer-events-none"></div>
 
-            <div className="w-full lg:max-w-[600px] px-5 lg:px-8 py-6 lg:py-10 flex-1 flex flex-col gap-6 lg:gap-8 pb-[120px]">
+            {/* 헤더 */}
+            <div className="pb-4 border-b border-[#F2F4F6] flex justify-between items-center w-full">
+                <div>
+                    <span className="px-2.5 py-1 rounded-[8px] bg-[#F0F6F5] text-[#2E7D7A] text-[11px] font-bold tracking-tight border border-[#D1E6E4]/50">프로필 및 보안 설정</span>
+                    <h3 className="font-extrabold text-[19px] text-[#191F28] mt-1.5 tracking-tight">계정 설정</h3>
+                </div>
+            </div>
+
+            <div className="w-full flex flex-col gap-6">
                 {/* 계정 정보 카드 */}
-                <div className="bg-white rounded-[28px] p-6 border border-[#F2F4F6] shadow-sm flex flex-col gap-4">
-                    <h3 className="font-extrabold text-[16px] text-[#191F28] pb-3 border-b border-[#F2F4F6]">계정 기본 정보</h3>
+                <div className="bg-[#F9FAFB] rounded-[24px] p-5 border border-[#F2F4F6] flex flex-col gap-4">
+                    <h3 className="font-extrabold text-[15px] text-[#191F28]">계정 기본 정보</h3>
                     <div className="flex flex-col gap-1">
                         <span className="text-[12px] font-bold text-[#8B95A1]">이메일 주소</span>
                         <div className="flex items-center justify-between mt-1">
-                            <span className="text-[16px] font-extrabold text-[#191F28]">{userEmail || "이메일 정보 없음"}</span>
+                            <span className="text-[15px] font-extrabold text-[#191F28]">{userEmail || "이메일 정보 없음"}</span>
                             {provider === 'LOCAL' ? (
                                 emailVerified ? (
                                     <span className="px-2.5 py-1 rounded-[8px] bg-[#F0F6F5] text-[#2E7D7A] border border-[#D1E6E4]/50 text-[11px] font-bold">
@@ -320,12 +312,12 @@ export default function MyPageAccountSettingsView({
 
                 {/* 이메일 미인증 카드 (LOCAL 회원의 경우) */}
                 {provider === 'LOCAL' && !emailVerified && (
-                    <div className="bg-white rounded-[28px] p-6 border border-[#FFD2C4] bg-gradient-to-br from-white to-[#FFF9F7] shadow-sm flex flex-col gap-4">
+                    <div className="bg-[#FFF9F7] rounded-[24px] p-5 border border-[#FFD2C4] shadow-sm flex flex-col gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-[20px]">✉️</span>
-                            <h3 className="font-extrabold text-[16px] text-[#FF5F2E]">이메일 본인 인증</h3>
+                            <span className="text-[18px]">✉️</span>
+                            <h3 className="font-extrabold text-[15px] text-[#FF5F2E]">이메일 본인 인증</h3>
                         </div>
-                        <p className="text-[12.5px] text-[#8B95A1] font-medium leading-relaxed">
+                        <p className="text-[12px] text-[#8B95A1] font-medium leading-relaxed">
                             현재 계정은 이메일 인증이 완료되지 않았습니다. 인증을 완료하시면 프로필 설정 수정 권한이 부여되며 소셜 다중 통합 계정을 안전하게 연동하실 수 있습니다.
                         </p>
                         
@@ -357,13 +349,13 @@ export default function MyPageAccountSettingsView({
                 )}
 
                 {/* 소셜 계정 연동 관리 */}
-                <div className="bg-white rounded-[28px] p-6 border border-[#F2F4F6] shadow-sm flex flex-col gap-4">
-                    <h3 className="font-extrabold text-[16px] text-[#191F28] pb-3 border-b border-[#F2F4F6]">소셜 계정 연동 관리</h3>
-                    <p className="text-[12px] font-medium text-[#8B95A1] leading-relaxed pl-1">
+                <div className="bg-white rounded-[24px] p-5 border border-[#F2F4F6] shadow-sm flex flex-col gap-4">
+                    <h3 className="font-extrabold text-[15px] text-[#191F28]">소셜 계정 연동 관리</h3>
+                    <p className="text-[12px] font-medium text-[#8B95A1] leading-relaxed">
                         일반 이메일 계정으로 로그인한 경우, 소셜 계정들을 연동하여 다음 로그인 시 해당 소셜 로그인으로 바로 접속하실 수 있습니다.
                     </p>
                     
-                    <div className="flex flex-col gap-3 mt-2">
+                    <div className="flex flex-col gap-3">
                         {/* 네이버 연동 배지 */}
                         <div className="flex items-center justify-between p-3.5 rounded-[16px] border border-[#F2F4F6] bg-[#F9FAFB]">
                             <div className="flex items-center gap-3">
@@ -372,7 +364,7 @@ export default function MyPageAccountSettingsView({
                                         <path d="M16.2 2H22v20h-5.8l-8.4-12.4V22H2V2h5.8l8.4 12.4V2z"/>
                                     </svg>
                                 </div>
-                                <span className="font-bold text-[14px] text-[#4E5968]">네이버 계정</span>
+                                <span className="font-bold text-[13.5px] text-[#4E5968]">네이버 계정</span>
                             </div>
                             {linkedProviders.includes('NAVER') || provider === 'NAVER' ? (
                                 <span className="px-3 py-1.5 rounded-[10px] bg-[#03C75A]/10 text-[#03C75A] border border-[#03C75A]/30 text-[11px] font-bold">
@@ -396,7 +388,7 @@ export default function MyPageAccountSettingsView({
                                         <path d="M12 3c-4.97 0-9 3.18-9 7.1 0 2.5 1.63 4.7 4.14 5.92-.17.58-.62 2.1-.7 2.4-.1.38.14.37.28.27.12-.08 1.94-1.32 2.7-1.84.85.22 1.7.35 2.58.35 4.97 0 9-3.18 9-7.1S16.97 3 12 3z"/>
                                     </svg>
                                 </div>
-                                <span className="font-bold text-[14px] text-[#4E5968]">카카오 계정</span>
+                                <span className="font-bold text-[13.5px] text-[#4E5968]">카카오 계정</span>
                             </div>
                             {linkedProviders.includes('KAKAO') || provider === 'KAKAO' ? (
                                 <span className="px-3 py-1.5 rounded-[10px] bg-[#FEE500]/20 text-[#3C1E1E] border border-[#FEE500]/50 text-[11px] font-bold">
@@ -423,7 +415,7 @@ export default function MyPageAccountSettingsView({
                                         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                                     </svg>
                                 </div>
-                                <span className="font-bold text-[14px] text-[#4E5968]">구글 계정</span>
+                                <span className="font-bold text-[13.5px] text-[#4E5968]">구글 계정</span>
                             </div>
                             {linkedProviders.includes('GOOGLE') || provider === 'GOOGLE' ? (
                                 <span className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] text-[#4E5968] border border-[#E5E8EB] text-[11px] font-bold">
@@ -443,8 +435,8 @@ export default function MyPageAccountSettingsView({
 
                 {/* 비밀번호 변경 폼 (LOCAL 유저) */}
                 {provider === 'LOCAL' ? (
-                    <form onSubmit={handlePasswordChange} className="bg-white rounded-[28px] p-6 border border-[#F2F4F6] shadow-sm flex flex-col gap-4">
-                        <h3 className="font-extrabold text-[16px] text-[#191F28] pb-3 border-b border-[#F2F4F6]">비밀번호 변경</h3>
+                    <form onSubmit={handlePasswordChange} className="bg-white rounded-[24px] p-5 border border-[#F2F4F6] shadow-sm flex flex-col gap-4">
+                        <h3 className="font-extrabold text-[15px] text-[#191F28]">비밀번호 변경</h3>
                         
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[12px] font-bold text-[#8B95A1] pl-1">현재 비밀번호</label>
@@ -485,16 +477,16 @@ export default function MyPageAccountSettingsView({
                         <button 
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full mt-2 py-4 rounded-[16px] bg-[#191F28] hover:bg-black text-white font-bold text-[15px] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full mt-2 py-3.5 rounded-[16px] bg-[#191F28] hover:bg-black text-white font-bold text-[14px] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? "변경 중..." : "비밀번호 변경"}
                         </button>
                     </form>
                 ) : (
-                    <div className="bg-white rounded-[28px] p-6 border border-[#F2F4F6] shadow-sm flex flex-col gap-3">
-                        <h3 className="font-extrabold text-[16px] text-[#191F28] pb-3 border-b border-[#F2F4F6]">비밀번호 변경</h3>
+                    <div className="bg-white rounded-[24px] p-5 border border-[#F2F4F6] shadow-sm flex flex-col gap-3">
+                        <h3 className="font-extrabold text-[15px] text-[#191F28]">비밀번호 변경</h3>
                         <div className="bg-[#FAF0EB] rounded-[16px] p-4 border border-[#EAD5C3]/40 text-center flex flex-col items-center gap-2">
-                            <span className="text-[24px]">🔒</span>
+                            <span className="text-[20px]">🔒</span>
                             <p className="text-[13px] font-bold text-[#C67A5A]">소셜 로그인 계정입니다.</p>
                             <p className="text-[12px] text-[#8B95A1] font-medium leading-relaxed">
                                 해당 계정({provider})은 소셜 연동을 통해 로그인되었습니다.<br />
@@ -504,16 +496,72 @@ export default function MyPageAccountSettingsView({
                     </div>
                 )}
 
+                {/* 로그인 기록 */}
+                <div className="flex flex-col gap-4 border-t border-[#F2F4F6] pt-5">
+                    <div className="flex flex-col gap-1">
+                        <h4 className="font-bold text-[14px] text-[#191F28] pl-1">로그인 기록</h4>
+                        <p className="text-[12px] text-[#8B95A1] pl-1">현재 로그인되어 있는 기기 및 세션 정보입니다.</p>
+                    </div>
+                    
+                    <div className="flex flex-col gap-3 mt-1">
+                        {/* Windows Chrome */}
+                        <div className="flex items-center justify-between p-4 rounded-[16px] border border-[#F2F4F6] bg-[#F9FAFB] shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-[#F2F4F6] flex items-center justify-center text-[#4E5968]">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold text-[13.5px] text-[#191F28] flex items-center gap-1.5">
+                                        Seoul <span className="px-1.5 py-0.5 rounded-[6px] bg-[#E8F3F1] text-[#2E7D7A] text-[9.5px] font-bold">현재 기기</span>
+                                    </p>
+                                    <p className="text-[11.5px] text-[#8B95A1] font-semibold mt-0.5">36초 전 • Chrome • windows</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* iOS Safari */}
+                        <div className="flex items-center justify-between p-4 rounded-[16px] border border-[#F2F4F6] bg-[#F9FAFB] shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-[#F2F4F6] flex items-center justify-center text-[#4E5968]">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold text-[13.5px] text-[#191F28]">Gyeonggi-do</p>
+                                    <p className="text-[11.5px] text-[#8B95A1] font-semibold mt-0.5">1일 전 • Safari • ios</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (window.confirm("이 기기에서 로그아웃하시겠습니까?")) {
+                                        showToast("해당 기기에서 원격 로그아웃 되었습니다.", "success");
+                                    }
+                                }}
+                                className="px-3 py-1.5 rounded-[10px] bg-[#FAF0F0] hover:bg-[#FFF0F0] text-red-500 font-bold text-[11px] transition-all active:scale-95 border border-red-100 flex items-center gap-1 shadow-sm"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span>로그아웃</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 {/* 회원 탈퇴 카드 */}
-                <div className="bg-white rounded-[28px] p-6 border border-[#F2F4F6] shadow-sm flex flex-col gap-4">
-                    <h3 className="font-extrabold text-[16px] text-[#191F28] pb-3 border-b border-[#F2F4F6]">회원 탈퇴</h3>
-                    <p className="text-[12px] font-medium text-[#8B95A1] leading-relaxed pl-1">
-                        탈퇴 시 보관함에 저장된 모든 공간 데이터와 활동 내역(뱃지 업적, 선호 분위기 투표 등)이 즉시 영구 삭제되며 복구할 수 없습니다.
+                <div className="bg-white rounded-[24px] p-5 border border-[#F2F4F6] shadow-sm flex flex-col gap-4 mt-2">
+                    <h3 className="font-extrabold text-[15px] text-[#191F28]">회원 탈퇴</h3>
+                    <p className="text-[12px] font-medium text-[#8B95A1] leading-relaxed">
+                        탈퇴 시 보관함에 저장된 모든 공간 데이터와 활동 내역이 즉시 영구 삭제되며 복구할 수 없습니다.
                     </p>
                     <button 
                         type="button"
                         onClick={handleWithdraw}
-                        className="w-full py-4 rounded-[16px] bg-[#FAF0F0] hover:bg-[#FFF0F0] text-red-500 font-bold text-[14px] active:scale-[0.98] transition-all"
+                        className="w-full py-3.5 rounded-[16px] bg-[#FAF0F0] hover:bg-[#FFF0F0] text-red-500 font-bold text-[14px] active:scale-[0.98] transition-all"
                     >
                         픽플 탈퇴하기
                     </button>
