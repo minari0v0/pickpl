@@ -64,7 +64,24 @@ public class SecurityConfig {
                         )
                         .successHandler(oAuth2AuthenticationSuccessHandler)
                         .failureHandler((request, response, exception) -> {
-                            response.sendRedirect("http://localhost:3000/login?error=" + java.net.URLEncoder.encode(exception.getMessage(), "UTF-8"));
+                            jakarta.servlet.http.HttpSession session = request.getSession(false);
+                            String errMsg = "소셜 인증에 실패했습니다.";
+                            if (exception instanceof org.springframework.security.oauth2.core.OAuth2AuthenticationException) {
+                                org.springframework.security.oauth2.core.OAuth2Error error = 
+                                    ((org.springframework.security.oauth2.core.OAuth2AuthenticationException) exception).getError();
+                                if (error != null && error.getDescription() != null) {
+                                    errMsg = error.getDescription();
+                                }
+                            } else if (exception != null && exception.getMessage() != null) {
+                                errMsg = exception.getMessage();
+                            }
+                            
+                            if (session != null && session.getAttribute("link_user_id") != null) {
+                                session.removeAttribute("link_user_id");
+                                response.sendRedirect("http://localhost:3000/?linkError=" + java.net.URLEncoder.encode(errMsg, "UTF-8"));
+                            } else {
+                                response.sendRedirect("http://localhost:3000/login?error=" + java.net.URLEncoder.encode(errMsg, "UTF-8"));
+                            }
                         })
                 );
 
