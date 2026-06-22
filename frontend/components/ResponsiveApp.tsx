@@ -188,15 +188,32 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         refreshUserInfo();
     }, [isLoggedIn]);
 
-    // 로그인 완료 토스트 확인
+    // 소셜 연동(OAuth2) 성공/실패 쿼리 파라미터 감지 및 처리
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            if (sessionStorage.getItem("showLoginToast")) {
-                showToast("로그인 되었습니다.");
-                sessionStorage.removeItem("showLoginToast");
+            const params = new URLSearchParams(window.location.search);
+            const linkSuccess = params.get('linkSuccess');
+            const linkError = params.get('linkError');
+            const providerParam = params.get('provider');
+
+            if (linkSuccess === 'true') {
+                setActiveView('mypage');
+                showToast(`${providerParam || '소셜'} 계정이 성공적으로 연동되었습니다.`, 'success');
+                refreshUserInfo();
+                
+                // URL 쿼리 클리어
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            } else if (linkError) {
+                setActiveView('mypage');
+                showToast(decodeURIComponent(linkError), 'error');
+                
+                // URL 쿼리 클리어
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
             }
         }
-    }, []);
+    }, [isMounted]);
 
     // SWR 북마크 폴더 조회
     const { data: scrapsData, mutate: mutateScraps } = useSWR(

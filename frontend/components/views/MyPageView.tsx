@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getProfileBgClass } from '../ui/Helpers';
 import MyPageAccountSettingsView from './MyPageAccountSettingsView';
 import MyPageAppSettingsView from './MyPageAppSettingsView';
@@ -57,6 +57,15 @@ export default function MyPageView({
     onSaveSettings
 }: MyPageViewProps) {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'general' | 'account'>('dashboard');
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('linkSuccess') === 'true' || params.get('linkError')) {
+                setActiveTab('account');
+            }
+        }
+    }, []);
 
     const handleProfileEditClick = () => {
         if (provider === 'LOCAL' && !emailVerified) {

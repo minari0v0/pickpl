@@ -31,6 +31,41 @@ export default function MyPageAccountSettingsView({
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // 로그인 기기 세션 상태
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+
+    const fetchSessions = async () => {
+        setIsLoadingSessions(true);
+        try {
+            const token = localStorage.getItem("refreshToken") || "";
+            const res = await axiosInstance.get(`/auth/sessions?currentRefreshToken=${encodeURIComponent(token)}`);
+            setSessions(res.data || []);
+        } catch (err) {
+            console.error("로그인 기록 조회 실패:", err);
+        } finally {
+            setIsLoadingSessions(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!hidden) {
+            fetchSessions();
+        }
+    }, [hidden]);
+
+    const handleRemoteLogout = async (sessionId: number) => {
+        if (!window.confirm("이 기기에서 로그아웃하시겠습니까?")) return;
+        try {
+            await axiosInstance.delete(`/auth/sessions/${sessionId}`);
+            showToast("해당 기기에서 원격 로그아웃 되었습니다.", "success");
+            fetchSessions();
+        } catch (err: any) {
+            console.error("원격 로그아웃 실패:", err);
+            showToast(err.response?.data?.message || "원격 로그아웃 처리 중 오류가 발생했습니다.", "error");
+        }
+    };
+
     // 이메일 인증 관련 상태
     const [isVerificationSending, setIsVerificationSending] = useState(false);
     const [verificationSent, setVerificationSent] = useState(false);
@@ -234,22 +269,13 @@ export default function MyPageAccountSettingsView({
         }
     };
 
-    const handleLinkSocial = async (providerName: string) => {
-        const testProviderId = window.prompt(
-            `[${providerName}] 연동을 시뮬레이션합니다.\n연동할 소셜 계정의 고유 ID (providerId)를 입력해 주세요:`
-        );
-        if (!testProviderId) return;
-
-        try {
-            await axiosInstance.post(`/auth/link/${providerName.toUpperCase()}`, {
-                providerId: testProviderId
-            });
-            showToast(`${providerName} 계정이 성공적으로 연동되었습니다.`, "success");
-            await refreshUserInfo();
-        } catch (err: any) {
-            console.error(`${providerName} 연동 실패:`, err);
-            showToast(err.response?.data?.message || `${providerName} 연동 처리 중 오류가 발생했습니다.`, "error");
+    const handleLinkSocial = (providerName: string) => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            showToast("인증 토큰이 유효하지 않습니다. 다시 로그인해 주세요.", "error");
+            return;
         }
+        window.location.href = `http://localhost:8080/api/v1/auth/link/${providerName.toLowerCase()}/init?token=${encodeURIComponent(token)}`;
     };
 
     const handleWithdraw = async () => {
@@ -391,7 +417,7 @@ export default function MyPageAccountSettingsView({
                                 <span className="font-bold text-[13.5px] text-[#4E5968]">카카오 계정</span>
                             </div>
                             {linkedProviders.includes('KAKAO') || provider === 'KAKAO' ? (
-                                <span className="px-3 py-1.5 rounded-[10px] bg-[#FEE500]/20 text-[#3C1E1E] border border-[#FEE500]/50 text-[11px] font-bold">
+                                <span className="px-3 py-1.5 rounded-[10px] bg-[#03C75A]/10 text-[#03C75A] border border-[#03C75A]/30 text-[11px] font-bold">
                                     연동됨
                                 </span>
                             ) : (
@@ -418,7 +444,7 @@ export default function MyPageAccountSettingsView({
                                 <span className="font-bold text-[13.5px] text-[#4E5968]">구글 계정</span>
                             </div>
                             {linkedProviders.includes('GOOGLE') || provider === 'GOOGLE' ? (
-                                <span className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] text-[#4E5968] border border-[#E5E8EB] text-[11px] font-bold">
+                                <span className="px-3 py-1.5 rounded-[10px] bg-[#03C75A]/10 text-[#03C75A] border border-[#03C75A]/30 text-[11px] font-bold">
                                     연동됨
                                 </span>
                             ) : (
@@ -503,52 +529,53 @@ export default function MyPageAccountSettingsView({
                         <p className="text-[12px] text-[#8B95A1] pl-1">현재 로그인되어 있는 기기 및 세션 정보입니다.</p>
                     </div>
                     
-                    <div className="flex flex-col gap-3 mt-1">
-                        {/* Windows Chrome */}
-                        <div className="flex items-center justify-between p-4 rounded-[16px] border border-[#F2F4F6] bg-[#F9FAFB] shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#F2F4F6] flex items-center justify-center text-[#4E5968]">
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                    </svg>
+                    <div className="flex flex-col gap-3 mt-1 font-sans">
+                        {isLoadingSessions ? (
+                            <div className="text-center py-4 text-[13px] text-[#8B95A1] font-semibold">로그인 기록 로딩 중...</div>
+                        ) : sessions.length === 0 ? (
+                            <div className="text-center py-4 text-[13px] text-[#8B95A1] font-semibold">로그인 기록이 없습니다.</div>
+                        ) : (
+                            sessions.map((session) => (
+                                <div key={session.id} className="flex items-center justify-between p-4 rounded-[16px] border border-[#F2F4F6] bg-[#F9FAFB] shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-full bg-[#F2F4F6] flex items-center justify-center text-[#4E5968]">
+                                            {session.device === 'iOS' || session.device === 'Android' ? (
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                            )}
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="font-bold text-[13.5px] text-[#191F28] flex items-center gap-1.5">
+                                                {session.location || "알 수 없는 지역"}{" "}
+                                                {session.isCurrent && (
+                                                    <span className="px-1.5 py-0.5 rounded-[6px] bg-[#E8F3F1] text-[#2E7D7A] text-[9.5px] font-bold">현재 기기</span>
+                                                )}
+                                            </p>
+                                            <p className="text-[11.5px] text-[#8B95A1] font-semibold mt-0.5">
+                                                {session.lastAccessed} • {session.browser || "Browser"} • {session.device || "OS"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {!session.isCurrent && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoteLogout(session.id)}
+                                            className="px-3 py-1.5 rounded-[10px] bg-[#FAF0F0] hover:bg-[#FFF0F0] text-red-500 font-bold text-[11px] transition-all active:scale-95 border border-red-100 flex items-center gap-1 shadow-sm"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                            </svg>
+                                            <span>로그아웃</span>
+                                        </button>
+                                    )}
                                 </div>
-                                <div className="text-left">
-                                    <p className="font-bold text-[13.5px] text-[#191F28] flex items-center gap-1.5">
-                                        Seoul <span className="px-1.5 py-0.5 rounded-[6px] bg-[#E8F3F1] text-[#2E7D7A] text-[9.5px] font-bold">현재 기기</span>
-                                    </p>
-                                    <p className="text-[11.5px] text-[#8B95A1] font-semibold mt-0.5">36초 전 • Chrome • windows</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* iOS Safari */}
-                        <div className="flex items-center justify-between p-4 rounded-[16px] border border-[#F2F4F6] bg-[#F9FAFB] shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#F2F4F6] flex items-center justify-center text-[#4E5968]">
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                                <div className="text-left">
-                                    <p className="font-bold text-[13.5px] text-[#191F28]">Gyeonggi-do</p>
-                                    <p className="text-[11.5px] text-[#8B95A1] font-semibold mt-0.5">1일 전 • Safari • ios</p>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (window.confirm("이 기기에서 로그아웃하시겠습니까?")) {
-                                        showToast("해당 기기에서 원격 로그아웃 되었습니다.", "success");
-                                    }
-                                }}
-                                className="px-3 py-1.5 rounded-[10px] bg-[#FAF0F0] hover:bg-[#FFF0F0] text-red-500 font-bold text-[11px] transition-all active:scale-95 border border-red-100 flex items-center gap-1 shadow-sm"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                                <span>로그아웃</span>
-                            </button>
-                        </div>
+                            ))
+                        )}
                     </div>
                 </div>
 
