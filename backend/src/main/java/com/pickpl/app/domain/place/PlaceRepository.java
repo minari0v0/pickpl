@@ -65,10 +65,14 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
             HAVING COUNT(DISTINCT t.name) = :tagCount
             """,
             countQuery = """
-            SELECT COUNT(DISTINCT p.id) FROM Place p
-            JOIN p.placeTagMaps ptm
-            JOIN ptm.tag t
-            WHERE t.name IN :tagNames AND p.isPublished = true
+            SELECT COUNT(p) FROM Place p
+            WHERE p.id IN (
+                SELECT ptm.place.id FROM PlaceTagMap ptm
+                JOIN ptm.tag t
+                WHERE t.name IN :tagNames AND ptm.place.isPublished = true
+                GROUP BY ptm.place.id
+                HAVING COUNT(DISTINCT t.name) = :tagCount
+            )
             """)
     org.springframework.data.domain.Page<Place> findPlacesMatchingAllTags(
             @org.springframework.data.repository.query.Param("tagNames") List<String> tagNames,
@@ -87,12 +91,15 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
             HAVING COUNT(DISTINCT t.name) = :tagCount
             """,
             countQuery = """
-            SELECT COUNT(DISTINCT p.id) FROM Place p
-            JOIN p.placeTagMaps ptm
-            JOIN ptm.tag t
-            WHERE t.name IN :tagNames
-              AND (p.name LIKE CONCAT('%', :keyword, '%') OR p.address LIKE CONCAT('%', :keyword, '%') OR p.category LIKE CONCAT('%', :keyword, '%') OR p.aiMoodSummary LIKE CONCAT('%', :keyword, '%'))
-              AND p.isPublished = true
+            SELECT COUNT(p) FROM Place p
+            WHERE p.id IN (
+                SELECT ptm.place.id FROM PlaceTagMap ptm
+                JOIN ptm.tag t
+                WHERE t.name IN :tagNames AND ptm.place.isPublished = true
+                  AND (ptm.place.name LIKE CONCAT('%', :keyword, '%') OR ptm.place.address LIKE CONCAT('%', :keyword, '%') OR ptm.place.category LIKE CONCAT('%', :keyword, '%') OR ptm.place.aiMoodSummary LIKE CONCAT('%', :keyword, '%'))
+                GROUP BY ptm.place.id
+                HAVING COUNT(DISTINCT t.name) = :tagCount
+            )
             """)
     org.springframework.data.domain.Page<Place> findPlacesMatchingAllTagsAndKeyword(
             @org.springframework.data.repository.query.Param("tagNames") List<String> tagNames,

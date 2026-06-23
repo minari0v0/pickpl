@@ -73,13 +73,21 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
     const [showFolderModal, setShowFolderModal] = useState(false);
 
+    // 발견(Discover) 탭 전용 상태
+    const [discoverPlacesList, setDiscoverPlacesList] = useState<any[]>(initialPlaces);
+    const [discoverPage, setDiscoverPage] = useState<number>(0);
+    const [discoverHasMore, setDiscoverHasMore] = useState<boolean>(true);
+    const [discoverIsLoadingMore, setDiscoverIsLoadingMore] = useState<boolean>(false);
+
+    // 탐색(Explore) 탭 전용 상태
+    const [explorePlacesList, setExplorePlacesList] = useState<any[]>([]);
+    const [explorePage, setExplorePage] = useState<number>(0);
+    const [exploreHasMore, setExploreHasMore] = useState<boolean>(true);
+    const [exploreIsLoadingMore, setExploreIsLoadingMore] = useState<boolean>(false);
+
     // 검색 필터 상태
     const [searchKeyword, setSearchKeyword] = useState("");
     const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState("");
-    const [placesList, setPlacesList] = useState<any[]>(initialPlaces);
-    const [page, setPage] = useState<number>(0);
-    const [hasMore, setHasMore] = useState<boolean>(true);
-    const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
     // 검색어 디바운싱 (300ms)
     useEffect(() => {
@@ -221,8 +229,64 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         fetcher
     );
 
-    // SWR 장소 리스트 조회
-    const queryString = useMemo(() => {
+    // --- 발견(Discover) 탭 전용 SWR 쿼리 및 페이징 ---
+    const discoverQueryString = useMemo(() => {
+        const params: string[] = [];
+        if (locationStore.latitude !== null) {
+            params.push(`latitude=${locationStore.latitude}`);
+        }
+        if (locationStore.longitude !== null) {
+            params.push(`longitude=${locationStore.longitude}`);
+        }
+        return params.length > 0 ? `?${params.join('&')}` : '';
+    }, [locationStore.latitude, locationStore.longitude]);
+
+    const isDiscoverInitialLoad = discoverPage === 0 && locationStore.latitude === null;
+
+    const { data: discoverPageData, isValidating: isDiscoverValidating } = useSWR(
+        isDiscoverInitialLoad ? null : `http://localhost:8080/api/v1/places${discoverQueryString}${discoverQueryString ? '&' : '?'}page=${discoverPage}&size=20`,
+        fetcher,
+        { keepPreviousData: false }
+    );
+
+    // 위치/GPS가 리프레시되거나 마운트될 때 discoverPage 리셋
+    useEffect(() => {
+        setDiscoverPage(0);
+        setDiscoverHasMore(true);
+    }, [locationStore.latitude, locationStore.longitude]);
+
+    useEffect(() => {
+        if (isDiscoverInitialLoad) {
+            setDiscoverHasMore(initialPlaces.length >= 20);
+            return;
+        }
+
+        if (discoverPageData) {
+            const newPlaces = discoverPageData.content || [];
+            const isLast = discoverPageData.last;
+            
+            setDiscoverPlacesList(prev => {
+                if (discoverPage === 0) {
+                    return newPlaces;
+                } else {
+                    const existingIds = new Set(prev.map(p => p.id));
+                    const filteredNew = newPlaces.filter((p: any) => !existingIds.has(p.id));
+                    return [...prev, ...filteredNew];
+                }
+            });
+            setDiscoverHasMore(!isLast);
+            setDiscoverIsLoadingMore(false);
+        }
+    }, [discoverPageData, discoverPage, isDiscoverInitialLoad]);
+
+    const loadMoreDiscover = () => {
+        if (!discoverHasMore || discoverIsLoadingMore || isDiscoverValidating) return;
+        setDiscoverIsLoadingMore(true);
+        setDiscoverPage(prev => prev + 1);
+    };
+
+    // --- 탐색(Explore) 탭 전용 SWR 쿼리 및 페이징 ---
+    const exploreQueryString = useMemo(() => {
         const params: string[] = [];
         if (selectedTags.length > 0) {
             params.push(`tags=${selectedTags.map(encodeURIComponent).join(',')}`);
@@ -239,41 +303,28 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         return params.length > 0 ? `?${params.join('&')}` : '';
     }, [selectedTags, debouncedSearchKeyword, locationStore.latitude, locationStore.longitude]);
 
-    // 필터 조건 변경 시 page=0 리셋 및 리스트 초기화
-    const filterKey = `${selectedTags.join(',')}_${debouncedSearchKeyword}_${locationStore.latitude}_${locationStore.longitude}`;
+    const exploreFilterKey = `${selectedTags.join(',')}_${debouncedSearchKeyword}_${locationStore.latitude}_${locationStore.longitude}`;
+    
+    // 필터 조건 변경 시 Explore 페이지 리셋 및 리스트 초기화
     useEffect(() => {
-        setPage(0);
-        setHasMore(true);
-        
-        // 사용자가 검색어를 입력했거나 태그를 선택했을 때만 리스트를 비웁니다.
-        // 위치 갱신(마운트 직후 GPS 수신) 등 단순히 지도 정렬 기준만 바뀔 때는 리스트를 비우지 않고 유지하여 깜빡임을 방지합니다.
-        const isUserFiltering = selectedTags.length > 0 || debouncedSearchKeyword.trim() !== "";
-        if (isUserFiltering) {
-            setPlacesList([]);
-        }
-    }, [filterKey]);
+        setExplorePage(0);
+        setExploreHasMore(true);
+        setExplorePlacesList([]);
+    }, [exploreFilterKey]);
 
-    // 최초 진입 시 필터가 없으면 page 0에 대해 SWR 호출 비활성화 (SSR 데이터 즉시 표시)
-    const isInitialLoad = page === 0 && selectedTags.length === 0 && debouncedSearchKeyword.trim() === "" && locationStore.latitude === null;
-
-    const { data: fetchedPageData, isValidating } = useSWR(
-        isInitialLoad ? null : `http://localhost:8080/api/v1/places${queryString}${queryString ? '&' : '?'}page=${page}&size=20`,
+    const { data: explorePageData, isValidating: isExploreValidating } = useSWR(
+        isDiscoverInitialLoad && exploreFilterKey === '___' ? null : `http://localhost:8080/api/v1/places${exploreQueryString}${exploreQueryString ? '&' : '?'}page=${explorePage}&size=20`,
         fetcher,
         { keepPreviousData: false }
     );
 
     useEffect(() => {
-        if (isInitialLoad) {
-            setHasMore(initialPlaces.length >= 20);
-            return;
-        }
-
-        if (fetchedPageData) {
-            const newPlaces = fetchedPageData.content || [];
-            const isLast = fetchedPageData.last;
+        if (explorePageData) {
+            const newPlaces = explorePageData.content || [];
+            const isLast = explorePageData.last;
             
-            setPlacesList(prev => {
-                if (page === 0) {
+            setExplorePlacesList(prev => {
+                if (explorePage === 0) {
                     return newPlaces;
                 } else {
                     const existingIds = new Set(prev.map(p => p.id));
@@ -281,18 +332,16 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                     return [...prev, ...filteredNew];
                 }
             });
-            setHasMore(!isLast);
-            setIsLoadingMore(false);
+            setExploreHasMore(!isLast);
+            setExploreIsLoadingMore(false);
         }
-    }, [fetchedPageData, page, isInitialLoad]);
+    }, [explorePageData, explorePage]);
 
-    const loadMore = () => {
-        if (!hasMore || isLoadingMore || isValidating) return;
-        setIsLoadingMore(true);
-        setPage(prev => prev + 1);
+    const loadMoreExplore = () => {
+        if (!exploreHasMore || exploreIsLoadingMore || isExploreValidating) return;
+        setExploreIsLoadingMore(true);
+        setExplorePage(prev => prev + 1);
     };
-        
-    const currentPlaces = placesList;
 
     // 북마크 폴더 구조 맵 변환
     const foldersMap = useMemo(() => {
@@ -306,13 +355,13 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         return map;
     }, [scrapsData]);
 
-    // 장소 데이터 디자인 속성 매핑
-    const placesData = useMemo(() => {
+    // 발견(Discover)용 장소 데이터 디자인 속성 매핑
+    const discoverPlacesData = useMemo(() => {
         const prefix = locationStore.permissionStatus === 'granted' 
             ? '내 위치에서' 
             : locationStore.fallbackPlace === 'seongsu' ? '성수역에서' : '강남역에서';
 
-        return currentPlaces.map(place => {
+        return discoverPlacesList.map(place => {
             const mapped = mapPlaceToData(place);
             if (place.distance) {
                 mapped.distance = `${prefix} ${place.distance}`;
@@ -321,10 +370,27 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             }
             return mapped;
         });
-    }, [currentPlaces, locationStore.permissionStatus, locationStore.fallbackPlace]);
+    }, [discoverPlacesList, locationStore.permissionStatus, locationStore.fallbackPlace]);
+
+    // 탐색(Explore)용 장소 데이터 디자인 속성 매핑
+    const explorePlacesData = useMemo(() => {
+        const prefix = locationStore.permissionStatus === 'granted' 
+            ? '내 위치에서' 
+            : locationStore.fallbackPlace === 'seongsu' ? '성수역에서' : '강남역에서';
+
+        return explorePlacesList.map(place => {
+            const mapped = mapPlaceToData(place);
+            if (place.distance) {
+                mapped.distance = `${prefix} ${place.distance}`;
+            } else {
+                mapped.distance = null;
+            }
+            return mapped;
+        });
+    }, [explorePlacesList, locationStore.permissionStatus, locationStore.fallbackPlace]);
 
     // 검색 결과 가공
-    const filteredPlaces = placesData;
+    const filteredPlaces = explorePlacesData;
 
     const toggleTag = (tag: string) => {
         setSelectedTags(prev => prev.includes(tag) ? prev.filter((t: string) => t !== tag) : [...prev, tag]);
@@ -754,15 +820,15 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                     {/* 상시 마운트하여 스크롤 및 입력 상태를 보존하되 display 속성으로 토글 */}
                     <DiscoverView 
                         hidden={activeView !== 'home'} 
-                        placesData={placesData} 
+                        placesData={discoverPlacesData} 
                         onPlaceClick={handlePlaceClick} 
                         onCardSaveClick={handleCardSaveClick}
                         onViewChange={setActiveView}
                         onShowTermsModal={setShowTermsModal}
-                        loadMore={loadMore}
-                        hasMore={hasMore}
-                        isLoadingMore={isLoadingMore}
-                        isValidating={isValidating}
+                        loadMore={loadMoreDiscover}
+                        hasMore={discoverHasMore}
+                        isLoadingMore={discoverIsLoadingMore}
+                        isValidating={isDiscoverValidating}
                     />
 
                     <ExploreView
@@ -771,15 +837,15 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         setSearchKeyword={setSearchKeyword}
                         selectedTags={selectedTags}
                         toggleTag={toggleTag}
-                        filteredPlaces={filteredPlaces}
+                        filteredPlaces={explorePlacesData}
                         onPlaceClick={handlePlaceClick}
                         onCardSaveClick={handleCardSaveClick}
                         onViewChange={setActiveView}
                         setSelectedTags={setSelectedTags}
-                        loadMore={loadMore}
-                        hasMore={hasMore}
-                        isLoadingMore={isLoadingMore}
-                        isValidating={isValidating}
+                        loadMore={loadMoreExplore}
+                        hasMore={exploreHasMore}
+                        isLoadingMore={exploreIsLoadingMore}
+                        isValidating={isExploreValidating}
                     />
 
                     <CollectionView
