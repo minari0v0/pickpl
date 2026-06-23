@@ -14,6 +14,7 @@ import DiscoverView from './views/DiscoverView';
 import ExploreView from './views/ExploreView';
 import CollectionView from './views/CollectionView';
 import MyPageView from './views/MyPageView';
+import CurationView from './views/CurationView';
 
 import PlaceDetailModal from './modals/PlaceDetailModal';
 import HiddenGemPopup from './modals/HiddenGemPopup';
@@ -24,8 +25,7 @@ import AccountEditModal from './modals/AccountEditModal';
 import AppSettingsModal from './modals/AppSettingsModal';
 
 const fetcher = async (url: string) => {
-    const relativeUrl = url.replace('http://localhost:8080/api/v1', '');
-    const res = await axiosInstance.get(relativeUrl);
+    const res = await axiosInstance.get(url);
     return res.data;
 };
 
@@ -225,7 +225,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
     // SWR 북마크 폴더 조회
     const { data: scrapsData, mutate: mutateScraps } = useSWR(
-        isLoggedIn ? 'http://localhost:8080/api/v1/scraps' : null,
+        isLoggedIn ? '/scraps' : null,
         fetcher
     );
 
@@ -244,7 +244,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const isDiscoverInitialLoad = discoverPage === 0 && locationStore.latitude === null;
 
     const { data: discoverPageData, isValidating: isDiscoverValidating } = useSWR(
-        isDiscoverInitialLoad ? null : `http://localhost:8080/api/v1/places${discoverQueryString}${discoverQueryString ? '&' : '?'}page=${discoverPage}&size=20`,
+        isDiscoverInitialLoad ? null : `/places${discoverQueryString}${discoverQueryString ? '&' : '?'}page=${discoverPage}&size=20`,
         fetcher,
         { keepPreviousData: false }
     );
@@ -313,7 +313,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     }, [exploreFilterKey]);
 
     const { data: explorePageData, isValidating: isExploreValidating } = useSWR(
-        isDiscoverInitialLoad && exploreFilterKey === '___' ? null : `http://localhost:8080/api/v1/places${exploreQueryString}${exploreQueryString ? '&' : '?'}page=${explorePage}&size=20`,
+        isDiscoverInitialLoad && exploreFilterKey === '___' ? null : `/places${exploreQueryString}${exploreQueryString ? '&' : '?'}page=${explorePage}&size=20`,
         fetcher,
         { keepPreviousData: false }
     );
@@ -829,6 +829,14 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         hasMore={discoverHasMore}
                         isLoadingMore={discoverIsLoadingMore}
                         isValidating={isDiscoverValidating}
+                    />
+
+                    <CurationView 
+                        hidden={activeView !== 'curation'}
+                        onPlaceClick={handlePlaceClick}
+                        onCardSaveClick={handleCardSaveClick}
+                        onViewChange={setActiveView}
+                        isLoggedIn={isLoggedIn}
                     />
 
                     <ExploreView
