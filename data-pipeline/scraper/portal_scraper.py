@@ -808,7 +808,7 @@ class PortalScraper:
                                             except Exception: pass
                                             continue
 
-                                        if not (15 < len(clean_rev) < 300):
+                                        if not (15 < len(clean_rev) < 600):
                                             try:
                                                 with open(debug_path, "a", encoding="utf-8") as df:
                                                     df.write(f" => Skip: Length filter fail ({len(clean_rev)} chars)\n")
