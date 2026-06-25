@@ -168,31 +168,34 @@ export default function ExploreView({
                         <div className="flex flex-wrap gap-2 mb-6 px-1 lg:px-0 items-center">
                             <span className="text-[12px] font-bold text-[#8B95A1] mr-1 shrink-0">선택한 무드</span>
                             {searchKeyword && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-orange-50 text-orange-600 border border-orange-100 text-[12.5px] font-bold">
-                                    검색어: {searchKeyword}
-                                    <button onClick={() => setSearchKeyword("")} className="hover:text-orange-800">
-                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </span>
+                                <button 
+                                    onClick={() => setSearchKeyword("")}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-orange-50 text-orange-600 border border-orange-100 text-[12.5px] font-bold shadow-sm active:scale-95 transition-all hover:bg-orange-100"
+                                >
+                                    <span>검색어: {searchKeyword}</span>
+                                    <svg className="w-3 h-3 opacity-70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             )}
                             {selectedTags.map(tag => {
                                 const cat = TAG_CATEGORIES.find(c => c.tags.includes(tag));
-                                let colorClass = "bg-[#FFF4EE] text-[#E65C00] border-[#FFD2B8]";
-                                if (cat?.id === 'mood') colorClass = "bg-[#F0F6F5] text-[#2E7D7A] border-[#D1E6E4]";
-                                if (cat?.id === 'context') colorClass = "bg-[#EEF1FC] text-[#4B5EAA] border-[#D6DBF5]";
-                                if (cat?.id === 'facility') colorClass = "bg-[#FFF9E6] text-[#B38000] border-[#FFE9A3]";
+                                let colorClass = "bg-[#FFF4EE] text-[#E65C00] border-[#FFD2B8] hover:bg-[#FFF4EE]/90";
+                                if (cat?.id === 'mood') colorClass = "bg-[#F0F6F5] text-[#2E7D7A] border-[#D1E6E4] hover:bg-[#F0F6F5]/90";
+                                if (cat?.id === 'context') colorClass = "bg-[#EEF1FC] text-[#4B5EAA] border-[#D6DBF5] hover:bg-[#EEF1FC]/90";
+                                if (cat?.id === 'facility') colorClass = "bg-[#FFF9E6] text-[#B38000] border-[#FFE9A3] hover:bg-[#FFF9E6]/90";
                                 
                                 return (
-                                    <span key={tag} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border text-[12.5px] font-bold shadow-sm ${colorClass}`}>
-                                        #{tag}
-                                        <button onClick={() => toggleTag(tag)} className="hover:opacity-75">
-                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    </span>
+                                    <button 
+                                        key={tag} 
+                                        onClick={() => toggleTag(tag)} 
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border text-[12.5px] font-bold shadow-sm active:scale-95 transition-all ${colorClass}`}
+                                    >
+                                        <span>#{tag}</span>
+                                        <svg className="w-3 h-3 opacity-70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
                                 );
                             })}
                             <button 
