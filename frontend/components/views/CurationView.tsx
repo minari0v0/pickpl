@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import useSWR from 'swr';
-import axiosInstance from '../../api/axios';
 import { useLocationStore } from '../../store/locationStore';
 import { getCategoryIcon, mapPlaceToData } from '../ui/Helpers';
 
@@ -12,38 +10,20 @@ interface CurationViewProps {
     onCardSaveClick: (place: any, e: React.MouseEvent) => void;
     onViewChange: (view: string) => void;
     isLoggedIn: boolean;
+    curationData: any;
+    isValidating: boolean;
 }
-
-const fetcher = async (url: string) => {
-    const res = await axiosInstance.get(url);
-    return res.data;
-};
 
 export default function CurationView({
     hidden,
     onPlaceClick,
     onCardSaveClick,
     onViewChange,
-    isLoggedIn
+    isLoggedIn,
+    curationData,
+    isValidating
 }: CurationViewProps) {
     const locationStore = useLocationStore();
-
-    // 큐레이션 API 호출용 쿼리 스트링
-    const queryParams = useMemo(() => {
-        const params: string[] = [];
-        if (locationStore.latitude !== null) {
-            params.push(`latitude=${locationStore.latitude}`);
-        }
-        if (locationStore.longitude !== null) {
-            params.push(`longitude=${locationStore.longitude}`);
-        }
-        return params.length > 0 ? `?${params.join('&')}` : '';
-    }, [locationStore.latitude, locationStore.longitude]);
-
-    const { data: curationData, isValidating } = useSWR(
-        hidden ? null : `/curation${queryParams}`,
-        fetcher
-    );
 
     const placesData = useMemo(() => {
         if (!curationData || !curationData.places) return [];
@@ -67,17 +47,17 @@ export default function CurationView({
         const theme = curationData?.activeThemeName;
         switch (theme) {
             case '비오는날':
-                return '비 오는 날, 빗소리와 어울리는 아지트';
+                return '비 오는 날의 아늑한 실내 데이트';
             case '눈오는날':
-                return '눈 내리는 날, 추위를 사르르 녹여줄 공간';
+                return '따뜻한 겨울 온천 & 연말 감성 모임';
             case '봄':
-                return '봄바람 솔솔 부는 날, 테라스와 루프탑 명소';
+                return '봄꽃 피크닉 & 감성 스냅';
             case '여름':
-                return '더운 여름날, 시원하게 머물기 좋은 공간';
+                return '여름 바캉스 & 자연 힐링';
             case '가을':
-                return '가을 감성 가득, 조용히 작업하기 좋은 카페';
+                return '싱그러운 가을 단풍 & 사색의 숲';
             case '겨울':
-                return '찬 바람 부는 겨울, 벽난로처럼 포근한 아지트';
+                return '따뜻한 겨울 온천 & 연말 감성 모임';
             default:
                 return curationData?.activeThemeTitle || '오늘의 날씨와 어울리는 추천 공간';
         }
@@ -214,9 +194,6 @@ export default function CurationView({
                         <h1 className="font-bold text-[20px] lg:text-[22px] text-[#191F28] tracking-tight">
                             픽플 - 큐레이션
                         </h1>
-                        <p className="text-[#8B95A1] text-[12px] font-medium mt-0.5">
-                            {displayThemeTitle}
-                        </p>
                     </div>
                 </header>
 

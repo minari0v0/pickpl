@@ -15,6 +15,7 @@ interface DiscoverViewProps {
     hasMore: boolean;
     isLoadingMore: boolean;
     isValidating: boolean;
+    activeThemeName?: string;
 }
 
 export default function DiscoverView({
@@ -27,9 +28,94 @@ export default function DiscoverView({
     loadMore,
     hasMore,
     isLoadingMore,
-    isValidating
+    isValidating,
+    activeThemeName
 }: DiscoverViewProps) {
     const locationStore = useLocationStore();
+
+    const bannerInfo = React.useMemo(() => {
+        const theme = activeThemeName;
+        switch (theme) {
+            case '비오는날':
+                return {
+                    title: '비 오는 날,\n창밖을 보며 멍때리기',
+                    mobileTitle: '비 오는 날,\n창밖을 보기 좋은 카페',
+                    image: '/curation_rainy.png',
+                    icon: (
+                        <svg className="w-7 h-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                        </svg>
+                    )
+                };
+            case '봄':
+                return {
+                    title: '따스한 봄날,\n소풍하기 좋은 곳',
+                    mobileTitle: '따스한 봄날,\n소풍하기 좋은 곳',
+                    image: 'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?q=80&w=600',
+                    icon: (
+                        <svg className="w-7 h-7 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                    )
+                };
+            case '여름':
+                return {
+                    title: '무더운 날,\n시원한 곳으로 풍덩',
+                    mobileTitle: '무더운 날,\n시원한 곳으로 풍덩',
+                    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=600',
+                    icon: (
+                        <svg className="w-7 h-7 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M14 12a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    )
+                };
+            case '가을':
+                return {
+                    title: '바스락 단풍잎,\n사색의 숲길 걷기',
+                    mobileTitle: '바스락 단풍잎,\n사색의 숲길 걷기',
+                    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600',
+                    icon: (
+                        <svg className="w-7 h-7 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                    )
+                };
+            case '눈오는날':
+                return {
+                    title: '바깥은 포슬한 눈,\n따뜻한 곳에서',
+                    mobileTitle: '바깥은 포슬한 눈,\n따뜻한 곳에서',
+                    image: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=600',
+                    icon: (
+                        <svg className="w-7 h-7 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v18m9-9H3m14.828-5.828L6.172 17.828m0-11.656l11.656 11.656" />
+                        </svg>
+                    )
+                };
+            case '겨울':
+                return {
+                    title: '시린 겨울날,\n벽난로 옆에서 도란도란',
+                    mobileTitle: '시린 겨울날,\n벽난로 옆에서 도란도란',
+                    image: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=600',
+                    icon: (
+                        <svg className="w-7 h-7 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9" />
+                        </svg>
+                    )
+                };
+            default:
+                return {
+                    title: '오늘 날씨,\n머물기 좋은 특별한 공간',
+                    mobileTitle: '오늘 날씨,\n머물기 좋은 특별한 공간',
+                    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600',
+                    icon: (
+                        <svg className="w-7 h-7 text-[#4E5968]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    )
+                };
+        }
+    }, [activeThemeName]);
 
     const handleLocationToggle = () => {
         if (locationStore.permissionStatus === 'denied' || locationStore.permissionStatus === 'error' || locationStore.permissionStatus === 'prompt') {
@@ -85,12 +171,10 @@ export default function DiscoverView({
                     <div onClick={() => onViewChange('curation')} className="bg-[#F9FAFB] rounded-[24px] p-5 flex items-center justify-between border border-[#F2F4F6] shadow-[0_4px_20px_rgba(0,0,0,0.02)] cursor-pointer active:scale-[0.98] transition-transform">
                         <div>
                             <p className="text-orange-500 text-[13px] font-bold mb-1 tracking-tight">이번 주 큐레이션</p>
-                            <h2 className="text-[#191F28] text-[18px] font-bold leading-snug">비 오는 날,<br />창밖을 보기 좋은 카페</h2>
+                            <h2 className="text-[#191F28] text-[18px] font-bold leading-snug whitespace-pre-line">{bannerInfo.mobileTitle}</h2>
                         </div>
                         <div className="w-[52px] h-[52px] bg-white rounded-full flex items-center justify-center shadow-sm">
-                            <svg className="w-7 h-7 text-[#4E5968]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                            </svg>
+                            {bannerInfo.icon}
                         </div>
                     </div>
                 </div>
@@ -229,9 +313,9 @@ export default function DiscoverView({
                 {/* 추천 배너 위젯 */}
                 <div onClick={() => onViewChange('curation')} className="bg-white rounded-[28px] p-6 shadow-sm border border-[#F2F4F6] cursor-pointer hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all group mb-8">
                     <p className="text-orange-500 text-[13px] font-bold mb-1.5 tracking-tight">이번 주 PickPl 큐레이션</p>
-                    <h2 className="text-[#191F28] text-[20px] font-bold leading-snug mb-5">비 오는 날,<br />창밖을 보며 멍때리기</h2>
+                    <h2 className="text-[#191F28] text-[20px] font-bold leading-snug mb-5 whitespace-pre-line">{bannerInfo.title}</h2>
                     <div className="w-full h-36 rounded-[16px] overflow-hidden bg-[#F2F4F6]">
-                        <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="큐레이션 이미지" />
+                        <img src={bannerInfo.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="큐레이션 이미지" />
                     </div>
                 </div>
 

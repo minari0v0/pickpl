@@ -118,6 +118,23 @@ public class PlaceService {
     }
 
     /**
+     * 큐레이션 테마명으로 공간 목록을 반환합니다.
+     */
+    public List<PlaceSummaryResponse> findPlacesByCurationTheme(String curationTheme, Long userId, Double latitude, Double longitude) {
+        if (curationTheme == null || curationTheme.trim().isEmpty()) {
+            return List.of();
+        }
+        Set<Long> scrappedIds = getScrappedPlaceIds(userId);
+        java.util.Map<Long, String> vibeVotesMap = getVibeVotesMap(userId);
+        return placeRepository.findAllByCurationThemeAndIsPublishedTrue(curationTheme).stream()
+                .map(place -> {
+                    String distanceStr = formatDistance(latitude, longitude, place.getLatitude(), place.getLongitude());
+                    return PlaceSummaryResponse.from(place, scrappedIds.contains(place.getId()), vibeVotesMap.get(place.getId()), distanceStr);
+                })
+                .toList();
+    }
+
+    /**
      * 태그와 키워드 필터링 및 페이징이 통합된 공간 목록 조회 메소드.
      */
     public org.springframework.data.domain.Page<PlaceSummaryResponse> findPlacesByTagsAndKeyword(

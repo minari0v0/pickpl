@@ -64,17 +64,43 @@ public class CurationService {
             }
         }
 
-        // 4. 결정된 타겟 무드 태그 기반 장소 조회 (거리 계산 및 스크랩 여부 포함)
-        List<PlaceSummaryResponse> places = placeService.findPlacesByTags(
-                List.of(targetTagName), 
-                userId, 
-                latitude, 
-                longitude
-        );
+        // 4. 결정된 큐레이션 테마 필드를 기준으로 장소 조회 (태그 기반 조회는 Fallback으로 작동)
+        String curationThemeKey;
+        switch (activeThemeName) {
+            case "비오는날":
+                curationThemeKey = "rainy_indoor";
+                break;
+            case "눈오는날":
+                curationThemeKey = "winter";
+                break;
+            case "봄":
+                curationThemeKey = "spring";
+                break;
+            case "여름":
+                curationThemeKey = "summer";
+                break;
+            case "가을":
+                curationThemeKey = "autumn";
+                break;
+            case "겨울":
+                curationThemeKey = "winter";
+                break;
+            default:
+                curationThemeKey = null;
+                break;
+        }
 
-        // 5. 추천 큐레이션 공간 수 제한 (기획에 맞게 상위 최대 10개만 추천으로 노출하도록 함)
-        if (places.size() > 10) {
-            places = places.subList(0, 10);
+        List<PlaceSummaryResponse> places = java.util.Collections.emptyList();
+        if (curationThemeKey != null) {
+            places = placeService.findPlacesByCurationTheme(curationThemeKey, userId, latitude, longitude);
+        }
+        
+        if (places.isEmpty()) {
+            // 큐레이션 테마 적재 데이터가 없는 경우, 태그 기반 추천 공간을 최대 10개로 제한하여 노출 (Fallback)
+            places = placeService.findPlacesByTags(List.of(targetTagName), userId, latitude, longitude);
+            if (places.size() > 10) {
+                places = places.subList(0, 10);
+            }
         }
 
         return CurationResponse.of(activeThemeTitle, activeThemeName, places);

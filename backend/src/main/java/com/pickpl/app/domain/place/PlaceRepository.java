@@ -106,4 +106,7 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
             @org.springframework.data.repository.query.Param("tagCount") long tagCount,
             @org.springframework.data.repository.query.Param("keyword") String keyword,
             org.springframework.data.domain.Pageable pageable);
+
+    /** 큐레이션 테마명으로 공개된 공간 목록 조회 */
+    List<Place> findAllByCurationThemeAndIsPublishedTrue(String curationTheme);
 }

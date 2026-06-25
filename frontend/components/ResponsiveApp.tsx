@@ -241,6 +241,12 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         return params.length > 0 ? `?${params.join('&')}` : '';
     }, [locationStore.latitude, locationStore.longitude]);
 
+    // 큐레이션 API 호출용 글로벌 SWR 추가
+    const { data: curationData, isValidating: isCurationValidating } = useSWR(
+        `/curation${discoverQueryString}`,
+        fetcher
+    );
+
     const isDiscoverInitialLoad = discoverPage === 0 && locationStore.latitude === null;
 
     const { data: discoverPageData, isValidating: isDiscoverValidating } = useSWR(
@@ -829,6 +835,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         hasMore={discoverHasMore}
                         isLoadingMore={discoverIsLoadingMore}
                         isValidating={isDiscoverValidating}
+                        activeThemeName={curationData?.activeThemeName}
                     />
 
                     <CurationView 
@@ -837,6 +844,8 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         onCardSaveClick={handleCardSaveClick}
                         onViewChange={setActiveView}
                         isLoggedIn={isLoggedIn}
+                        curationData={curationData}
+                        isValidating={isCurationValidating}
                     />
 
                     <ExploreView

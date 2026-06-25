@@ -45,6 +45,7 @@ class BatchLoader:
                 "thumbnailUrl": p.get("thumbnailUrl"),
                 "imageUrls": p.get("imageUrls"),
                 "aiMoodSummary": p.get("aiMoodSummary"),
+                "curationTheme": p.get("curationTheme"),
                 "tags": p.get("tags", [])
             })
 

@@ -200,6 +200,7 @@ class GeminiAnalyzer:
                             "imageUrls": p.get("imageUrls"),
                             "reviews": p.get("reviews"),
                             "searchQuery": p.get("searchQuery"),
+                            "curationTheme": p.get("curationTheme"),
                             "aiMoodSummary": matched.aiMoodSummary,
                             "tags": matched.moodTags + matched.facilityTags + matched.weatherTags
                         }
@@ -218,6 +219,7 @@ class GeminiAnalyzer:
                             "imageUrls": p.get("imageUrls"),
                             "reviews": p.get("reviews"),
                             "searchQuery": p.get("searchQuery"),
+                            "curationTheme": p.get("curationTheme"),
                             "aiMoodSummary": f"{p['name']}은(는) 분위기 좋은 아늑한 공간입니다.",
                             "tags": ["코지한", "데이트코스"]
                         }
