@@ -854,6 +854,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         hasMore={exploreHasMore}
                         isLoadingMore={exploreIsLoadingMore}
                         isValidating={isExploreValidating}
+                        totalElements={explorePageData?.totalElements ?? 0}
                     />
 
                     <CollectionView
