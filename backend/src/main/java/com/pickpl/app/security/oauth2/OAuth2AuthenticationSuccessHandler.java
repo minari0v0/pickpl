@@ -39,9 +39,28 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             session.removeAttribute("link_success");
             session.removeAttribute("link_provider");
 
+            // 연동 완료 후 새로운 JWT 토큰 세션 생성
+            String accessToken = jwtTokenProvider.createToken(String.valueOf(user.getId()), user.getRole().name());
+            String refreshToken = jwtTokenProvider.createRefreshToken();
+
+            // Refresh Token Redis 저장 (다중 세션 지원)
+            redisTemplate.opsForValue().set(
+                    "RT:" + user.getId() + ":" + refreshToken,
+                    refreshToken,
+                    14,
+                    java.util.concurrent.TimeUnit.DAYS
+            );
+
+            // 로그인 기기 세션 기록
+            recordUserSession(request, user, refreshToken);
+
             String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/")
                     .queryParam("linkSuccess", "true")
                     .queryParam("provider", provider)
+                    .queryParam("accessToken", accessToken)
+                    .queryParam("refreshToken", refreshToken)
+                    .queryParam("nickname", user.getNickname())
+                    .encode(java.nio.charset.StandardCharsets.UTF_8)
                     .build().toUriString();
             
             getRedirectStrategy().sendRedirect(request, response, targetUrl);

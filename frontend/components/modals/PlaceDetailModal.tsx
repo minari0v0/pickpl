@@ -1,5 +1,8 @@
 import React from 'react';
 import { getCategoryIcon } from '../ui/Helpers';
+import useSWR from 'swr';
+import axiosInstance from '../../api/axios';
+import VisitRecordFormModal from './VisitRecordFormModal';
 
 interface PlaceDetailModalProps {
     selectedPlace: any | null;
@@ -11,6 +14,8 @@ interface PlaceDetailModalProps {
     isSaved: boolean;
     isBookmarkPopping: boolean;
     onSaveClick: () => void;
+    isLoggedIn: boolean;
+    showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
 export default function PlaceDetailModal({
@@ -22,9 +27,83 @@ export default function PlaceDetailModal({
     onVibeVote,
     isSaved,
     isBookmarkPopping,
-    onSaveClick
+    onSaveClick,
+    isLoggedIn,
+    showToast
 }: PlaceDetailModalProps) {
     const [currentImgIdx, setCurrentImgIdx] = React.useState(0);
+    const [isVisitFormOpen, setIsVisitFormOpen] = React.useState(false);
+    const [editingVisit, setEditingVisit] = React.useState<any | null>(null);
+    const [isSubmitLoading, setIsSubmitLoading] = React.useState(false);
+    const [showVisitsSidebar, setShowVisitsSidebar] = React.useState(true);
+
+    // SWR을 이용해 방문 기록 목록 실시간 페치
+    const fetcher = (url: string) => axiosInstance.get(url).then(res => res.data);
+    const { data: visits, mutate: mutateVisits } = useSWR(
+        selectedPlace && isDetailOpen ? `/places/${selectedPlace.id}/visits` : null,
+        fetcher
+    );
+
+    // 모달이 처음 열리거나 장소가 바뀔 때 후기가 있다면 기본 활성화
+    React.useEffect(() => {
+        if (isDetailOpen && visits && visits.length > 0) {
+            setShowVisitsSidebar(true);
+        }
+    }, [isDetailOpen, selectedPlace?.id, visits?.length]);
+
+    const handleVisitSubmit = async (comment: string, visitedDate: string) => {
+        setIsSubmitLoading(true);
+        try {
+            if (editingVisit) {
+                // 수정 API
+                await axiosInstance.put(`/visits/${editingVisit.id}`, {
+                    placeId: selectedPlace.id,
+                    comment,
+                    visitedDate
+                });
+                showToast("방문 기록이 성공적으로 수정되었습니다.", "success");
+            } else {
+                // 등록 API
+                await axiosInstance.post('/visits', {
+                    placeId: selectedPlace.id,
+                    comment,
+                    visitedDate
+                });
+                showToast("방문 기록이 등록되었습니다. 소중한 발자국 감사합니다!", "success");
+            }
+            mutateVisits(); // 후기 피드 갱신
+            setIsVisitFormOpen(false);
+            setEditingVisit(null);
+        } catch (error: any) {
+            console.error("방문 기록 저장 실패:", error);
+            const status = error.response?.status;
+            if (status === 401 || status === 403) {
+                showToast("로그인이 유효하지 않거나 만료되었습니다. 다시 로그인해 주세요.", "error");
+            } else {
+                const errorMsg = error.response?.data?.message || "방문 기록을 저장하지 못했습니다.";
+                showToast(errorMsg, "error");
+            }
+        } finally {
+            setIsSubmitLoading(false);
+        }
+    };
+
+    const handleVisitDelete = async (visitId: number) => {
+        if (!confirm("정말 이 방문 기록을 삭제하시겠습니까?")) return;
+        try {
+            await axiosInstance.delete(`/visits/${visitId}`);
+            showToast("방문 기록이 삭제되었습니다.", "success");
+            mutateVisits(); // 후기 피드 갱신
+        } catch (error: any) {
+            console.error("방문 기록 삭제 실패:", error);
+            showToast("방문 기록을 삭제하지 못했습니다. 다시 시도해 주세요.", "error");
+        }
+    };
+
+    const handleEditClick = (visit: any) => {
+        setEditingVisit(visit);
+        setIsVisitFormOpen(true);
+    };
 
     React.useEffect(() => {
         setCurrentImgIdx(0);
@@ -79,25 +158,6 @@ export default function PlaceDetailModal({
 
     const mapLink = getMapLink();
 
-    const handleVisitRecordClick = () => {
-        if (!mapLink) return;
-        let reviewUrl = mapLink.url;
-        const extId = selectedPlace?.externalId;
-        
-        if (extId && extId.startsWith('naver_place_')) {
-            const placeId = extId.replace('naver_place_', '');
-            // 네이버 플레이스 방문자 리뷰 쓰기/인증 탭으로 연결
-            reviewUrl = `https://m.place.naver.com/place/${placeId}/review/visitor`;
-        } else {
-            const name = selectedPlace?.name;
-            const location = selectedPlace?.location;
-            const query = encodeURIComponent(`${name} ${location || ''}`.trim());
-            reviewUrl = `https://map.naver.com/p/search/${query}`;
-        }
-        
-        window.open(reviewUrl, '_blank', 'noopener,noreferrer');
-    };
-
     const renderMapButton = (viewType: 'mobile' | 'pc') => {
         if (!mapLink) return null;
         
@@ -149,7 +209,7 @@ export default function PlaceDetailModal({
     return (
         <>
             {/* 모바일 슬라이드업 모달 */}
-            <div className="lg:hidden absolute inset-0 z-40 bg-white flex flex-col animate-slide-up">
+            <div className="sm:hidden absolute inset-0 z-40 bg-white flex flex-col animate-slide-up">
                 <div className="relative w-full h-[45vh] bg-[#12161F] shrink-0 group overflow-hidden flex items-center justify-center">
                     <img 
                         src={imageUrls[currentImgIdx]} 
@@ -341,6 +401,71 @@ export default function PlaceDetailModal({
                             </button>
                         </div>
                     </div>
+
+                    {/* 다녀간 픽플러들의 기록 (방문 후기 피드 - 모바일 버전) */}
+                    <div className="px-6 pb-20">
+                        <div className="bg-[#F8FAFC] p-6 rounded-[28px] border border-[#F1F5F9]">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-extrabold text-[17px] tracking-tight text-[#1E293B] flex items-center gap-1.5">
+                                    다녀간 픽플러들의 기록
+                                    {visits && visits.length > 0 && (
+                                        <span className="text-[#FF802B] text-[14px] font-extrabold">({visits.length})</span>
+                                    )}
+                                </h3>
+                            </div>
+
+                            {visits && visits.length > 0 ? (
+                                <div className="flex flex-col gap-3.5 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
+                                    {visits.map((visit: any) => (
+                                        <div key={visit.id} className="bg-white p-4.5 rounded-[20px] border border-[#F1F5F9] flex flex-col gap-2 shadow-[0_2px_6px_rgba(241,245,249,0.4)]">
+                                            <div className="flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <img 
+                                                        src={visit.profileImageUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${visit.nickname || 'PickPl'}`}
+                                                        alt="profile" 
+                                                        className="w-7 h-7 rounded-full object-cover bg-[#F2F4F6]"
+                                                    />
+                                                    <div>
+                                                        <p className="font-bold text-[12px] text-[#333D4B]">{visit.nickname}</p>
+                                                        <p className="text-[10px] font-semibold text-[#8B95A1]">{visit.visitedDate} 방문</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {visit.isMyRecord && (
+                                                    <div className="flex gap-1.5 text-[11px] font-bold text-[#8B95A1]">
+                                                        <button 
+                                                            onClick={() => handleEditClick(visit)}
+                                                            className="hover:text-[#333D4B] cursor-pointer"
+                                                        >
+                                                            수정
+                                                        </button>
+                                                        <span className="text-[#E5E8EB]">·</span>
+                                                        <button 
+                                                            onClick={() => handleVisitDelete(visit.id)}
+                                                            className="hover:text-red-500 cursor-pointer"
+                                                        >
+                                                            삭제
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-[13px] text-[#4E5968] font-medium leading-relaxed whitespace-pre-wrap">
+                                                {visit.comment}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-8 text-center flex flex-col items-center gap-1.5">
+                                    <svg className="w-8 h-8 text-[#CBD5E1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                    <p className="text-[12px] font-bold text-[#8B95A1]">아직 방문 기록이 없어요.</p>
+                                    <p className="text-[10px] font-semibold text-[#B0B8C1]">첫 번째로 이 장소에 발자국을 남겨보세요!</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
                 <div className="absolute bottom-0 left-0 w-full bg-white border-t border-[#F2F4F6] px-5 py-4 pb-safe flex gap-3 z-50">
                     <button 
@@ -352,7 +477,13 @@ export default function PlaceDetailModal({
                         </svg>
                     </button>
                     <button 
-                        onClick={handleVisitRecordClick}
+                        onClick={() => {
+                            if (!isLoggedIn) {
+                                showToast("로그인 후 방문 기록을 남길 수 있습니다.", "error");
+                            } else {
+                                setIsVisitFormOpen(true);
+                            }
+                        }}
                         className="flex-1 h-[56px] rounded-[18px] bg-[#191F28] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm cursor-pointer"
                     >
                         방문 기록 남기기
@@ -361,9 +492,14 @@ export default function PlaceDetailModal({
             </div>
 
             {/* PC 분할 팝업 모달 */}
-            <div className="hidden lg:flex fixed inset-0 z-50 bg-black/60 backdrop-blur-sm items-center justify-center p-8 animate-fade-in">
+            <div className="hidden sm:flex fixed inset-0 z-50 bg-black/60 backdrop-blur-sm items-center justify-center p-8 animate-fade-in">
                 <div className="absolute inset-0 cursor-pointer" onClick={onClose}></div>
-                <div className="relative w-full max-w-[1100px] h-[90vh] bg-white rounded-[40px] overflow-hidden flex shadow-2xl animate-scale-up z-10">
+                
+                {/* 메인 모달 및 우측 사이드 뷰 래퍼 (메인 모달의 정중앙 유지를 위해 relative 배치) */}
+                <div className="relative flex items-center justify-center">
+                    
+                    {/* 메인 모달창 컨테이너 */}
+                    <div className="relative w-full max-w-[1100px] h-[90vh] bg-white rounded-[40px] overflow-hidden flex shadow-2xl animate-scale-up z-10">
                     <div className="w-[55%] h-full relative bg-[#12161F] shrink-0 group overflow-hidden flex items-center justify-center">
                         <img 
                             src={imageUrls[currentImgIdx]} 
@@ -578,6 +714,76 @@ export default function PlaceDetailModal({
                                     </button>
                                 </div>
                             </div>
+
+                            {/* 후기가 없을 때만 장소 상세 정보 아래에 빈 상태 카드 노출 */}
+                            {(!visits || visits.length === 0) && (
+                                <div className="bg-[#F8FAFC] p-8 rounded-[32px] border border-[#F1F5F9] mt-6">
+                                    <div className="flex justify-between items-center mb-5">
+                                        <h3 className="font-extrabold text-[19px] tracking-tight text-[#1E293B] flex items-center gap-2">
+                                            다녀간 픽플러들의 기록
+                                        </h3>
+                                    </div>
+                                    <div className="py-10 text-center flex flex-col items-center gap-2">
+                                        <svg className="w-10 h-10 text-[#CBD5E1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                        <p className="text-[13px] font-bold text-[#8B95A1]">아직 방문 기록이 없어요.</p>
+                                        <p className="text-[11px] font-semibold text-[#B0B8C1]">첫 번째로 이 장소에 발자국을 남겨보세요!</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 후기가 존재하고 브라우저 폭이 xl 미만일 때(태블릿, 랩톱 등) 메인 모달 아래에 후기 피드 노출 */}
+                            {visits && visits.length > 0 && (
+                                <div className="xl:hidden bg-[#F8FAFC] p-8 rounded-[32px] border border-[#F1F5F9] mt-6 animate-fade-in">
+                                    <div className="flex justify-between items-center mb-5">
+                                        <h3 className="font-extrabold text-[19px] tracking-tight text-[#1E293B] flex items-center gap-2">
+                                            다녀간 픽플러들의 기록
+                                            <span className="text-[#FF802B] text-[16px] font-extrabold">({visits.length})</span>
+                                        </h3>
+                                    </div>
+                                    <div className="flex flex-col gap-4 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
+                                        {visits.map((visit: any) => (
+                                            <div key={visit.id} className="bg-white p-5 rounded-[22px] border border-[#F1F5F9] flex flex-col gap-2.5 shadow-[0_2px_8px_rgba(241,245,249,0.5)]">
+                                                <div className="flex justify-between items-center">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <img 
+                                                            src={visit.profileImageUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${visit.nickname || 'PickPl'}`}
+                                                            alt="profile" 
+                                                            className="w-8 h-8 rounded-full object-cover bg-[#F2F4F6]"
+                                                        />
+                                                        <div>
+                                                            <p className="font-bold text-[13px] text-[#333D4B]">{visit.nickname}</p>
+                                                            <p className="text-[11px] font-semibold text-[#8B95A1]">{visit.visitedDate} 방문</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {visit.isMyRecord && (
+                                                        <div className="flex gap-2 text-[12px] font-bold text-[#8B95A1]">
+                                                            <button 
+                                                                onClick={() => handleEditClick(visit)}
+                                                                className="hover:text-[#333D4B] cursor-pointer"
+                                                            >
+                                                                수정
+                                                            </button>
+                                                            <span className="text-[#E5E8EB]">·</span>
+                                                            <button 
+                                                                onClick={() => handleVisitDelete(visit.id)}
+                                                                className="hover:text-red-500 cursor-pointer"
+                                                            >
+                                                                삭제
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <p className="text-[14px] text-[#4E5968] font-medium leading-relaxed whitespace-pre-wrap">
+                                                    {visit.comment}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="sticky bottom-0 bg-white/95 backdrop-blur-xl border-t border-[#F2F4F6] p-6 flex gap-4 z-50">
                             <button 
@@ -588,8 +794,28 @@ export default function PlaceDetailModal({
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                 </svg>
                             </button>
+
+                            {/* 방문 기록 서브 모달 닫힘 상태 시 다시 열기 버튼 */}
+                            {visits && visits.length > 0 && !showVisitsSidebar && (
+                                <button 
+                                    onClick={() => setShowVisitsSidebar(true)}
+                                    className="hidden xl:flex px-6 h-[64px] rounded-[20px] border border-[#FF802B] bg-orange-50 hover:bg-orange-100/70 text-[#FF802B] font-extrabold text-[15px] transition-colors items-center justify-center gap-2 cursor-pointer whitespace-nowrap animate-scale-up"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                    기록 보기 ({visits.length})
+                                </button>
+                            )}
+
                             <button 
-                                onClick={handleVisitRecordClick}
+                                onClick={() => {
+                                    if (!isLoggedIn) {
+                                        showToast("로그인 후 방문 기록을 남길 수 있습니다.", "error");
+                                    } else {
+                                        setIsVisitFormOpen(true);
+                                    }
+                                }}
                                 className="flex-1 h-[64px] rounded-[20px] bg-[#191F28] hover:bg-black text-white font-bold text-[18px] transition-colors shadow-sm cursor-pointer"
                             >
                                 방문 기록 남기기
@@ -597,7 +823,86 @@ export default function PlaceDetailModal({
                         </div>
                     </div>
                 </div>
+
+                {/* 방문 기록 사이드 피드 뷰 (후기가 있을 때만 데스크톱에서 우측에 나란히 노출) */}
+                {visits && visits.length > 0 && showVisitsSidebar && (
+                    <div className="hidden xl:flex absolute left-[calc(100%+24px)] top-0 w-[380px] h-[90vh] bg-white rounded-[40px] border border-[#E5E8EB]/50 shadow-2xl flex-col z-20 overflow-hidden animate-scale-up">
+                        {/* 헤더 */}
+                        <div className="p-6 border-b border-[#F2F4F6] shrink-0 flex justify-between items-center bg-[#F9FAFB]">
+                            <h3 className="font-extrabold text-[20px] text-[#191F28] tracking-tight flex items-center gap-2">
+                                다녀간 픽플러들의 기록
+                                <span className="text-[#FF802B] text-[17px] font-extrabold">({visits.length})</span>
+                            </h3>
+                            {/* 닫기 버튼 */}
+                            <button 
+                                onClick={() => setShowVisitsSidebar(false)}
+                                className="w-8 h-8 rounded-full bg-[#E5E8EB]/50 hover:bg-[#E5E8EB] active:scale-95 transition-all flex items-center justify-center text-[#4E5968] cursor-pointer"
+                                title="피드 닫기"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        {/* 피드 목록 */}
+                        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 no-scrollbar">
+                            {visits.map((visit: any) => (
+                                <div key={visit.id} className="bg-[#F8FAFC] p-5 rounded-[24px] border border-[#F1F5F9] flex flex-col gap-3 shadow-sm transition-transform hover:translate-y-[-2px]">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-2.5">
+                                            <img 
+                                                src={visit.profileImageUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${visit.nickname || 'PickPl'}`}
+                                                alt="profile" 
+                                                className="w-8 h-8 rounded-full object-cover bg-[#F2F4F6]"
+                                            />
+                                            <div>
+                                                <p className="font-bold text-[13px] text-[#333D4B]">{visit.nickname}</p>
+                                                <p className="text-[11px] font-semibold text-[#8B95A1]">{visit.visitedDate} 방문</p>
+                                            </div>
+                                        </div>
+                                        
+                                        {visit.isMyRecord && (
+                                            <div className="flex gap-2 text-[12px] font-bold text-[#8B95A1]">
+                                                <button 
+                                                    onClick={() => handleEditClick(visit)}
+                                                    className="hover:text-[#333D4B] cursor-pointer"
+                                                >
+                                                    수정
+                                                </button>
+                                                <span className="text-[#E5E8EB]">·</span>
+                                                <button 
+                                                    onClick={() => handleVisitDelete(visit.id)}
+                                                    className="hover:text-red-500 cursor-pointer"
+                                                >
+                                                    삭제
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-[14px] text-[#4E5968] font-medium leading-relaxed whitespace-pre-wrap">
+                                        {visit.comment}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                </div>
             </div>
+
+            {/* 방문 기록 작성/수정 모달 레이어 */}
+            <VisitRecordFormModal
+                isOpen={isVisitFormOpen}
+                onClose={() => {
+                    setIsVisitFormOpen(false);
+                    setEditingVisit(null);
+                }}
+                onSubmit={handleVisitSubmit}
+                placeName={selectedPlace.name}
+                initialComment={editingVisit?.comment}
+                initialVisitedDate={editingVisit?.visitedDate}
+                isLoading={isSubmitLoading}
+            />
         </>
     );
 }

@@ -205,6 +205,19 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             const providerParam = params.get('provider');
 
             if (linkSuccess === 'true') {
+                const newAccessToken = params.get('accessToken');
+                const newRefreshToken = params.get('refreshToken');
+                const nicknameParam = params.get('nickname');
+
+                if (newAccessToken && newRefreshToken) {
+                    localStorage.setItem("accessToken", newAccessToken);
+                    localStorage.setItem("refreshToken", newRefreshToken);
+                    if (nicknameParam) {
+                        localStorage.setItem("nickname", nicknameParam);
+                        authStore.login(nicknameParam);
+                    }
+                }
+
                 setActiveView('mypage');
                 showToast(`${providerParam || '소셜'} 계정이 성공적으로 연동되었습니다.`, 'success');
                 refreshUserInfo();
@@ -1005,6 +1018,8 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 isSaved={isSaved} 
                 isBookmarkPopping={isBookmarkPopping} 
                 onSaveClick={handleSaveClick} 
+                isLoggedIn={isLoggedIn}
+                showToast={showToast}
             />
 
             {/* 북마크 저장 위치 선택 */}
