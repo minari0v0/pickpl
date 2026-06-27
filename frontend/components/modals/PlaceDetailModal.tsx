@@ -79,6 +79,25 @@ export default function PlaceDetailModal({
 
     const mapLink = getMapLink();
 
+    const handleVisitRecordClick = () => {
+        if (!mapLink) return;
+        let reviewUrl = mapLink.url;
+        const extId = selectedPlace?.externalId;
+        
+        if (extId && extId.startsWith('naver_place_')) {
+            const placeId = extId.replace('naver_place_', '');
+            // 네이버 플레이스 방문자 리뷰 쓰기/인증 탭으로 연결
+            reviewUrl = `https://m.place.naver.com/place/${placeId}/review/visitor`;
+        } else {
+            const name = selectedPlace?.name;
+            const location = selectedPlace?.location;
+            const query = encodeURIComponent(`${name} ${location || ''}`.trim());
+            reviewUrl = `https://map.naver.com/p/search/${query}`;
+        }
+        
+        window.open(reviewUrl, '_blank', 'noopener,noreferrer');
+    };
+
     const renderMapButton = (viewType: 'mobile' | 'pc') => {
         if (!mapLink) return null;
         
@@ -332,7 +351,10 @@ export default function PlaceDetailModal({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                         </svg>
                     </button>
-                    <button className="flex-1 h-[56px] rounded-[18px] bg-[#191F28] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm">
+                    <button 
+                        onClick={handleVisitRecordClick}
+                        className="flex-1 h-[56px] rounded-[18px] bg-[#191F28] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm cursor-pointer"
+                    >
                         방문 기록 남기기
                     </button>
                 </div>
@@ -501,30 +523,58 @@ export default function PlaceDetailModal({
                                     </div>
                                 </div>
                                 <p className="text-[14px] text-[#8B95A1] mb-8">방문 중인 사람들의 투표로 만들어져요.</p>
-                                <div className="w-full h-4 bg-[#E5E8EB] rounded-full overflow-hidden mb-8 flex relative">
-                                    <div className="h-full bg-blue-500 transition-all duration-700 ease-out" style={{ width: `${quietPercent}%` }}></div>
-                                    <div className="h-full bg-orange-400 transition-all duration-700 ease-out" style={{ width: `${chattyPercent}%` }}></div>
+                                <div className="w-full h-4 bg-[#F2F4F6] rounded-full overflow-hidden mb-8 relative border border-[#E2E8F0]/20">
+                                    {/* 조용히 집중 바 - 왼쪽 기준 확장 */}
+                                    <div 
+                                        className="absolute top-0 left-0 h-full bg-[#ADC3E5]" 
+                                        style={{ 
+                                            width: '100%',
+                                            transform: `scaleX(${quietPercent / 100})`,
+                                            transformOrigin: 'left',
+                                            transition: 'transform 750ms cubic-bezier(0.16, 1, 0.3, 1)',
+                                            willChange: 'transform'
+                                        }}
+                                    ></div>
+                                    {/* 대화하기 좋아요 바 - 오른쪽 기준 확장 */}
+                                    <div 
+                                        className="absolute top-0 right-0 h-full bg-[#FFAC81]" 
+                                        style={{ 
+                                            width: '100%',
+                                            transform: `scaleX(${chattyPercent / 100})`,
+                                            transformOrigin: 'right',
+                                            transition: 'transform 750ms cubic-bezier(0.16, 1, 0.3, 1)',
+                                            willChange: 'transform'
+                                        }}
+                                    ></div>
                                 </div>
                                 <div className="flex gap-4">
                                     <button 
                                         onClick={() => onVibeVote('quiet')} 
-                                        className={`flex-1 py-6 px-4 rounded-[24px] border-2 transition-all flex flex-col items-center gap-3 ${userVotedVibe === 'quiet' ? 'border-blue-500 bg-blue-50' : 'border-[#E5E8EB] bg-white hover:border-blue-200'}`}
+                                        className={`flex-1 py-6 px-4 rounded-[24px] border-[1.5px] transition-all flex flex-col items-center gap-3 active:scale-[0.98] ${
+                                            userVotedVibe === 'quiet' 
+                                            ? 'border-[#ADC3E5] bg-[#ADC3E5]/5 text-[#637FA6]' 
+                                            : 'border-[#E5E8EB] bg-white hover:border-[#ADC3E5]/40'
+                                        }`}
                                     >
-                                        <svg className={`w-8 h-8 ${userVotedVibe === 'quiet' ? 'text-blue-500' : 'text-[#8B95A1]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg className={`w-8 h-8 ${userVotedVibe === 'quiet' ? 'text-[#637FA6]' : 'text-[#8B95A1]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                         </svg>
-                                        <span className={`text-[15px] font-bold ${userVotedVibe === 'quiet' ? 'text-blue-600' : 'text-[#4E5968]'}`}>조용히 집중</span>
-                                        <span className={`text-[14px] font-bold ${userVotedVibe === 'quiet' ? 'text-blue-400' : 'text-[#8B95A1]'}`}>{quietPercent}%</span>
+                                        <span className={`text-[15px] font-bold ${userVotedVibe === 'quiet' ? 'text-[#637FA6]' : 'text-[#4E5968]'}`}>조용히 집중</span>
+                                        <span className={`text-[14px] font-bold ${userVotedVibe === 'quiet' ? 'text-[#637FA6]' : 'text-[#8B95A1]'}`}>{quietPercent}%</span>
                                     </button>
                                     <button 
                                         onClick={() => onVibeVote('chatty')} 
-                                        className={`flex-1 py-6 px-4 rounded-[24px] border-2 transition-all flex flex-col items-center gap-3 ${userVotedVibe === 'chatty' ? 'border-orange-500 bg-orange-50' : 'border-[#E5E8EB] bg-white hover:border-orange-200'}`}
+                                        className={`flex-1 py-6 px-4 rounded-[24px] border-[1.5px] transition-all flex flex-col items-center gap-3 active:scale-[0.98] ${
+                                            userVotedVibe === 'chatty' 
+                                            ? 'border-[#FFAC81] bg-[#FFAC81]/5 text-[#CD6E3C]' 
+                                            : 'border-[#E5E8EB] bg-white hover:border-[#FFAC81]/40'
+                                        }`}
                                     >
-                                        <svg className={`w-8 h-8 ${userVotedVibe === 'chatty' ? 'text-orange-500' : 'text-[#8B95A1]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg className={`w-8 h-8 ${userVotedVibe === 'chatty' ? 'text-[#FFAC81]' : 'text-[#8B95A1]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
                                         </svg>
-                                        <span className={`text-[15px] font-bold ${userVotedVibe === 'chatty' ? 'text-orange-600' : 'text-[#4E5968]'}`}>대화하기 좋아요</span>
-                                        <span className={`text-[14px] font-bold ${userVotedVibe === 'chatty' ? 'text-orange-400' : 'text-[#8B95A1]'}`}>{chattyPercent}%</span>
+                                        <span className={`text-[15px] font-bold ${userVotedVibe === 'chatty' ? 'text-[#CD6E3C]' : 'text-[#4E5968]'}`}>대화하기 좋아요</span>
+                                        <span className={`text-[14px] font-bold ${userVotedVibe === 'chatty' ? 'text-[#CD6E3C]' : 'text-[#8B95A1]'}`}>{chattyPercent}%</span>
                                     </button>
                                 </div>
                             </div>
@@ -538,7 +588,10 @@ export default function PlaceDetailModal({
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                 </svg>
                             </button>
-                            <button className="flex-1 h-[64px] rounded-[20px] bg-[#191F28] hover:bg-black text-white font-bold text-[18px] transition-colors shadow-sm">
+                            <button 
+                                onClick={handleVisitRecordClick}
+                                className="flex-1 h-[64px] rounded-[20px] bg-[#191F28] hover:bg-black text-white font-bold text-[18px] transition-colors shadow-sm cursor-pointer"
+                            >
                                 방문 기록 남기기
                             </button>
                         </div>

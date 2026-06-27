@@ -479,27 +479,42 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         if (!selectedPlace) return;
         if (userVotedVibe === type) return;
         
+        // 1. UI 상태 즉각 업데이트 (낙관적 업데이트로 네트워크 대기시간 무력화)
+        const previousVote = userVotedVibe;
+        setUserVotedVibe(type);
+        
+        setVibeStats(prev => {
+            if (previousVote) {
+                return {
+                    quiet: type === 'quiet' ? prev.quiet + 1 : prev.quiet - 1,
+                    chatty: type === 'chatty' ? prev.chatty + 1 : prev.chatty - 1
+                };
+            }
+            if (type === 'quiet') return { ...prev, quiet: prev.quiet + 1 };
+            return { ...prev, chatty: prev.chatty + 1 };
+        });
+        
+        // 2. API 전송 및 백필은 백그라운드 비동기로 수행
         try {
             const apiType = type === 'quiet' ? 'QUIET' : 'CHATTY';
             await axiosInstance.post(`/places/${selectedPlace.id}/vibe?type=${apiType}`);
+            mutate((key: any) => typeof key === 'string' && key.includes('/places'), undefined, { revalidate: true });
+        } catch (error: any) {
+            console.error("투표 처리 실패:", error);
             
-            const previousVote = userVotedVibe;
-            setUserVotedVibe(type);
-            
+            // API 실패 시 기존 상태로 즉각 롤백
+            setUserVotedVibe(previousVote);
             setVibeStats(prev => {
                 if (previousVote) {
                     return {
-                        quiet: type === 'quiet' ? prev.quiet + 1 : prev.quiet - 1,
-                        chatty: type === 'chatty' ? prev.chatty + 1 : prev.chatty - 1
+                        quiet: previousVote === 'quiet' ? prev.quiet + 1 : prev.quiet - 1,
+                        chatty: previousVote === 'chatty' ? prev.chatty + 1 : prev.chatty - 1
                     };
                 }
-                if (type === 'quiet') return { ...prev, quiet: prev.quiet + 1 };
-                return { ...prev, chatty: prev.chatty + 1 };
+                if (type === 'quiet') return { ...prev, quiet: Math.max(0, prev.quiet - 1) };
+                return { ...prev, chatty: Math.max(0, prev.chatty - 1) };
             });
-            
-            mutate((key: any) => typeof key === 'string' && key.includes('/places'));
-        } catch (error: any) {
-            console.error("투표 처리 실패:", error);
+
             if (error.response?.status === 400) {
                 showToast("투표 처리 중 문제가 발생했습니다.", "warning");
             } else if (error.response?.status === 401) {
