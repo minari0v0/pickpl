@@ -146,8 +146,14 @@ def run_scraping(query: str = None, source: str = "naver", limit: int = 3, regio
             themes = []
             if curation_theme == "all":
                 themes = list(curation_data.keys())
-            elif curation_theme in curation_data:
-                themes = [curation_theme]
+            else:
+                # 쉼표 구분 지원
+                requested_themes = [t.strip() for t in curation_theme.split(",") if t.strip()]
+                for rt in requested_themes:
+                    if rt in curation_data:
+                        themes.append(rt)
+                    else:
+                        logger.warning(f"경고: 알 수 없는 큐레이션 테마 건너뜀: {rt}")
             
             for theme in themes:
                 theme_queries = curation_data[theme].get("queries", [])
@@ -485,7 +491,7 @@ def main():
     parser.add_argument("--region", type=str, default=None, help="지역명 필터 (영문/한글 매핑 지원)")
     parser.add_argument("--category", type=str, default=None, choices=["맛집", "술집", "카페", "핫플레이스", "디저트", "명소"], help="수집 대상 카테고리")
     parser.add_argument("--query-all", action="store_true", help="regions.json의 모든 지역과 6대 업종 키워드 조합 순회 수집")
-    parser.add_argument("--curation-theme", type=str, default=None, choices=["all", "summer", "autumn", "winter", "rainy_indoor"], help="큐레이션 테마 수집 사전 지정")
+    parser.add_argument("--curation-theme", type=str, default=None, help="큐레이션 테마 수집 사전 지정 (쉼표 구분 다중 지정 가능, 예: spring,wellness,pet_friendly,night_market)")
     parser.add_argument("--file", type=str, default=None, help="저장하거나 로드할 파일명 또는 날짜(YYYY-MM-DD). 미지정 시 오늘 날짜 또는 가장 최신 파일 자동 선택")
     parser.add_argument("--delay", type=float, default=5.0, help="쿼리 간 대기 시간 (초) (기본 5.0)")
     parser.add_argument("--delay-random", action="store_true", help="대기 시간을 지정한 delay값 기반으로 무작위화 (delay ~ delay*2.5 사이)")
