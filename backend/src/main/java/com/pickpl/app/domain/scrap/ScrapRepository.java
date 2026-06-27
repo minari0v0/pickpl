@@ -37,4 +37,8 @@ public interface ScrapRepository extends JpaRepository<Scrap, Long> {
                       @org.springframework.data.repository.query.Param("folderName") String folderName);
 
     void deleteByUserId(Long userId);
+
+    /** 특정 큐레이션 테마에 속한 장소들의 누적 스크랩 수 집계 */
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(s) FROM Scrap s WHERE s.place.curationTheme = :theme")
+    long countByPlaceCurationTheme(@org.springframework.data.repository.query.Param("theme") String theme);
 }

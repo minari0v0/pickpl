@@ -98,6 +98,11 @@ erDiagram
         Long place_id FK
         VibeType vibeType "QUIET, CHATTY"
     }
+
+    admin_config {
+        String configKey PK "설정 키 (예: admin_secret_key, curation_mode, curation_manual_theme)"
+        String configValue "설정 값"
+    }
 ```
 
 ---

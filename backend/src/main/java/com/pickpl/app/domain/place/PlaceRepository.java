@@ -109,4 +109,17 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
 
     /** 큐레이션 테마명으로 공개된 공간 목록 조회 */
     List<Place> findAllByCurationThemeAndIsPublishedTrue(String curationTheme);
+
+    /** 큐레이션 테마명으로 전체 공간 목록 조회 (페이징) */
+    org.springframework.data.domain.Page<Place> findAllByCurationTheme(String curationTheme, org.springframework.data.domain.Pageable pageable);
+
+    /** 어드민 큐레이션 지정용 장소 키워드 검색 (공개여부 상관없이 전체) */
+    @Query("SELECT p FROM Place p WHERE p.name LIKE CONCAT('%', :keyword, '%') OR p.address LIKE CONCAT('%', :keyword, '%')")
+    org.springframework.data.domain.Page<Place> findPlacesForAdminCurationSearch(@org.springframework.data.repository.query.Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
+
+    /** 큐레이션 테마별 총 장소 개수 조회 */
+    long countByCurationTheme(String curationTheme);
+
+    /** 큐레이션 테마별 공개 장소 개수 조회 */
+    long countByCurationThemeAndIsPublishedTrue(String curationTheme);
 }
