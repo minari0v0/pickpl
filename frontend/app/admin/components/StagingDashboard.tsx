@@ -6,13 +6,14 @@ import StagingTab from './StagingTab';
 import ManagementTab from './ManagementTab';
 import StatsTab from './StatsTab';
 import SettingsTab from './SettingsTab';
+import CurationTab from './CurationTab';
 
 interface StagingDashboardProps {
     onLogout: () => void;
 }
 
 export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
-    const [activeMenu, setActiveMenu] = useState<'staging' | 'management' | 'stats' | 'settings'>('staging');
+    const [activeMenu, setActiveMenu] = useState<'staging' | 'management' | 'curation' | 'stats' | 'settings'>('staging');
     
     // 탭 1 (신규 적재) 상태
     const [places, setPlaces] = useState<PlaceStagingData[]>([]);
@@ -429,6 +430,20 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
                     </button>
 
                     <button
+                        onClick={() => setActiveMenu('curation')}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-[14px] transition-all cursor-pointer border-none outline-none ${
+                            activeMenu === 'curation'
+                                ? 'bg-orange-50 text-orange-600 shadow-sm border border-orange-100/50'
+                                : 'bg-transparent text-[#4E5968] hover:bg-[#F9FAFB] hover:text-[#191F28]'
+                        }`}
+                    >
+                        <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                        큐레이션 관리
+                    </button>
+
+                    <button
                         onClick={() => setActiveMenu('stats')}
                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-[14px] transition-all cursor-pointer border-none outline-none ${
                             activeMenu === 'stats'
@@ -485,6 +500,7 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
                         <span className="text-[#191F28] font-bold text-[14px]">
                             {activeMenu === 'staging' && '신규 데이터 적재'}
                             {activeMenu === 'management' && '공간 관리'}
+                            {activeMenu === 'curation' && '큐레이션 관리'}
                             {activeMenu === 'stats' && '통계 대시보드'}
                             {activeMenu === 'settings' && 'CMS 환경설정'}
                         </span>
@@ -549,6 +565,10 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
                                 onBulkDeleteDbPlaces={handleBulkDeleteDbPlaces}
                                 isDbLoading={isDbLoading}
                             />
+                        )}
+
+                        {activeMenu === 'curation' && (
+                            <CurationTab setStatusMsg={setStatusMsg} />
                         )}
 
                         {activeMenu === 'stats' && (
