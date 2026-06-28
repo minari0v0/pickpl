@@ -134,8 +134,8 @@ class GeminiAnalyzer:
                 
                 while retry_count < max_retries:
                     try:
-                        # 쿼터 초과 스티키 플래그가 켜졌거나, 재시도 시에는 2.5-flash 모델 적용
-                        if self.use_fallback_model or retry_count > 0:
+                        # 쿼터 초과 스티키 플래그가 켜진 경우에만 2.5-flash 모델 적용
+                        if self.use_fallback_model:
                             active_model = "gemini-2.5-flash"
                         else:
                             active_model = self.model_name

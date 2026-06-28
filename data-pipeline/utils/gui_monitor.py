@@ -81,6 +81,11 @@ class GuiMonitor:
             center_x = int(screen_width / 2 - window_width / 2)
             center_y = int(screen_height / 2 - window_height / 2)
             self.root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
+            
+            # 윈도우를 최상위로 띄운 뒤 1초 후 고정 해제 (초기 인지 강화)
+            self.root.lift()
+            self.root.attributes("-topmost", True)
+            self.root.after(1000, lambda: self.root.attributes("-topmost", False))
 
             # 창 닫기 버튼(X) 이벤트 핸들링 바인딩
             self.root.protocol("WM_DELETE_WINDOW", self.on_window_close)
@@ -279,14 +284,18 @@ class GuiMonitor:
             dialog.geometry("520x400")
             dialog.resizable(False, False)
             
-            # 모달 설정 (부모 창 위에 고정 및 포커스 뺏기)
-            dialog.transient(self.root)
-            dialog.grab_set()
-            
             # 다이얼로그 창도 모니터 중앙 부근에 배치
             x = self.root.winfo_x() + 80
             y = self.root.winfo_y() + 40
             dialog.geometry(f"520x400+{x}+{y}")
+            
+            # 모달 설정 (부모 창 위에 고정, 최상위 띄우기 및 포커스 뺏기)
+            dialog.transient(self.root)
+            dialog.lift()
+            dialog.attributes("-topmost", True)  # 윈도우 최상단 강제 배치
+            dialog.wait_visibility()             # 윈도우 렌더링 완료까지 대기하여 얼어붙음/미표시 방지
+            dialog.grab_set()
+            dialog.focus_force()                 # 포커스 강제 부여
             
             # 닫기 버튼(X)을 누르면 '건너뛰기'로 간주
             def on_close():

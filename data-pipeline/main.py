@@ -486,18 +486,27 @@ def main():
     group.add_argument("--load", action="store_true", help="분석 결과 로컬 JSON을 읽어 스프링 백엔드 DB에 적재")
     
     parser.add_argument("--query", type=str, default=None, help="네이버 지도에서 검색할 키워드 (쉼표 구분 다중 지원)")
+    parser.add_argument("--query-file", type=str, default=None, help="한 줄에 하나씩 수집 키워드가 적힌 텍스트 파일 경로")
     parser.add_argument("--source", type=str, default="naver", choices=["naver"], help="크롤링 대상 포털 소스")
     parser.add_argument("--limit", type=int, default=3, help="검색당 수집할 최대 장소 개수 (기본 3)")
     parser.add_argument("--region", type=str, default=None, help="지역명 필터 (영문/한글 매핑 지원)")
     parser.add_argument("--category", type=str, default=None, choices=["맛집", "술집", "카페", "핫플레이스", "디저트", "명소"], help="수집 대상 카테고리")
-    parser.add_argument("--query-all", action="store_true", help="regions.json의 모든 지역과 6대 업종 키워드 조합 순회 수집")
-    parser.add_argument("--curation-theme", type=str, default=None, help="큐레이션 테마 수집 사전 지정 (쉼표 구분 다중 지정 가능, 예: spring,wellness,pet_friendly,night_market)")
-    parser.add_argument("--file", type=str, default=None, help="저장하거나 로드할 파일명 또는 날짜(YYYY-MM-DD). 미지정 시 오늘 날짜 또는 가장 최신 파일 자동 선택")
-    parser.add_argument("--delay", type=float, default=5.0, help="쿼리 간 대기 시간 (초) (기본 5.0)")
-    parser.add_argument("--delay-random", action="store_true", help="대기 시간을 지정한 delay값 기반으로 무작위화 (delay ~ delay*2.5 사이)")
+    parser.add_argument("--query-all", action="store_true", help="regions.json의 모든 지역 x 6대 업종 키워드 조합 순회 수집")
+    parser.add_argument("--curation-theme", type=str, default=None, help="큐레이션 테마 수집 사전 지정 (쉼표 구분 다중 지정 가능)")
+    parser.add_argument("--file", type=str, default=None, help="저장하거나 로드할 파일명 또는 날짜(YYYY-MM-DD)")
+    parser.add_argument("--delay", type=float, default=5.0, help="쿼리 간 대기 시간 (초)")
+    parser.add_argument("--delay-random", action="store_true", help="대기 시간을 지정한 delay값 기반으로 무작위화")
     parser.add_argument("--gui", action="store_true", help="분석 진행률을 그래픽 팝업 창(GUI)으로 시각화")
     
     args = parser.parse_args()
+    
+    if args.query_file:
+        if not os.path.exists(args.query_file):
+            logger.error(f"에러: 지정한 쿼리 파일이 존재하지 않습니다: {args.query_file}")
+            sys.exit(1)
+        with open(args.query_file, "r", encoding="utf-8-sig") as f:
+            lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+        args.query = ",".join(lines)
     
     if args.scrape:
         output_file = get_raw_output_path(file_arg=args.file, default_to_latest=False)

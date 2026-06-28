@@ -82,10 +82,6 @@ class PortalScraper:
         검색어(query)를 기반으로 실시간 네이버 플레이스 수집을 진행합니다.
         (카카오 맵은 단일화 정책에 따라 더 이상 지원하지 않습니다.)
         """
-        if self.use_mock:
-            logger.info("Mock 모드로 작동합니다. 테스트 더미 데이터를 반환합니다.")
-            return self.get_mock_places()
-
         logger.info(f"검색어: '{query}' | 수집 제한: {limit}개 (네이버 단일 수집)")
         res = self._scrape_naver(query, limit, monitor=monitor)
         if not res and query not in self.skipped_queries:
@@ -328,7 +324,7 @@ class PortalScraper:
         if not keywords:
             clean_prefix = region_prefix
             if len(clean_prefix) >= 3:
-                for suffix in ["동", "시", "구", "역", "길"]:
+                for suffix in ["동", "시", "구", "역", "길", "면", "읍", "군"]:
                     if clean_prefix.endswith(suffix):
                         clean_prefix = clean_prefix[:-1]
                         break
@@ -336,7 +332,8 @@ class PortalScraper:
             
         clean_addr = re.sub(r'\s+', '', address)
         for kw in keywords:
-            if kw in clean_addr or clean_addr in kw:
+            clean_kw = re.sub(r'\s+', '', kw)
+            if clean_kw in clean_addr or clean_addr in clean_kw:
                 return True
         return False
 
@@ -448,11 +445,10 @@ class PortalScraper:
 
             if not unique_ids:
                 if target_name:
-                    logger.warning(f"⚠️ 특정 장소 '{target_name}'의 플레이스 ID를 네이버 검색 결과에서 찾을 수 없습니다. (Mock 데이터 대체 배제)")
-                    return []
+                    logger.warning(f"⚠️ 특정 장소 '{target_name}'의 플레이스 ID를 네이버 검색 결과에서 찾을 수 없습니다. (수집 생략)")
                 else:
-                    logger.warning("네이버 플레이스 ID를 찾지 못했습니다. Mock 데이터로 대체합니다.")
-                    return self.get_mock_places()
+                    logger.warning("네이버 플레이스 ID를 찾지 못했습니다. 수집을 건너뜁니다.")
+                return []
 
             # 2. Playwright를 기동하여 모바일 상세 페이지에서 상호명, 주소, 리뷰 텍스트 파싱
             from playwright.sync_api import sync_playwright
@@ -509,7 +505,13 @@ class PortalScraper:
                                     first_addr = clean_txt
                                     break
                                     
-                        if is_name_matched(first_name, target_name) and self._is_region_matched(first_addr, query):
+                        import difflib
+                        c_fn = re.sub(r'[^a-zA-Z0-9가-힣]', '', first_name).lower()
+                        c_tn = re.sub(r'[^a-zA-Z0-9가-힣]', '', target_name).lower()
+                        ratio = difflib.SequenceMatcher(None, c_fn, c_tn).ratio()
+                        is_very_similar = (c_fn == c_tn) or ((c_fn in c_tn or c_tn in c_fn) and ratio >= 0.8)
+
+                        if is_very_similar and self._is_region_matched(first_addr, query):
                             logger.info(f"✨ 1순위 상호명 및 지역 일치 성공! ('{first_name}' | '{first_addr}') -> 자동 패스트트랙 수집을 개시합니다.")
                             fast_track_success = True
                             unique_ids = [first_id]
@@ -1043,9 +1045,9 @@ class PortalScraper:
 
         except Exception as e:
             logger.error(f"네이버 맵 실시간 우회 크롤링 중 예외 발생: {e}")
-            return self.get_mock_places()
+            return []
 
-        return results if results else self.get_mock_places()
+        return results
 
     def get_mock_places(self) -> List[Dict[str, Any]]:
         """
