@@ -159,6 +159,7 @@ public class Place extends BaseTimeEntity {
 
     // --- Setters (AI 파이프라인 및 어드민이 사용) ---
 
+    public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
     public void setImageUrls(String imageUrls) { this.imageUrls = imageUrls; }
     public void setAiMoodSummary(String aiMoodSummary) { this.aiMoodSummary = aiMoodSummary; }
     public void setEditorsComment(String editorsComment) { this.editorsComment = editorsComment; }

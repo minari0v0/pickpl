@@ -331,7 +331,7 @@ export default function ManagementTab({
                     </div>
                     <h3 className="text-[20px] font-bold text-[#191F28] tracking-tight">데이터베이스가 비어 있습니다</h3>
                     <p className="text-[14px] text-[#8B95A1] text-center mt-2 max-w-[380px] leading-relaxed">
-                        '신규 데이터 적재' 탭을 통해 최초 공간 정보들을 DB에 먼저 로딩해 주세요.
+                        '신규 장소 업로드' 탭을 통해 최초 공간 정보들을 DB에 먼저 로딩해 주세요.
                     </p>
                 </div>
             )}

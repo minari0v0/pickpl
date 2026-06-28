@@ -129,11 +129,11 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
             longitude: target.longitude,
             category: updatedData.category || target.category,
             subCategory: updatedData.subCategory || target.subCategory,
-            thumbnailUrl: target.thumbnailUrl,
-            imageUrls: target.imageUrls || target.thumbnailUrl || '',
-            aiMoodSummary: target.aiMoodSummary,
-            tags: updatedData.tags || target.tags.map((t: any) => t.name),
-            editorsComment: updatedData.editorsComment || '',
+            thumbnailUrl: updatedData.thumbnailUrl !== undefined ? updatedData.thumbnailUrl : target.thumbnailUrl,
+            imageUrls: updatedData.imageUrls !== undefined ? updatedData.imageUrls : target.imageUrls,
+            aiMoodSummary: updatedData.aiMoodSummary !== undefined ? updatedData.aiMoodSummary : target.aiMoodSummary,
+            tags: updatedData.tags || (target.tags ? target.tags.map((t: any) => t.name) : []),
+            editorsComment: updatedData.editorsComment !== undefined ? updatedData.editorsComment : target.editorsComment,
             isPublished: updatedData.isPublished !== undefined ? updatedData.isPublished : target.isPublished,
             curationTheme: updatedData.curationTheme !== undefined ? updatedData.curationTheme : target.curationTheme
         };
@@ -410,7 +410,7 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
                         <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
-                        신규 데이터 적재
+                        신규 장소 업로드
                     </button>
 
                     <div className="text-[10px] font-extrabold text-[#B0B8C1] mb-2.5 ml-2 mt-6 uppercase tracking-widest">
@@ -513,7 +513,7 @@ export default function StagingDashboard({ onLogout }: StagingDashboardProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                         </svg>
                         <span className="text-[#191F28] font-bold text-[14px]">
-                            {activeMenu === 'staging' && '신규 데이터 적재'}
+                            {activeMenu === 'staging' && '신규 장소 업로드'}
                             {activeMenu === 'management' && '공간 관리'}
                             {activeMenu === 'curation' && '큐레이션 관리'}
                             {activeMenu === 'visit' && '방문 기록 관리'}

@@ -35,7 +35,27 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
     const [tags, setTags] = useState<string[]>(Array.from(new Set(place.tags)));
     const [isPublished, setIsPublished] = useState<boolean>(place.isPublished !== false);
     const [curationTheme, setCurationTheme] = useState<string>(place.curationTheme || '');
+    const [thumbnailUrl, setThumbnailUrl] = useState(place.thumbnailUrl || '');
+    const [imageUrlsList, setImageUrlsList] = useState<string[]>(() => {
+        if (!place.imageUrls) return [];
+        return place.imageUrls.split(',').map(url => url.trim()).filter(Boolean);
+    });
+    const [isImagesExpanded, setIsImagesExpanded] = useState(false);
     const [newTagInput, setNewTagInput] = useState('');
+
+    const handleAddImageUrl = () => {
+        setImageUrlsList([...imageUrlsList, '']);
+    };
+
+    const handleImageUrlChange = (index: number, value: string) => {
+        const updated = [...imageUrlsList];
+        updated[index] = value;
+        setImageUrlsList(updated);
+    };
+
+    const handleRemoveImageUrl = (index: number) => {
+        setImageUrlsList(imageUrlsList.filter((_, i) => i !== index));
+    };
 
     const handleAddTag = (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,13 +72,16 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
 
     const handleSaveSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const joinedUrls = imageUrlsList.map(url => url.trim()).filter(Boolean).join(',');
         onSave({
             name,
             category,
             editorsComment,
             tags,
             isPublished,
-            curationTheme: curationTheme || undefined
+            curationTheme: curationTheme || undefined,
+            thumbnailUrl,
+            imageUrls: joinedUrls
         });
     };
 
@@ -102,6 +125,73 @@ export default function PlaceModal({ place, onClose, onSave }: PlaceModalProps) 
                             onChange={(e) => setName(e.target.value)}
                             className="w-full bg-[#F2F4F6] focus:bg-[#E5E8EB] text-[#191F28] text-[14.5px] font-semibold rounded-[14px] px-4 py-3.5 border-none outline-none transition-colors"
                         />
+                    </div>
+
+                    {/* 대표 이미지 링크 (썸네일) */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[13px] font-bold text-[#8B95A1] pl-1">대표 이미지 링크 (썸네일 URL)</label>
+                        <input
+                            type="text"
+                            value={thumbnailUrl}
+                            onChange={(e) => setThumbnailUrl(e.target.value)}
+                            placeholder="대표 이미지 URL을 입력하세요"
+                            className="w-full bg-[#F2F4F6] focus:bg-[#E5E8EB] text-[#191F28] text-[14.5px] font-semibold rounded-[14px] px-4 py-3.5 border-none outline-none transition-colors"
+                        />
+                    </div>
+
+                    {/* 추가 이미지 링크들 (접이식 아코디언 형태) */}
+                    <div className="flex flex-col gap-2 bg-[#F9FAFB] p-4 rounded-[18px] border border-[#E5E8EB]/50">
+                        <button
+                            type="button"
+                            onClick={() => setIsImagesExpanded(!isImagesExpanded)}
+                            className="w-full flex justify-between items-center text-[13.5px] font-bold text-[#4E5968] hover:text-[#191F28] transition-colors cursor-pointer outline-none border-none bg-transparent"
+                        >
+                            <span>추가 이미지 링크 목록 ({imageUrlsList.length}개)</span>
+                            <svg
+                                className={`w-4 h-4 text-[#8B95A1] transition-transform duration-200 ${
+                                    isImagesExpanded ? 'rotate-180' : ''
+                                }`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        {isImagesExpanded && (
+                            <div className="flex flex-col gap-2.5 mt-3 pt-3 border-t border-[#E5E8EB]/60 animate-fade-in">
+                                {imageUrlsList.map((url, idx) => (
+                                    <div key={idx} className="flex gap-2 items-center">
+                                        <input
+                                            type="text"
+                                            value={url}
+                                            onChange={(e) => handleImageUrlChange(idx, e.target.value)}
+                                            placeholder={`추가 이미지 URL #${idx + 1}`}
+                                            className="flex-1 bg-[#F2F4F6] focus:bg-[#E5E8EB] text-[#191F28] text-[13.5px] font-semibold rounded-[12px] px-3.5 py-2.5 border-none outline-none transition-colors"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveImageUrl(idx)}
+                                            className="w-9 h-9 shrink-0 rounded-[10px] bg-red-50 hover:bg-red-100 text-red-600 transition-colors flex items-center justify-center text-[13px] font-bold active:scale-95 border-none outline-none cursor-pointer"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={handleAddImageUrl}
+                                    className="w-full py-3.5 border border-dashed border-orange-500/20 bg-white rounded-[12px] text-orange-600 hover:bg-orange-50/50 font-bold text-[12.5px] transition-colors flex items-center justify-center gap-1.5 active:scale-98 mt-1 cursor-pointer"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span>추가 이미지 경로 추가</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* 카테고리 수정 */}

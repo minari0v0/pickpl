@@ -351,6 +351,7 @@ public class PlaceService {
         place.setEditorsComment(data.editorsComment());
         place.setPublished(data.isPublished());
         place.setAiMoodSummary(data.aiMoodSummary());
+        place.setThumbnailUrl(data.thumbnailUrl());
         place.setImageUrls(data.imageUrls());
         place.setSubCategory(data.subCategory());
         place.setCurationTheme(data.curationTheme());
