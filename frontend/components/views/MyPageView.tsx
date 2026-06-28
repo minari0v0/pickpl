@@ -96,12 +96,71 @@ export default function MyPageView({
                 </div>
             </header>
 
-            {/* 2열 스플릿 레이아웃 (PC 뷰포트에서는 내부 칼럼들이 각각 스크롤됨) */}
-            <div className="w-full flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden lg:max-w-[1100px] px-5 lg:px-8 py-6 lg:py-8 gap-6 lg:gap-8 pb-[120px] lg:pb-8 min-h-0 lg:h-[calc(100%-90px)]">
-                {/* 좌측 칼럼: 프로필 카드 & 탭 메뉴 */}
-                <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6 lg:h-full lg:overflow-y-auto no-scrollbar">
-                    {/* 1. 프로필 카드 */}
-                    <div className="bg-white rounded-[28px] lg:rounded-[32px] p-6 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.015)] border border-[#F2F4F6] flex flex-col items-center text-center gap-5 relative overflow-hidden">
+            {/* 2열 스플릿 레이아웃 (PC 뷰포트에서는 내부 칼럼들이 각각 스크롤됨, 모바일에서는 하단 탭 영역만 스크롤됨) */}
+            <div className="w-full flex-1 flex flex-col lg:flex-row overflow-hidden lg:max-w-[1100px] px-5 lg:px-8 py-5 lg:py-8 gap-5 lg:gap-8 pb-0 lg:pb-8 min-h-0 lg:h-[calc(100%-90px)]">
+                {/* 좌측 칼럼: 프로필 카드 & 탭 메뉴 (모바일/PC 대응 분기) */}
+                <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 lg:gap-6 lg:h-full lg:overflow-y-auto no-scrollbar">
+                    
+                    {/* [모바일 전용] 컴팩트 프로필 카드 */}
+                    <div className="lg:hidden bg-white rounded-[24px] p-4.5 border border-[#F2F4F6] shadow-sm flex items-center justify-between gap-4 w-full shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-13 h-13 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] ${getProfileBgClass(profileImage)}`}>
+                                <img src={profileImage ? profileImage.split('?')[0] : "/profile_cat.png"} alt="profile" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex flex-col text-left">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                    <h2 className="text-[16px] font-extrabold text-[#191F28] tracking-tight">{nickname}</h2>
+                                    <span className="px-1.5 py-0.5 rounded-[6px] bg-[#F0F6F5] text-[#2E7D7A] border border-[#D1E6E4]/50 text-[9px] font-bold">취향 탐험가</span>
+                                </div>
+                                <p className="text-[12px] font-semibold text-[#8B95A1] break-all leading-none">{userEmail}</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleProfileEditClick}
+                            className="px-3 py-1.5 rounded-[10px] bg-[#F2F4F6] hover:bg-[#E5E8EB] active:scale-95 text-[#4E5968] font-bold text-[11.5px] transition-all flex items-center gap-1 shrink-0"
+                        >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            <span>수정</span>
+                        </button>
+                    </div>
+
+                    {/* [모바일 전용] 가로 Segmented Control 탭바 (가시성 대폭 개선) */}
+                    <div className="lg:hidden bg-[#F2F4F6] p-1 rounded-[16px] flex w-full gap-1 items-center shrink-0 shadow-sm border border-[#E5E8EB]/30">
+                        <button 
+                            onClick={() => setActiveTab('dashboard')}
+                            className={`flex-1 py-2.5 rounded-[12px] text-[12.5px] font-extrabold transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-[0.97] ${activeTab === 'dashboard' ? 'bg-white text-[#191F28] shadow-[0_2px_8px_rgba(0,0,0,0.06)]' : 'text-[#6B7684] hover:text-[#4E5968]'}`}
+                        >
+                            <svg className={`w-4 h-4 transition-colors ${activeTab === 'dashboard' ? 'text-orange-500' : 'text-[#8B95A1]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            <span>내 대시보드</span>
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('general')}
+                            className={`flex-1 py-2.5 rounded-[12px] text-[12.5px] font-extrabold transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-[0.97] ${activeTab === 'general' ? 'bg-white text-[#191F28] shadow-[0_2px_8px_rgba(0,0,0,0.06)]' : 'text-[#6B7684] hover:text-[#4E5968]'}`}
+                        >
+                            <svg className={`w-4 h-4 transition-colors ${activeTab === 'general' ? 'text-orange-500' : 'text-[#8B95A1]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>픽플 설정</span>
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('account')}
+                            className={`flex-1 py-2.5 rounded-[12px] text-[12.5px] font-extrabold transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-[0.97] ${activeTab === 'account' ? 'bg-white text-[#191F28] shadow-[0_2px_8px_rgba(0,0,0,0.06)]' : 'text-[#6B7684] hover:text-[#4E5968]'}`}
+                        >
+                            <svg className={`w-4 h-4 transition-colors ${activeTab === 'account' ? 'text-orange-500' : 'text-[#8B95A1]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span>계정 설정</span>
+                        </button>
+                    </div>
+
+
+                    {/* [PC 전용] 1. 프로필 카드 */}
+                    <div className="hidden lg:flex bg-white rounded-[28px] lg:rounded-[32px] p-6 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.015)] border border-[#F2F4F6] flex-col items-center text-center gap-5 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl"></div>
                         <button 
                             onClick={handleProfileEditClick}
@@ -125,8 +184,8 @@ export default function MyPageView({
                         </div>
                     </div>
 
-                    {/* 3. 메뉴 및 탭 전환 */}
-                    <div className="bg-white rounded-[28px] p-6 lg:p-7 border border-[#F2F4F6] shadow-sm flex flex-col gap-1">
+                    {/* [PC 전용] 3. 메뉴 및 탭 전환 */}
+                    <div className="hidden lg:flex bg-white rounded-[28px] p-6 lg:p-7 border border-[#F2F4F6] shadow-sm flex-col gap-1">
                         <h3 className="font-bold text-[13px] text-[#8B95A1] mb-3.5 tracking-wider px-1">계정 설정 및 정보</h3>
                         
                         <div className="flex flex-col gap-1.5">
@@ -226,13 +285,13 @@ export default function MyPageView({
                                     </svg>
                                     <span>로그아웃</span>
                                 </span>
-                            </button>
+                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* 우측 칼럼: 활성 탭에 따른 컴포넌트 스위칭 (PC 뷰포트에서 독립 스크롤) */}
-                <div className="flex-1 lg:h-full lg:overflow-y-auto flex flex-col gap-6 min-w-0 pr-1 pb-[100px] lg:pb-0 min-h-0 no-scrollbar">
+                {/* 우측 칼럼: 활성 탭에 따른 컴포넌트 스위칭 (PC 뷰포트 및 모바일에서 각각 적절히 독립 스크롤) */}
+                <div className="flex-1 h-full overflow-y-auto flex flex-col gap-6 min-w-0 pr-1 pb-[140px] lg:pb-0 min-h-0 no-scrollbar">
                     {/* 1. 내 대시보드 탭 내용 */}
                     {activeTab === 'dashboard' && (
                         <div className="flex flex-col gap-6 w-full animate-fade-in shrink-0">
@@ -383,17 +442,66 @@ export default function MyPageView({
                         />
                     )}
 
-                    {/* 3. 계정 설정 탭 내용 (가입정보/로그인기록/비밀번호 등) */}
-                    <MyPageAccountSettingsView
-                        hidden={activeTab !== 'account'}
-                        userEmail={userEmail}
-                        provider={provider}
-                        emailVerified={emailVerified}
-                        linkedProviders={linkedProviders}
-                        refreshUserInfo={refreshUserInfo}
-                        onLogout={onLogout}
-                        showToast={showToast}
-                    />
+                    {/* 3. 계정 설정 탭 내용 (가입정보/로그인기록/비밀번호 등 + 모바일 전용 이용약관/로그아웃) */}
+                    <div className="w-full flex flex-col gap-6" style={{ display: activeTab === 'account' ? 'flex' : 'none' }}>
+                        <MyPageAccountSettingsView
+                            hidden={false}
+                            userEmail={userEmail}
+                            provider={provider}
+                            emailVerified={emailVerified}
+                            linkedProviders={linkedProviders}
+                            refreshUserInfo={refreshUserInfo}
+                            onLogout={onLogout}
+                            showToast={showToast}
+                        />
+
+                        {/* 모바일 전용 하단 계정 보조 메뉴 (서비스 이용약관, 개인정보 처리방침, 로그아웃) */}
+                        <div className="lg:hidden bg-white rounded-[24px] p-5 border border-[#F2F4F6] shadow-sm flex flex-col gap-1 mb-2">
+                            <button 
+                                onClick={() => onShowTermsModal('terms')}
+                                className="flex items-center justify-between w-full py-3.5 px-4 hover:bg-[#F9FAFB] rounded-[14px] text-[#4E5968] hover:text-[#191F28] transition-colors font-semibold text-left group"
+                            >
+                                <span className="text-[14px] flex items-center gap-3">
+                                    <svg className="w-4.5 h-4.5 text-[#8B95A1] group-hover:text-[#191F28] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span>서비스 이용약관</span>
+                                </span>
+                                <svg className="w-3.5 h-3.5 text-[#8B95A1] group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                                </svg>
+                            </button>
+
+                            <button 
+                                onClick={() => onShowTermsModal('privacy')}
+                                className="flex items-center justify-between w-full py-3.5 px-4 hover:bg-[#F9FAFB] rounded-[14px] text-[#4E5968] hover:text-[#191F28] transition-colors font-semibold text-left group"
+                            >
+                                <span className="text-[14px] flex items-center gap-3">
+                                    <svg className="w-4.5 h-4.5 text-[#8B95A1] group-hover:text-[#191F28] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    <span>개인정보 처리방침</span>
+                                </span>
+                                <svg className="w-3.5 h-3.5 text-[#8B95A1] group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                                </svg>
+                            </button>
+
+                            <div className="h-[1px] bg-[#F2F4F6] my-2"></div>
+
+                            <button 
+                                onClick={onLogout}
+                                className="flex items-center justify-between w-full py-3.5 px-4 hover:bg-[#FFF0F0] rounded-[14px] text-red-500 font-bold transition-colors text-left group"
+                            >
+                                <span className="text-[14px] flex items-center gap-3">
+                                    <svg className="w-5 h-5 text-red-400 group-hover:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                    <span>로그아웃</span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

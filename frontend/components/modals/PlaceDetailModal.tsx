@@ -15,7 +15,7 @@ interface PlaceDetailModalProps {
     isBookmarkPopping: boolean;
     onSaveClick: () => void;
     isLoggedIn: boolean;
-    showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
+    showToast: (msg: string, type: 'success' | 'warning' | 'error') => void;
 }
 
 export default function PlaceDetailModal({
