@@ -25,6 +25,7 @@ export default function ManagementTab({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name' | 'published'>('newest');
 
     // 카테고리 종류 추출
     const categories = ['All', ...Array.from(new Set(dbPlaces.map(p => p.category).filter(Boolean)))];
@@ -35,6 +36,25 @@ export default function ManagementTab({
                               place.address.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = selectedCategory === 'All' || place.category === selectedCategory;
         return matchesSearch && matchesCategory;
+    });
+
+    // 정렬 적용 (클라이언트 사이드)
+    const sortedDbPlaces = [...filteredDbPlaces].sort((a, b) => {
+        if (sortBy === 'newest') {
+            return b.id - a.id;
+        }
+        if (sortBy === 'oldest') {
+            return a.id - b.id;
+        }
+        if (sortBy === 'name') {
+            return a.name.localeCompare(b.name, 'ko');
+        }
+        if (sortBy === 'published') {
+            const aVal = a.isPublished ? 1 : 0;
+            const bVal = b.isPublished ? 1 : 0;
+            return bVal - aVal;
+        }
+        return 0;
     });
 
     const toggleSelect = (id: number) => {
@@ -83,20 +103,42 @@ export default function ManagementTab({
 
             {/* 검색 및 카테고리 필터 컨트롤러 */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center py-2 border-b border-[#F2F4F6] pb-5">
-                {/* 검색 인풋 */}
-                <div className="relative w-full md:w-[320px]">
-                    <input
-                        type="text"
-                        placeholder="공간명 또는 주소 검색..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-[#F2F4F6] focus:bg-[#E5E8EB] text-[#191F28] text-[14.5px] font-semibold rounded-[14px] pl-10 pr-4 py-3.5 border-none outline-none transition-colors placeholder-[#B0B8C1]"
-                    />
-                    <span className="absolute left-3.5 top-3.5 text-[#B0B8C1]">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </span>
+                {/* 검색 및 정렬 드롭다운 묶음 */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    {/* 검색 인풋 */}
+                    <div className="relative w-full sm:w-[260px]">
+                        <input
+                            type="text"
+                            placeholder="공간명 또는 주소 검색..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-[#F2F4F6] focus:bg-[#E5E8EB] text-[#191F28] text-[14.5px] font-semibold rounded-[14px] pl-10 pr-4 py-3.5 border-none outline-none transition-colors placeholder-[#B0B8C1]"
+                        />
+                        <span className="absolute left-3.5 top-3.5 text-[#B0B8C1]">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </span>
+                    </div>
+
+                    {/* 정렬 셀렉터 */}
+                    <div className="relative w-full sm:w-[150px]">
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as any)}
+                            className="w-full bg-[#F2F4F6] focus:bg-[#E5E8EB] text-[#4E5968] text-[14px] font-bold rounded-[14px] px-4 py-3.5 border-none outline-none cursor-pointer appearance-none transition-colors"
+                        >
+                            <option value="newest">최신 등록순</option>
+                            <option value="oldest">과거 등록순</option>
+                            <option value="name">이름 가나다순</option>
+                            <option value="published">공개 상태순</option>
+                        </select>
+                        <span className="absolute right-4 top-4.5 pointer-events-none text-[#8B95A1]">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </span>
+                    </div>
                 </div>
 
                 {/* 카테고리 필터 뱃지 */}
@@ -188,9 +230,9 @@ export default function ManagementTab({
                     <p className="text-[14px] font-semibold text-[#8B95A1] mt-4">데이터베이스에서 공간 데이터를 조회 중입니다...</p>
                 </div>
             ) : dbPlaces.length > 0 ? (
-                filteredDbPlaces.length > 0 ? (
+                sortedDbPlaces.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredDbPlaces.map((place) => {
+                        {sortedDbPlaces.map((place) => {
                             const tagNames = place.tags ? place.tags.map((t: any) => t.name) : [];
                             const isChecked = selectedIds.includes(place.id);
                             return (

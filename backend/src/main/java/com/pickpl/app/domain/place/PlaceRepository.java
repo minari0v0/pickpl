@@ -25,6 +25,9 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
     /** 공개 승인된 전체 장소 목록 조회 */
     List<Place> findAllByIsPublishedTrue();
 
+    /** 어드민용 전체 장소 목록 최신 등록순 조회 */
+    List<Place> findAllByOrderByIdDesc();
+
     /** 공개 승인된 전체 장소 목록 조회 (페이징) */
     org.springframework.data.domain.Page<Place> findAllByIsPublishedTrue(org.springframework.data.domain.Pageable pageable);
 

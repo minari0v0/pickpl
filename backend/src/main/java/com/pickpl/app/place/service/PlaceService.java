@@ -335,7 +335,7 @@ public class PlaceService {
      * 어드민용 전체 공간 목록 조회 (공개/비공개 상관없이 전체 반환).
      */
     public List<PlaceSummaryResponse> findAllPlacesForAdmin() {
-        return placeRepository.findAll().stream()
+        return placeRepository.findAllByOrderByIdDesc().stream()
                 .map(place -> PlaceSummaryResponse.from(place, false, null))
                 .toList();
     }
