@@ -8,6 +8,7 @@ public record UserResponse(
     String profileImageUrl,
     String provider,
     boolean emailVerified,
+    boolean onboarded,
     List<String> linkedProviders
 ) {
     public static UserResponse of(com.pickpl.app.domain.user.User user, List<String> linkedProviders) {
@@ -17,6 +18,7 @@ public record UserResponse(
             user.getProfileImageUrl(), 
             user.getProvider().name(), 
             user.isEmailVerified(), 
+            user.isOnboarded(), 
             linkedProviders
         );
     }

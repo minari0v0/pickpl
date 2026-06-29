@@ -38,6 +38,7 @@ public class AuthService {
     private final SocialConnectionRepository socialConnectionRepository;
     private final JavaMailSender mailSender;
     private final UserSessionRepository userSessionRepository;
+    private final com.pickpl.app.domain.user.UserPreferenceTagRepository userPreferenceTagRepository;
 
     @org.springframework.beans.factory.annotation.Value("${spring.mail.username:}")
     private String mailUsername;
@@ -488,5 +489,28 @@ public class AuthService {
 
         redisTemplate.delete("RT:" + userId + ":" + session.getRefreshTokenUuid());
         userSessionRepository.delete(session);
+    }
+
+    @Transactional
+    public void completeOnboarding(String userIdStr, com.pickpl.app.auth.dto.OnboardingRequest request) {
+        User user = userRepository.findById(Long.valueOf(userIdStr))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다: " + userIdStr));
+
+        // 1. 온보딩 상태 완료 마킹
+        user.completeOnboarding();
+        userRepository.save(user);
+
+        // 2. 기존 선호 태그 삭제 후 재등록
+        userPreferenceTagRepository.deleteByUserId(user.getId());
+        if (request.tags() != null) {
+            for (String tag : request.tags()) {
+                if (tag != null && !tag.isBlank()) {
+                    userPreferenceTagRepository.save(new com.pickpl.app.domain.user.UserPreferenceTag(user, tag.trim()));
+                }
+            }
+        }
+
+        // 3. Redis 캐시 무효화 (다음 추천 연산 시 취향 가중치 갱신 반영)
+        redisTemplate.delete("user:vibe-vector:" + user.getId());
     }
 }

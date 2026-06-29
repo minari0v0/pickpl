@@ -97,6 +97,19 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "취향 온보딩 설정 완료", description = "최초 가입 또는 미선택한 사용자의 관심 태그를 등록하고 온보딩 완료 처리합니다.")
+    @PostMapping("/onboarding")
+    public ResponseEntity<Void> completeOnboarding(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails,
+            @RequestBody com.pickpl.app.auth.dto.OnboardingRequest request) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = userDetails.getUsername();
+        authService.completeOnboarding(userId, request);
+        return ResponseEntity.ok().build();
+    }
+
     @Operation(summary = "비밀번호 변경", description = "일반 로그인 회원의 비밀번호를 변경합니다.")
     @PostMapping("/password")
     public ResponseEntity<Void> changePassword(

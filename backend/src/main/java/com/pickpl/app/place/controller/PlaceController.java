@@ -24,9 +24,11 @@ import org.springframework.security.core.userdetails.User;
 public class PlaceController {
 
     private final PlaceService placeService;
+    private final com.pickpl.app.place.service.RecommendationService recommendationService;
 
-    public PlaceController(PlaceService placeService) {
+    public PlaceController(PlaceService placeService, com.pickpl.app.place.service.RecommendationService recommendationService) {
         this.placeService = placeService;
+        this.recommendationService = recommendationService;
     }
 
     private Long getUserIdOrNull(User user) {
@@ -82,6 +84,11 @@ public class PlaceController {
         }
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "id"));
+        
+        if (cleanedTags == null && cleanedKeyword == null) {
+            return ResponseEntity.ok(recommendationService.getPersonalizedPlacesPage(getUserIdOrNull(user), latitude, longitude, pageable));
+        }
+        
         return ResponseEntity.ok(placeService.findPlacesByTagsAndKeyword(cleanedTags, cleanedKeyword, getUserIdOrNull(user), latitude, longitude, pageable));
     }
 
@@ -97,7 +104,21 @@ public class PlaceController {
             @io.swagger.v3.oas.annotations.Parameter(description = "사용자 현재 기기 경도 (거리 계산용)")
             @org.springframework.web.bind.annotation.RequestParam(required = false) Double longitude,
             
+            @io.swagger.v3.oas.annotations.Parameter(description = "상세페이지 진입 시 인입 경로 태그명 (추천/검색 클릭 태그)")
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String inflowTag,
+            
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(placeService.findPlaceById(id, getUserIdOrNull(user), latitude, longitude));
+        Long userId = getUserIdOrNull(user);
+        if (userId != null) {
+            recommendationService.recordPlaceView(userId, id, inflowTag);
+        }
+        return ResponseEntity.ok(placeService.findPlaceById(id, userId, latitude, longitude));
+    }
+
+    @Operation(summary = "개인화 맞춤 추천 장소 조회", description = "로그인한 유저의 가중치 무드 맵과 Time-Decay를 적용하여 맞춤형 12개 장소를 추천합니다. 비로그인/스킵 시 인기 장소로 폴백합니다.")
+    @GetMapping("/recommendations")
+    public ResponseEntity<com.pickpl.app.place.dto.RecommendationResponse> getRecommendations(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(recommendationService.getPersonalizedRecommendations(getUserIdOrNull(user)));
     }
 }

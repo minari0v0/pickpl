@@ -28,6 +28,10 @@ public interface PlaceRepository extends JpaRepository<Place, Long> {
     /** 어드민용 전체 장소 목록 최신 등록순 조회 */
     List<Place> findAllByOrderByIdDesc();
 
+    /** 관심 태그 중 하나라도 매칭되는 장소 100건 고속 조회 (Retrieval 후보군 용) */
+    @Query("SELECT DISTINCT p FROM Place p JOIN p.placeTagMaps ptm JOIN ptm.tag t WHERE t.name IN :tagNames AND p.isPublished = true")
+    List<Place> findTop100ByTagNames(@org.springframework.data.repository.query.Param("tagNames") List<String> tagNames, org.springframework.data.domain.Pageable pageable);
+
     /** 공개 승인된 전체 장소 목록 조회 (페이징) */
     org.springframework.data.domain.Page<Place> findAllByIsPublishedTrue(org.springframework.data.domain.Pageable pageable);
 

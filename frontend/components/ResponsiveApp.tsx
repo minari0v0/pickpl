@@ -185,6 +185,9 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                 if (res.data.linkedProviders) {
                     setLinkedProviders(res.data.linkedProviders);
                 }
+                if (res.data.onboarded === false) {
+                    router.push('/onboarding');
+                }
             }
         } catch (err) {
             console.error("사용자 정보 조회 실패:", err);
@@ -260,7 +263,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         fetcher
     );
 
-    const isDiscoverInitialLoad = discoverPage === 0 && locationStore.latitude === null;
+    const isDiscoverInitialLoad = discoverPage === 0 && locationStore.latitude === null && !isLoggedIn;
 
     const { data: discoverPageData, isValidating: isDiscoverValidating } = useSWR(
         isDiscoverInitialLoad ? null : `/places${discoverQueryString}${discoverQueryString ? '&' : '?'}page=${discoverPage}&size=20`,
@@ -854,7 +857,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                     {/* 상시 마운트하여 스크롤 및 입력 상태를 보존하되 display 속성으로 토글 */}
                     <DiscoverView 
                         hidden={activeView !== 'home'} 
-                        placesData={discoverPlacesData} 
+                        placesData={!isMounted || (isLoggedIn && discoverPlacesList === initialPlaces) ? [] : discoverPlacesData} 
                         onPlaceClick={handlePlaceClick} 
                         onCardSaveClick={handleCardSaveClick}
                         onViewChange={setActiveView}
@@ -864,6 +867,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         isLoadingMore={discoverIsLoadingMore}
                         isValidating={isDiscoverValidating}
                         activeThemeName={curationData?.activeThemeName}
+                        isLoggedIn={isLoggedIn}
                     />
 
                     <CurationView 

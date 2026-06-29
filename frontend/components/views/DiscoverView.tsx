@@ -16,6 +16,8 @@ interface DiscoverViewProps {
     isLoadingMore: boolean;
     isValidating: boolean;
     activeThemeName?: string;
+    recommendationData?: any;
+    isLoggedIn?: boolean;
 }
 
 export default function DiscoverView({
@@ -29,7 +31,9 @@ export default function DiscoverView({
     hasMore,
     isLoadingMore,
     isValidating,
-    activeThemeName
+    activeThemeName,
+    recommendationData,
+    isLoggedIn
 }: DiscoverViewProps) {
     const locationStore = useLocationStore();
 
@@ -199,9 +203,17 @@ export default function DiscoverView({
                 <div className="px-5 lg:px-10 py-2 lg:py-6 pb-[100px] lg:pb-24 flex-1">
                     <div className="flex flex-col gap-6 lg:gap-10">
                         {placesData.length === 0 ? (
-                            <div className="text-center py-20 text-[#8B95A1]">
-                                데이터가 없습니다. 백엔드를 확인해주세요.
-                            </div>
+                            (isLoggedIn || isValidating) ? (
+                                <div className="flex flex-col gap-6 py-4 animate-pulse">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="w-full h-[340px] bg-[#F2F4F6] rounded-[28px] lg:rounded-[32px] border border-[#E5E8EB]" />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-20 text-[#8B95A1]">
+                                    데이터가 없습니다. 백엔드를 확인해주세요.
+                                </div>
+                            )
                         ) : placesData.map((place: any) => {
                             const iconData = getCategoryIcon(place.category || place.features?.[0]?.desc || '', place.name);
                             return (

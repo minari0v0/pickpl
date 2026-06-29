@@ -43,8 +43,11 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean emailVerified = false;
 
+    @Column(nullable = false)
+    private boolean onboarded = false;
+
     @Builder
-    public User(String email, String password, String nickname, String profileImageUrl, Role role, AuthProvider provider, String providerId, Boolean emailVerified) {
+    public User(String email, String password, String nickname, String profileImageUrl, Role role, AuthProvider provider, String providerId, Boolean emailVerified, Boolean onboarded) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
@@ -53,6 +56,7 @@ public class User extends BaseTimeEntity {
         this.provider = provider != null ? provider : AuthProvider.LOCAL;
         this.providerId = providerId;
         this.emailVerified = emailVerified != null ? emailVerified : (this.provider != AuthProvider.LOCAL);
+        this.onboarded = onboarded != null ? onboarded : false;
     }
 
     public void updateProfile(String nickname, String profileImageUrl) {
@@ -74,5 +78,9 @@ public class User extends BaseTimeEntity {
 
     public void verifyEmail() {
         this.emailVerified = true;
+    }
+
+    public void completeOnboarding() {
+        this.onboarded = true;
     }
 }
