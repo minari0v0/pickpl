@@ -78,6 +78,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const [discoverPage, setDiscoverPage] = useState<number>(0);
     const [discoverHasMore, setDiscoverHasMore] = useState<boolean>(true);
     const [discoverIsLoadingMore, setDiscoverIsLoadingMore] = useState<boolean>(false);
+    const [discoverSelectedTag, setDiscoverSelectedTag] = useState<string | null>(null);
 
     // 탐색(Explore) 탭 전용 상태
     const [explorePlacesList, setExplorePlacesList] = useState<any[]>([]);
@@ -248,6 +249,9 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     // --- 발견(Discover) 탭 전용 SWR 쿼리 및 페이징 ---
     const discoverQueryString = useMemo(() => {
         const params: string[] = [];
+        if (discoverSelectedTag) {
+            params.push(`tags=${encodeURIComponent(discoverSelectedTag)}`);
+        }
         if (locationStore.latitude !== null) {
             params.push(`latitude=${locationStore.latitude}`);
         }
@@ -255,7 +259,10 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
             params.push(`longitude=${locationStore.longitude}`);
         }
         return params.length > 0 ? `?${params.join('&')}` : '';
-    }, [locationStore.latitude, locationStore.longitude]);
+    }, [discoverSelectedTag, locationStore.latitude, locationStore.longitude]);
+
+    // 실시간 삼원화 인기 무드 태그 API SWR 연동
+    const { data: popularTagsData } = useSWR('/places/tags/popular', fetcher);
 
     // 큐레이션 API 호출용 글로벌 SWR 추가
     const { data: curationData, isValidating: isCurationValidating } = useSWR(
@@ -271,11 +278,12 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         { keepPreviousData: false }
     );
 
-    // 위치/GPS가 리프레시되거나 마운트될 때 discoverPage 리셋
+    // 위치/GPS나 선택된 퀵 태그가 바뀔 때 discoverPage 및 리스트 리셋
     useEffect(() => {
         setDiscoverPage(0);
         setDiscoverHasMore(true);
-    }, [locationStore.latitude, locationStore.longitude]);
+        setDiscoverPlacesList([]);
+    }, [locationStore.latitude, locationStore.longitude, discoverSelectedTag]);
 
     useEffect(() => {
         if (isDiscoverInitialLoad) {
@@ -415,7 +423,11 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
     const filteredPlaces = explorePlacesData;
 
     const toggleTag = (tag: string) => {
+        const isAdding = !selectedTags.includes(tag);
         setSelectedTags(prev => prev.includes(tag) ? prev.filter((t: string) => t !== tag) : [...prev, tag]);
+        if (isAdding) {
+            logTagClick(tag);
+        }
     };
 
     const handlePlaceClick = async (place: any) => {
@@ -459,6 +471,27 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         setSelectedPlace(null);
         setUserVotedVibe(null);
         setIsDetailOpen(false);
+    };
+
+    const logTagClick = async (tagName: string) => {
+        try {
+            await axiosInstance.post(`/places/tags/click?tagName=${encodeURIComponent(tagName)}`);
+        } catch (e) {
+            console.error("태그 클릭 로깅 실패: ", e);
+        }
+    };
+
+    const handleDiscoverTagSelect = (tag: string) => {
+        setDiscoverSelectedTag(prev => prev === tag ? null : tag);
+        logTagClick(tag);
+    };
+
+    const handleQuickTagClick = (tagWithHash: string) => {
+        const tagName = tagWithHash.replace('#', '');
+        setActiveView('home');
+        setSelectedPlace(null); // 혹시 열려있던 상세 모달이 있으면 닫아주어 사용성 확보
+        setDiscoverSelectedTag(prev => prev === tagName ? null : tagName);
+        logTagClick(tagName);
     };
 
     const handleCardSaveClick = async (place: any, e: React.MouseEvent) => {
@@ -815,12 +848,20 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
 
                     <div className="flex-1 overflow-y-auto no-scrollbar">
                         <h3 className="text-[12px] font-bold text-[#8B95A1] tracking-wider mb-5 px-3">빠른 태그 검색</h3>
-                        <div className="flex flex-col gap-2">
-                            {['#햇살맛집', '#코지한', '#디저트맛집', '#대형카페'].map((tag: any) => (
-                                <button key={tag} className="text-left px-4 py-2.5 rounded-[12px] text-[#4E5968] font-medium text-[15px] hover:bg-[#F9FAFB] hover:text-[#191F28] transition-colors">
-                                    {tag}
-                                </button>
-                            ))}
+                        <div className="flex flex-col gap-1.5">
+                            {['#햇살맛집', '#코지한', '#디저트맛집', '#대형카페'].map((tag: any) => {
+                                const tagName = tag.replace('#', '');
+                                const isActive = activeView === 'home' && discoverSelectedTag === tagName;
+                                return (
+                                    <button 
+                                        key={tag} 
+                                        onClick={() => handleQuickTagClick(tag)}
+                                        className={`text-left px-4.5 py-2.5 rounded-[12px] text-[14.5px] transition-all duration-200 ${isActive ? 'text-orange-500 font-bold bg-orange-50' : 'text-[#4E5968] font-medium hover:bg-[#F9FAFB] hover:text-[#191F28]'}`}
+                                    >
+                                        {tag}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -868,6 +909,9 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         isValidating={isDiscoverValidating}
                         activeThemeName={curationData?.activeThemeName}
                         isLoggedIn={isLoggedIn}
+                        popularTags={popularTagsData || []}
+                        activeTag={discoverSelectedTag}
+                        onTagSelect={handleDiscoverTagSelect}
                     />
 
                     <CurationView 
@@ -896,6 +940,7 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         isLoadingMore={exploreIsLoadingMore}
                         isValidating={isExploreValidating}
                         totalElements={explorePageData?.totalElements ?? 0}
+                        popularTags={popularTagsData || []}
                     />
 
                     <CollectionView

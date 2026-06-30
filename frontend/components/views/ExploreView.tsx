@@ -27,6 +27,7 @@ interface ExploreViewProps {
     isLoadingMore: boolean;
     isValidating: boolean;
     totalElements?: number;
+    popularTags?: any[];
 }
 
 export default function ExploreView({
@@ -44,7 +45,8 @@ export default function ExploreView({
     hasMore,
     isLoadingMore,
     isValidating,
-    totalElements = 0
+    totalElements = 0,
+    popularTags
 }: ExploreViewProps) {
     const locationStore = useLocationStore();
     const [activeCategory, setActiveCategory] = React.useState<string>('popular');
@@ -268,16 +270,30 @@ export default function ExploreView({
                 <DraggableScroll className="hidden lg:flex items-center gap-4 bg-white px-6 py-4 rounded-[20px] border border-[#F2F4F6] shadow-sm mb-4 overflow-x-auto no-scrollbar fade-edges mt-4">
                     <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[18px]">🔥</span>
-                        <span className="font-bold text-[14px] text-[#191F28]">실시간 인기 무드</span>
+                        <span className="font-bold text-[14.5px] text-[#191F28]">실시간 인기 무드</span>
                         <div className="w-[1px] h-4 bg-[#E5E8EB] ml-2"></div>
                     </div>
-                    <div className="flex items-center gap-8 shrink-0">
-                        {[{ rank: 1, name: '코지한' }, { rank: 2, name: '햇살맛집' }, { rank: 3, name: '노트북하기좋은' }].map((tag: any) => (
-                            <div key={tag.rank} className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => toggleTag(tag.name)}>
-                                <span className={`font-bold text-[14px] ${tag.rank <= 2 ? 'text-orange-500' : 'text-[#8B95A1]'}`}>{tag.rank}</span>
-                                <span className="font-medium text-[14px] text-[#4E5968]">#{tag.name}</span>
-                            </div>
-                        ))}
+                    <div className="flex items-center gap-6 shrink-0">
+                        {(popularTags || []).map((tag: any) => {
+                            const isSelected = selectedTags.includes(tag.tagName);
+                            const badgeEmoji = tag.tagType === 'TREND' ? '🔥'
+                                             : tag.tagType === 'RISING' ? '✨'
+                                             : '❤️';
+                            return (
+                                <div 
+                                    key={tag.ranking} 
+                                    className={`flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all px-3 py-1.5 rounded-[10px] ${isSelected ? 'bg-orange-500 text-white shadow-sm' : 'hover:bg-[#F2F4F6]'}`} 
+                                    onClick={() => toggleTag(tag.tagName)}
+                                >
+                                    <span className={`font-extrabold text-[12.5px] ${isSelected ? 'text-white' : 'text-[#8B95A1]'}`}>{tag.ranking}</span>
+                                    <span className="text-[11px]">{badgeEmoji}</span>
+                                    <span className={`font-bold text-[13.5px] ${isSelected ? 'text-white' : 'text-[#4E5968]'}`}>#{tag.tagName}</span>
+                                    {tag.detailValue && (
+                                        <span className={`text-[10px] font-extrabold ${isSelected ? 'text-white/90' : 'text-orange-500'}`}>{tag.detailValue}</span>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </DraggableScroll>
 

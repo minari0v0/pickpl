@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 공간(Place) 관련 REST API 컨트롤러.
@@ -25,10 +26,18 @@ public class PlaceController {
 
     private final PlaceService placeService;
     private final com.pickpl.app.place.service.RecommendationService recommendationService;
+    private final com.pickpl.app.domain.tag.TagClickLogRepository tagClickLogRepository;
+    private final com.pickpl.app.domain.tag.PopularMoodSummaryRepository popularMoodSummaryRepository;
 
-    public PlaceController(PlaceService placeService, com.pickpl.app.place.service.RecommendationService recommendationService) {
+    public PlaceController(
+            PlaceService placeService,
+            com.pickpl.app.place.service.RecommendationService recommendationService,
+            com.pickpl.app.domain.tag.TagClickLogRepository tagClickLogRepository,
+            com.pickpl.app.domain.tag.PopularMoodSummaryRepository popularMoodSummaryRepository) {
         this.placeService = placeService;
         this.recommendationService = recommendationService;
+        this.tagClickLogRepository = tagClickLogRepository;
+        this.popularMoodSummaryRepository = popularMoodSummaryRepository;
     }
 
     private Long getUserIdOrNull(User user) {
@@ -120,5 +129,29 @@ public class PlaceController {
     public ResponseEntity<com.pickpl.app.place.dto.RecommendationResponse> getRecommendations(
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(recommendationService.getPersonalizedRecommendations(getUserIdOrNull(user)));
+    }
+
+    @Operation(summary = "실시간 태그 클릭 이벤트 기록", description = "발견/탐색 탭에서 특정 무드 태그를 클릭했을 때 비동기 로깅 처리를 수행합니다.")
+    @org.springframework.web.bind.annotation.PostMapping("/tags/click")
+    public ResponseEntity<Void> logTagClick(
+            @io.swagger.v3.oas.annotations.Parameter(description = "클릭된 분위기 태그명", required = true)
+            @org.springframework.web.bind.annotation.RequestParam String tagName,
+            @AuthenticationPrincipal User user) {
+        tagClickLogRepository.save(new com.pickpl.app.domain.tag.TagClickLog(getUserIdOrNull(user), tagName));
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "실시간 삼원화 인기 무드 태그 목록 조회", description = "배치 스케줄러가 최근 클릭 가중치와 스크랩 점수를 조합하여 갱신해 둔 실시간 인기 태그 목록을 랭킹 순위대로 반환합니다.")
+    @GetMapping("/tags/popular")
+    public ResponseEntity<List<com.pickpl.app.place.dto.PopularMoodResponse>> getPopularMoods() {
+        List<com.pickpl.app.place.dto.PopularMoodResponse> responses = popularMoodSummaryRepository.findAllByOrderByRankingAsc().stream()
+                .map(summary -> com.pickpl.app.place.dto.PopularMoodResponse.builder()
+                        .ranking(summary.getRanking())
+                        .tagName(summary.getTagName())
+                        .tagType(summary.getTagType())
+                        .detailValue(summary.getDetailValue())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 }

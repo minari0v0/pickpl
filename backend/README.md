@@ -16,6 +16,7 @@ erDiagram
     users ||--o{ user_sessions : "has"
     users ||--o{ scrap : "logical_has"
     users ||--o{ vibe_vote : "logical_has"
+    users ||--o{ tag_click_log : "logical_clicks"
     
     place ||--o{ place_tag_map : "tagged_with"
     tag ||--o{ place_tag_map : "maps_to"
@@ -97,6 +98,21 @@ erDiagram
         Long user_id FK "논리적 FK 매핑"
         Long place_id FK
         VibeType vibeType "QUIET, CHATTY"
+    }
+
+    tag_click_log {
+        Long log_id PK
+        Long user_id FK "논리적 FK 매핑 (비로그인 허용)"
+        String tag_name "클릭된 태그명"
+        LocalDateTime created_at "클릭 일시"
+    }
+
+    popular_mood_summary {
+        Integer ranking PK "1~10위 순위"
+        String tag_name "태그 명칭"
+        String tag_type "TREND, RISING, STEADY"
+        String detail_value "가중치 부가 정보"
+        LocalDateTime updated_at "배치 갱신 일시"
     }
 
     admin_config {

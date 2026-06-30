@@ -18,6 +18,9 @@ interface DiscoverViewProps {
     activeThemeName?: string;
     recommendationData?: any;
     isLoggedIn?: boolean;
+    popularTags?: any[];
+    activeTag?: string | null;
+    onTagSelect?: (tag: string) => void;
 }
 
 export default function DiscoverView({
@@ -33,7 +36,10 @@ export default function DiscoverView({
     isValidating,
     activeThemeName,
     recommendationData,
-    isLoggedIn
+    isLoggedIn,
+    popularTags,
+    activeTag,
+    onTagSelect
 }: DiscoverViewProps) {
     const locationStore = useLocationStore();
 
@@ -186,15 +192,34 @@ export default function DiscoverView({
                 {/* 필터 바 */}
                 <div className="sticky top-[72px] lg:top-[93px] z-10 bg-white/95 backdrop-blur-md pt-2 lg:pt-4 pb-3 lg:pb-5 mb-2 border-b border-[#F2F4F6]/50">
                     <DraggableScroll className="px-6 lg:px-10 flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap items-center">
-                        <button className="px-5 py-2.5 rounded-[14px] bg-[#191F28] text-white text-[14px] font-bold shadow-sm shrink-0">추천 무드</button>
+                        <button 
+                            onClick={() => onTagSelect?.('')} 
+                            className={`px-5 py-2.5 rounded-[14px] text-[14px] font-bold shadow-sm shrink-0 transition-colors ${!activeTag ? 'bg-[#191F28] text-white' : 'bg-[#F2F4F6] text-[#4E5968] hover:bg-[#E5E8EB]'}`}
+                        >
+                            추천 무드
+                        </button>
                         <button onClick={() => onViewChange('explore')} className="px-5 py-2.5 rounded-[14px] bg-orange-50 text-orange-600 border border-orange-100 text-[14px] font-bold shrink-0 flex items-center gap-1.5 hover:bg-orange-100 transition-colors">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                             </svg>
                             세밀하게 탐색하기
                         </button>
-                        <button className="px-5 py-2.5 rounded-[14px] bg-[#F2F4F6] text-[#4E5968] text-[14px] font-semibold shrink-0 hover:bg-[#E5E8EB]">#햇살맛집</button>
-                        <button className="px-5 py-2.5 rounded-[14px] bg-[#F2F4F6] text-[#4E5968] text-[14px] font-semibold shrink-0 hover:bg-[#E5E8EB]">#뷰맛집</button>
+                        {(popularTags || []).map((t: any) => {
+                            const isSelected = activeTag === t.tagName;
+                            const dotColor = t.tagType === 'TREND' ? 'bg-[#FF5B35]'
+                                           : t.tagType === 'RISING' ? 'bg-[#10B981]'
+                                           : 'bg-[#6366F1]';
+                            return (
+                                <button 
+                                    key={t.ranking}
+                                    onClick={() => onTagSelect?.(t.tagName)}
+                                    className={`px-4.5 py-2.5 rounded-[14px] text-[13.5px] font-bold shrink-0 active:scale-95 transition-all flex items-center gap-1.5 ${isSelected ? 'bg-orange-500 text-white shadow-sm border border-orange-500' : 'bg-[#F2F4F6] text-[#4E5968] hover:bg-[#E5E8EB]'}`}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-200 ${isSelected ? 'bg-white' : dotColor}`} />
+                                    #{t.tagName}
+                                </button>
+                            );
+                        })}
                         <div className="w-2 lg:w-4 shrink-0"></div>
                     </DraggableScroll>
                 </div>
@@ -204,9 +229,37 @@ export default function DiscoverView({
                     <div className="flex flex-col gap-6 lg:gap-10">
                         {placesData.length === 0 ? (
                             (isLoggedIn || isValidating) ? (
-                                <div className="flex flex-col gap-6 py-4 animate-pulse">
-                                    {[1, 2, 3].map((i) => (
-                                        <div key={i} className="w-full h-[340px] bg-[#F2F4F6] rounded-[28px] lg:rounded-[32px] border border-[#E5E8EB]" />
+                                <div className="flex flex-col gap-6 lg:gap-10 py-2 animate-pulse">
+                                    {[1, 2].map((i) => (
+                                        <div 
+                                            key={i} 
+                                            className="bg-white border border-[#E5E8EB]/70 rounded-[28px] lg:rounded-[32px] p-5 lg:p-6 flex flex-col gap-4"
+                                        >
+                                            {/* 헤더 스켈레톤 */}
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-[#F2F4F6] border border-[#F2F4F6] shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="w-[130px] h-[16px] bg-[#E5E8EB] rounded-[4px]" />
+                                                    <div className="w-[90px] h-[12px] bg-[#F2F4F6] rounded-[3px] mt-1.5" />
+                                                </div>
+                                                <div className="w-9 h-9 rounded-full bg-[#F2F4F6] shrink-0" />
+                                            </div>
+
+                                            {/* 이미지 스켈레톤 */}
+                                            <div className="w-full aspect-[4/3] rounded-[20px] lg:rounded-[24px] bg-[#F2F4F6]" />
+
+                                            {/* 바디 스켈레톤 */}
+                                            <div className="flex flex-col gap-2.5">
+                                                <div className="w-[190px] h-[15px] bg-[#E5E8EB] rounded-[4px]" />
+                                                <div className="w-full h-[13.5px] bg-[#F2F4F6] rounded-[3px] mt-1" />
+                                                <div className="w-[85%] h-[13.5px] bg-[#F2F4F6] rounded-[3px] mt-1" />
+                                                <div className="flex gap-1.5 mt-2">
+                                                    <div className="w-[62px] h-[22px] bg-[#F2F4F6] rounded-[8px]" />
+                                                    <div className="w-[74px] h-[22px] bg-[#F2F4F6] rounded-[8px]" />
+                                                    <div className="w-[58px] h-[22px] bg-[#F2F4F6] rounded-[8px]" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             ) : (
@@ -331,21 +384,93 @@ export default function DiscoverView({
                     </div>
                 </div>
 
-                {/* 실시간 랭킹 위젯 */}
-                <div className="bg-white rounded-[28px] p-7 shadow-sm border border-[#F2F4F6]">
-                    <h3 className="font-bold text-[18px] text-[#191F28] mb-6 tracking-tight">실시간 인기 무드 🔥</h3>
-                    <div className="flex flex-col gap-6">
-                        {[{ rank: 1, name: '코지한', up: true }, { rank: 2, name: '햇살맛집', up: true }, { rank: 3, name: '노트북하기좋은', up: false }, { rank: 4, name: '힙한/인더스트리얼', up: true }, { rank: 5, name: '조용한', up: false }].map((tag: any) => (
-                            <div key={tag.rank} className="flex items-center justify-between cursor-pointer group">
-                                <div className="flex items-center gap-4">
-                                    <span className={`font-bold text-[16px] w-4 text-center ${tag.rank <= 3 ? 'text-orange-500' : 'text-[#8B95A1]'}`}>{tag.rank}</span>
-                                    <span className="font-semibold text-[15px] text-[#4E5968] group-hover:text-[#191F28] transition-colors">#{tag.name}</span>
+                {/* 실시간 인기 무드 위젯 — 3카드 분리 */}
+                {(() => {
+                    const allTags = popularTags && popularTags.length > 0
+                        ? popularTags
+                        : [
+                              { ranking: 1, tagName: '비오는날',      tagType: 'TREND',  detailValue: '+23' },
+                              { ranking: 2, tagName: '드라이브코스',   tagType: 'TREND',  detailValue: '+18' },
+                              { ranking: 3, tagName: '오션뷰',        tagType: 'TREND',  detailValue: '+14' },
+                              { ranking: 4, tagName: '소품샵투어',     tagType: 'RISING', detailValue: null },
+                              { ranking: 5, tagName: '야간산책',       tagType: 'RISING', detailValue: null },
+                              { ranking: 6, tagName: '러닝코스',       tagType: 'RISING', detailValue: null },
+                              { ranking: 7, tagName: '대형카페',       tagType: 'STEADY', detailValue: null },
+                              { ranking: 8, tagName: '데이트코스',     tagType: 'STEADY', detailValue: null },
+                              { ranking: 9, tagName: '작업하기좋은',   tagType: 'STEADY', detailValue: null },
+                          ];
+                    const hotTags    = allTags.filter((t: any) => t.tagType === 'TREND');
+                    const risingTags = allTags.filter((t: any) => t.tagType === 'RISING');
+                    const steadyTags = allTags.filter((t: any) => t.tagType === 'STEADY');
+
+                    const sectionCard = (
+                        label: string,
+                        icon: React.ReactNode,
+                        tags: any[],
+                        showDetail: boolean
+                    ) => (
+                        <div className="bg-white rounded-[24px] p-6 border border-[#E5E8EB] shadow-[0_4px_20px_rgba(0,0,0,0.015)] mb-5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.03)] transition-all duration-300">
+                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#F2F4F6]">
+                                <div className="flex items-center gap-2.5">
+                                    {icon}
+                                    <span className="font-bold text-[14.5px] text-[#191F28] tracking-tight">{label}</span>
                                 </div>
-                                <span className={`text-[12px] font-bold ${tag.up ? 'text-red-500' : 'text-blue-500'}`}>{tag.up ? '▲' : '▼'}</span>
                             </div>
-                        ))}
-                    </div>
-                </div>
+                            <div className="flex flex-col gap-3.5">
+                                {tags.map((tag: any, i: number) => (
+                                    <div
+                                        key={tag.tagName}
+                                        className="flex items-center justify-between cursor-pointer group active:scale-[0.98] transition-transform"
+                                        onClick={() => onTagSelect?.(tag.tagName)}
+                                    >
+                                        <div className="flex items-center gap-3.5">
+                                            <span className={`font-extrabold text-[13px] w-5 text-center ${i < 3 ? 'text-orange-500' : 'text-[#B0B8C1]'}`}>
+                                                {i + 1}
+                                            </span>
+                                            <span className="font-semibold text-[14.5px] text-[#4E5968] group-hover:text-orange-500 group-hover:translate-x-1 transition-all duration-200">
+                                                #{tag.tagName}
+                                            </span>
+                                        </div>
+                                        {showDetail && tag.detailValue && (
+                                            <span className="text-[11px] font-extrabold text-[#FF5B35] bg-[#FF5B35]/5 px-2 py-0.5 rounded-[8px] tabular-nums border border-[#FF5B35]/10">
+                                                {tag.detailValue}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+
+                    return (
+                        <>
+                            {hotTags.length > 0 && sectionCard(
+                                '지금 뜨는 태그',
+                                <svg className="w-[18px] h-[18px] text-[#FF5B35]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                                </svg>,
+                                hotTags,
+                                true
+                            )}
+                            {risingTags.length > 0 && sectionCard(
+                                '새롭게 떠오르는 태그',
+                                <svg className="w-[18px] h-[18px] text-[#10B981]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                </svg>,
+                                risingTags,
+                                false
+                            )}
+                            {steadyTags.length > 0 && sectionCard(
+                                '꾸준히 인기 있는 태그',
+                                <svg className="w-[18px] h-[18px] text-[#6366F1]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>,
+                                steadyTags,
+                                false
+                            )}
+                        </>
+                    );
+                })()}
 
                 <div className="mt-auto pt-8 pb-4 text-[#8B95A1] text-[13px] font-medium leading-relaxed px-2">
                     <p>PickPl © 2026</p>
