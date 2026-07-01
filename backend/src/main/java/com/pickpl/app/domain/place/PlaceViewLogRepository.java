@@ -7,4 +7,5 @@ import java.util.List;
 @Repository
 public interface PlaceViewLogRepository extends JpaRepository<PlaceViewLog, Long> {
     List<PlaceViewLog> findTop50ByUserIdOrderByCreatedAtDesc(Long userId);
+    long countByUserId(Long userId);
 }

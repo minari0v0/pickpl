@@ -46,6 +46,9 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean onboarded = false;
 
+    @Column
+    private String equippedBadgeTitle;
+
     @Builder
     public User(String email, String password, String nickname, String profileImageUrl, Role role, AuthProvider provider, String providerId, Boolean emailVerified, Boolean onboarded) {
         this.email = email;
@@ -82,5 +85,9 @@ public class User extends BaseTimeEntity {
 
     public void completeOnboarding() {
         this.onboarded = true;
+    }
+
+    public void equipBadgeTitle(String badgeTitle) {
+        this.equippedBadgeTitle = badgeTitle;
     }
 }

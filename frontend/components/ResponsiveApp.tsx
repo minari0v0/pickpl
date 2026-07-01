@@ -246,6 +246,12 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
         fetcher
     );
 
+    // 마이페이지 취향 대시보드 및 업적 뱃지 조회
+    const { data: dashboardData, mutate: mutateDashboard } = useSWR(
+        isLoggedIn && activeView === 'mypage' ? '/users/dashboard' : null,
+        fetcher
+    );
+
     // --- 발견(Discover) 탭 전용 SWR 쿼리 및 페이징 ---
     const discoverQueryString = useMemo(() => {
         const params: string[] = [];
@@ -972,6 +978,8 @@ export default function ResponsiveApp({ initialPlaces }: { initialPlaces: any[] 
                         refreshUserInfo={refreshUserInfo}
                         scrapsData={scrapsData}
                         foldersMap={foldersMap}
+                        dashboardData={dashboardData}
+                        mutateDashboard={mutateDashboard}
                         onViewChange={setActiveView}
                         setSelectedFolder={setSelectedFolder}
                         onAccountSettingsClick={() => setShowAccountModal(true)}

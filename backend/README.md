@@ -34,6 +34,8 @@ erDiagram
         AuthProvider provider "LOCAL, GOOGLE, KAKAO, NAVER"
         String providerId
         boolean emailVerified
+        boolean onboarded
+        String equippedBadgeTitle "장착 중인 대표 칭호"
     }
 
     social_connection {

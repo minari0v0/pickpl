@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getProfileBgClass } from '../ui/Helpers';
 import MyPageAccountSettingsView from './MyPageAccountSettingsView';
 import MyPageAppSettingsView from './MyPageAppSettingsView';
+import MyPageBadgeAchievementView from './MyPageBadgeAchievementView';
+import axiosInstance from '../../api/axios';
 
 interface MyPageViewProps {
     hidden: boolean;
@@ -28,6 +30,8 @@ interface MyPageViewProps {
     newThemeNotification: boolean;
     plannerNotification: boolean;
     onSaveSettings: (folder: string, theme: string, newThemeNotif: boolean, plannerNotif: boolean) => void;
+    dashboardData?: any;
+    mutateDashboard?: () => Promise<any>;
 }
 
 export default function MyPageView({
@@ -41,6 +45,7 @@ export default function MyPageView({
     refreshUserInfo,
     scrapsData,
     foldersMap,
+    dashboardData,
     onViewChange,
     setSelectedFolder,
     onAccountSettingsClick,
@@ -54,9 +59,69 @@ export default function MyPageView({
     appTheme,
     newThemeNotification,
     plannerNotification,
-    onSaveSettings
+    onSaveSettings,
+    mutateDashboard
 }: MyPageViewProps) {
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'general' | 'account'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'general' | 'account' | 'badges'>('dashboard');
+    const [equippedTitle, setEquippedTitle] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (dashboardData?.representativeBadge) {
+            setEquippedTitle(dashboardData.representativeBadge);
+        } else {
+            setEquippedTitle(null);
+        }
+    }, [dashboardData]);
+
+    const handleEquipChange = async (title: string | null) => {
+        try {
+            await axiosInstance.put('/users/representative-badge', null, {
+                params: title ? { badgeTitle: title } : {}
+            });
+            setEquippedTitle(title);
+            if (mutateDashboard) {
+                await mutateDashboard();
+            }
+            showToast(title ? `대표 칭호가 '${title}'(으)로 장착되었습니다.` : '대표 칭호가 해제되었습니다.', 'success');
+        } catch (err) {
+            console.error("대표 칭호 업데이트 실패:", err);
+            showToast('대표 칭호 설정 도중 문제가 발생했습니다.', 'error');
+        }
+    };
+
+    const getBadgeImage = (badgeId: string) => {
+        switch (badgeId) {
+            case 'PINE_COZY': return '/images/badge_pine.png';
+            case 'COFFEE_CHAT': return '/images/badge_coffee.png';
+            case 'HIP_VIBE': return '/images/badge_hip.png';
+            case 'BEGINNER_SCRAP': return '/images/badge_box.png';
+            case 'ACTIVE_VOTER': return '/images/badge_ticket.png';
+            case 'MAP_MAKER': return '/images/badge_map.png';
+            case 'MYSTIC_EXPLORER': return '/images/badge_hat.png';
+            default: return '/images/badge_pine.png';
+        }
+    };
+
+    const getBadgeCardStyle = (badgeId: string) => {
+        switch (badgeId) {
+            case 'PINE_COZY': 
+                return { bg: 'from-[#F0F6F5] to-[#E3EFEF]', border: 'border-[#D1E6E4]/70', text: 'text-[#2E7D7A]', subText: 'text-[#5C9E9B]' };
+            case 'COFFEE_CHAT': 
+                return { bg: 'from-[#FAF0EB] to-[#F5E6DC]', border: 'border-[#EAD5C3]/70', text: 'text-[#C67A5A]', subText: 'text-[#D48F70]' };
+            case 'HIP_VIBE': 
+                return { bg: 'from-[#EEF2F6] to-[#E5EDF6]', border: 'border-[#D2E0F5]/70', text: 'text-[#3B82F6]', subText: 'text-[#60A5FA]' };
+            case 'BEGINNER_SCRAP': 
+                return { bg: 'from-[#FFFDF0] to-[#FFF9D6]', border: 'border-[#FCEEBC]/70', text: 'text-[#B7791F]', subText: 'text-[#D69E2E]' };
+            case 'ACTIVE_VOTER': 
+                return { bg: 'from-[#F0F7FF] to-[#E6F0FF]', border: 'border-[#CCE0FF]/70', text: 'text-[#2B6CB0]', subText: 'text-[#4299E1]' };
+            case 'MAP_MAKER': 
+                return { bg: 'from-[#F0FDF4] to-[#E8F8EE]', border: 'border-[#C2F0D5]/70', text: 'text-[#22543D]', subText: 'text-[#38A169]' };
+            case 'MYSTIC_EXPLORER': 
+                return { bg: 'from-[#FFF1F2] to-[#FFE4E6]', border: 'border-[#FECDD3]/70', text: 'text-[#9B2C2C]', subText: 'text-[#E53E3E]' };
+            default: 
+                return { bg: 'from-white to-[#F9FAFB]', border: 'border-[#EAEAEA]', text: 'text-[#191F28]', subText: 'text-[#8B95A1]' };
+        }
+    };
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -294,140 +359,198 @@ export default function MyPageView({
                 <div className="flex-1 h-full overflow-y-auto flex flex-col gap-6 min-w-0 pr-1 pb-[140px] lg:pb-0 min-h-0 no-scrollbar">
                     {/* 1. 내 대시보드 탭 내용 */}
                     {activeTab === 'dashboard' && (
-                        <div className="flex flex-col gap-6 w-full animate-fade-in shrink-0">
-                            {/* 미인증 경고 배너 */}
-                            {provider === 'LOCAL' && !emailVerified && (
-                                <div 
-                                    onClick={() => setActiveTab('account')}
-                                    className="w-full bg-[#FFF0EB] hover:bg-[#FFE5DC] border border-[#FFD2C4] rounded-[20px] p-4 flex items-center justify-between cursor-pointer transition-all duration-200 shadow-sm group"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[20px]">⚠️</span>
-                                        <div className="text-left">
-                                            <p className="font-bold text-[14px] text-[#FF5F2E]">이메일 미인증 안내</p>
-                                            <p className="text-[12.5px] text-[#8C5240] font-medium mt-0.5">안전한 프로필 설정 및 소셜 통합 연동을 위해 인증을 완료해 주세요.</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1 text-[#FF5F2E] font-bold text-[13px] shrink-0 group-hover:translate-x-1 transition-transform">
-                                        <span>인증하러 가기</span>
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 내 취향 & 픽플 대시보드 통합 컴포넌트 */}
-                            <div className="bg-white rounded-[28px] lg:rounded-[32px] p-6 lg:p-8 border border-[#F2F4F6] shadow-sm flex flex-col gap-6 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/[0.02] rounded-full blur-3xl pointer-events-none"></div>
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F2F4F6]">
-                                    <div>
-                                        <span className="px-2.5 py-1 rounded-[8px] bg-[#F0F6F5] text-[#2E7D7A] text-[11px] font-bold tracking-tight border border-[#D1E6E4]/50">활동 및 보관함 분석</span>
-                                        <h3 className="font-extrabold text-[19px] text-[#191F28] mt-1.5 tracking-tight">내 취향 & 픽플 대시보드</h3>
-                                    </div>
-                                    <button 
-                                        onClick={() => { onViewChange('collection'); setSelectedFolder(null); }}
-                                        className="bg-[#F9FAFB] hover:bg-[#F2F4F6] active:scale-[0.98] text-[#4E5968] font-bold text-[13px] px-4 py-2.5 rounded-[12px] transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-center"
+                        !dashboardData ? (
+                            <div className="bg-white rounded-[28px] lg:rounded-[32px] p-10 border border-[#F2F4F6] shadow-sm flex flex-col gap-4 items-center justify-center min-h-[320px] animate-fade-in">
+                                <div className="w-10 h-10 border-[3.5px] border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                                <p className="text-[13.5px] text-[#8B95A1] font-bold tracking-tight">나만의 취향 대시보드를 불러오고 있어요</p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-6 w-full animate-fade-in shrink-0">
+                                {/* 미인증 경고 배너 */}
+                                {provider === 'LOCAL' && !emailVerified && (
+                                    <div 
+                                        onClick={() => setActiveTab('account')}
+                                        className="w-full bg-[#FFF0EB] hover:bg-[#FFE5DC] border border-[#FFD2C4] rounded-[20px] p-4 flex items-center justify-between cursor-pointer transition-all duration-200 shadow-sm group"
                                     >
-                                        <span>내 컬렉션 전체보기</span>
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[20px]">⚠️</span>
+                                            <div className="text-left">
+                                                <p className="font-bold text-[14px] text-[#FF5F2E]">이메일 미인증 안내</p>
+                                                <p className="text-[12.5px] text-[#8C5240] font-medium mt-0.5">안전한 프로필 설정 및 소셜 통합 연동을 위해 인증을 완료해 주세요.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[#FF5F2E] font-bold text-[13px] shrink-0 group-hover:translate-x-1 transition-transform">
+                                            <span>인증하러 가기</span>
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                )}
 
-                                {/* 2단 구성: 요약 스탯 + 무드 분석 */}
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                                    {/* 왼쪽: 저장소 요약 (2칸) */}
-                                    <div className="md:col-span-2 flex flex-col justify-between gap-4 bg-[#F9FAFB] rounded-[24px] p-5 border border-[#F2F4F6]">
+                                {/* 내 취향 & 픽플 대시보드 통합 컴포넌트 */}
+                                <div className="bg-white rounded-[28px] lg:rounded-[32px] p-6 lg:p-8 border border-[#F2F4F6] shadow-sm flex flex-col gap-6 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/[0.02] rounded-full blur-3xl pointer-events-none"></div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F2F4F6]">
                                         <div>
-                                            <h4 className="font-bold text-[14px] text-[#191F28] mb-1">저장소 요약</h4>
-                                            <p className="text-[12px] text-[#8B95A1]">북마크한 공간 및 폴더 개수</p>
+                                            <span className="px-2.5 py-1 rounded-[8px] bg-[#F0F6F5] text-[#2E7D7A] text-[11px] font-bold tracking-tight border border-[#D1E6E4]/50">활동 및 보관함 분석</span>
+                                            <h3 className="font-extrabold text-[19px] text-[#191F28] mt-1.5 tracking-tight">내 취향 & 픽플 대시보드</h3>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-3 my-2">
-                                            <div className="bg-white rounded-[16px] p-3 text-center border border-[#F2F4F6] shadow-sm cursor-pointer hover:border-orange-200 transition-colors" onClick={() => { onViewChange('collection'); setSelectedFolder(null); }}>
-                                                <p className="text-[11px] text-[#8B95A1] font-bold mb-0.5">총 북마크</p>
-                                                <p className="text-[22px] font-extrabold text-[#191F28]">{scrapsData?.length || 0}</p>
-                                            </div>
-                                            <div className="bg-white rounded-[16px] p-3 text-center border border-[#F2F4F6] shadow-sm cursor-pointer hover:border-orange-200 transition-colors" onClick={() => { onViewChange('collection'); setSelectedFolder(null); }}>
-                                                <p className="text-[11px] text-[#8B95A1] font-bold mb-0.5">폴더 개수</p>
-                                                <p className="text-[22px] font-extrabold text-orange-500">{Object.keys(foldersMap).length}</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-[11.5px] text-[#8B95A1] leading-relaxed font-semibold">
-                                            💡 공간을 북마크할 때 폴더별로 구분하면 나중에 장소들을 더 쉽게 관리할 수 있어요!
-                                        </div>
+                                        <button 
+                                            onClick={() => { onViewChange('collection'); setSelectedFolder(null); }}
+                                            className="bg-[#F9FAFB] hover:bg-[#F2F4F6] active:scale-[0.98] text-[#4E5968] font-bold text-[13px] px-4 py-2.5 rounded-[12px] transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-center"
+                                        >
+                                            <span>내 컬렉션 전체보기</span>
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
                                     </div>
 
-                                    {/* 오른쪽: 선호 무드 분석 (3칸) */}
-                                    <div className="md:col-span-3 flex flex-col justify-between gap-4">
-                                        <div>
-                                            <h4 className="font-bold text-[14px] text-[#191F28] mb-1">선호 무드 분석</h4>
-                                            <p className="text-[12px] text-[#8B95A1]">최근 1개월 동안 수집된 개인 취향 통계</p>
-                                        </div>
-                                        <div className="flex flex-col gap-3.5 my-2">
+                                    {/* 2단 구성: 요약 스탯 + 무드 분석 */}
+                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                                        {/* 왼쪽: 저장소 요약 (2칸) */}
+                                        <div className="md:col-span-2 flex flex-col justify-between gap-4 bg-[#F9FAFB] rounded-[24px] p-5 border border-[#F2F4F6]">
                                             <div>
-                                                <div className="flex justify-between items-center text-[12px] font-bold mb-1">
-                                                    <span className="text-[#2E7D7A] flex items-center gap-1">🌲 #코지한 / #조용한 (집중)</span>
-                                                    <span className="text-[#2E7D7A]">62%</span>
+                                                <h4 className="font-bold text-[14px] text-[#191F28] mb-1">저장소 요약</h4>
+                                                <p className="text-[12px] text-[#8B95A1]">북마크한 공간 및 폴더 개수</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 my-2">
+                                                <div className="bg-white rounded-[16px] p-3 text-center border border-[#F2F4F6] shadow-sm cursor-pointer hover:border-orange-200 transition-colors" onClick={() => { onViewChange('collection'); setSelectedFolder(null); }}>
+                                                    <p className="text-[11px] text-[#8B95A1] font-bold mb-0.5">총 북마크</p>
+                                                    <p className="text-[22px] font-extrabold text-[#191F28]">{scrapsData?.length || 0}</p>
                                                 </div>
-                                                <div className="w-full h-2 bg-[#F0F6F5] rounded-full overflow-hidden">
-                                                    <div className="h-full bg-[#2E7D7A] rounded-full" style={{ width: '62%' }}></div>
+                                                <div className="bg-white rounded-[16px] p-3 text-center border border-[#F2F4F6] shadow-sm cursor-pointer hover:border-orange-200 transition-colors" onClick={() => { onViewChange('collection'); setSelectedFolder(null); }}>
+                                                    <p className="text-[11px] text-[#8B95A1] font-bold mb-0.5">폴더 개수</p>
+                                                    <p className="text-[22px] font-extrabold text-orange-500">{Object.keys(foldersMap).length}</p>
                                                 </div>
                                             </div>
+                                            <div className="text-[11.5px] text-[#8B95A1] leading-relaxed font-semibold">
+                                                💡 공간을 북마크할 때 폴더별로 구분하면 나중에 장소들을 더 쉽게 관리할 수 있어요!
+                                            </div>
+                                        </div>
+
+                                        {/* 오른쪽: 선호 무드 분석 (3칸) */}
+                                        <div className="md:col-span-3 flex flex-col justify-between gap-4">
                                             <div>
-                                                <div className="flex justify-between items-center text-[12px] font-bold mb-1">
-                                                    <span className="text-[#C67A5A] flex items-center gap-1">☕ #디저트맛집 / #대형카페 (대화)</span>
-                                                    <span className="text-[#C67A5A]">38%</span>
+                                                <h4 className="font-bold text-[14px] text-[#191F28] mb-1">선호 무드 분석</h4>
+                                                <p className="text-[12px] text-[#8B95A1]">유저 활동 패턴 기반 실시간 분위기 통계</p>
+                                            </div>
+                                            <div className="flex flex-col gap-3.5 my-2">
+                                                {/* 🌲 집중/조용한 무드 */}
+                                                <div>
+                                                    <div className="flex justify-between items-center text-[12px] font-bold mb-1">
+                                                        <span className="text-[#2E7D7A] flex items-center gap-1">🌲 #코지한 / #조용한 (집중)</span>
+                                                        <span className="text-[#2E7D7A]">{dashboardData.pineCozyRatio}%</span>
+                                                    </div>
+                                                    <div className="w-full h-2 bg-[#F0F6F5] rounded-full overflow-hidden">
+                                                        <div className="h-full bg-[#2E7D7A] rounded-full transition-all duration-500" style={{ width: `${dashboardData.pineCozyRatio}%` }}></div>
+                                                    </div>
                                                 </div>
-                                                <div className="w-full h-2 bg-[#FAF0EB] rounded-full overflow-hidden">
-                                                    <div className="h-full bg-[#C67A5A] rounded-full" style={{ width: '38%' }}></div>
+                                                {/* ☕ 대화/친목 무드 */}
+                                                <div>
+                                                    <div className="flex justify-between items-center text-[12px] font-bold mb-1">
+                                                        <span className="text-[#C67A5A] flex items-center gap-1">☕ #디저트맛집 / #대형카페 (대화)</span>
+                                                        <span className="text-[#C67A5A]">{dashboardData.coffeeChatRatio}%</span>
+                                                    </div>
+                                                    <div className="w-full h-2 bg-[#FAF0EB] rounded-full overflow-hidden">
+                                                        <div className="h-full bg-[#C67A5A] rounded-full transition-all duration-500" style={{ width: `${dashboardData.coffeeChatRatio}%` }}></div>
+                                                    </div>
+                                                </div>
+                                                {/* 🍹 이색/감성 무드 */}
+                                                <div>
+                                                    <div className="flex justify-between items-center text-[12px] font-bold mb-1">
+                                                        <span className="text-[#3b82f6] flex items-center gap-1">🍹 #힙한 / #이색적인 (감성)</span>
+                                                        <span className="text-[#3b82f6]">{dashboardData.hipVibeRatio}%</span>
+                                                    </div>
+                                                    <div className="w-full h-2 bg-[#EEF2F6] rounded-full overflow-hidden">
+                                                        <div className="h-full bg-[#3b82f6] rounded-full transition-all duration-500" style={{ width: `${dashboardData.hipVibeRatio}%` }}></div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="text-[12px] text-[#4E5968] font-bold flex items-center justify-between pt-3 border-t border-[#F2F4F6]">
-                                            <span>대표 획득 뱃지</span>
-                                            <span className="px-2.5 py-1 rounded-[6px] bg-[#F0F6F5] text-[#2E7D7A] border border-[#D1E6E4]/50">조용한 탐험가 🌲</span>
+                                            <div className="text-[12px] text-[#4E5968] font-bold flex items-center justify-between pt-3 border-t border-[#F2F4F6]">
+                                                <span>대표 획득 뱃지</span>
+                                                <span className="px-2.5 py-1 rounded-[8px] bg-[#FFF0E6] text-[#F25C05] border border-[#FCDDC7] text-[11.5px] font-bold select-none">
+                                                    {equippedTitle ? equippedTitle : dashboardData.representativeBadge}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* 하단: 무드 뱃지 획득 리스트 */}
-                                <div className="mt-4 pt-5 border-t border-[#F2F4F6]">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h4 className="font-bold text-[14px] text-[#191F28]">내 무드 뱃지 업적</h4>
-                                        <span className="text-[11.5px] text-[#8B95A1] font-semibold">활동에 따라 다양한 뱃지가 해금됩니다</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="bg-[#F0F6F5] border border-[#D1E6E4] rounded-[20px] p-3.5 flex flex-col items-center text-center transition-transform hover:-translate-y-0.5 duration-300">
-                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[20px] shadow-sm mb-2">
-                                                🌲
-                                            </div>
-                                            <p className="font-bold text-[12.5px] text-[#2E7D7A] mb-0.5">조용한 탐험가</p>
-                                            <span className="text-[10px] text-[#5C9E9B] font-bold">해금 완료</span>
+                                    {/* 하단: 무드 뱃지 획득 리스트 */}
+                                    <div className="mt-4 pt-5 border-t border-[#F2F4F6]">
+                                        <div className="flex items-center justify-between mb-3.5">
+                                            <h4 className="font-bold text-[14px] text-[#191F28]">내 무드 뱃지 업적</h4>
+                                            <button 
+                                                onClick={() => setActiveTab('badges')}
+                                                className="text-[12px] font-bold text-orange-500 hover:text-orange-600 flex items-center gap-1 hover:underline active:scale-95 transition-all"
+                                            >
+                                                <span>살펴보기</span>
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
                                         </div>
-
-                                        <div className="bg-[#FAF0EB] border border-[#EAD5C3] rounded-[20px] p-3.5 flex flex-col items-center text-center transition-transform hover:-translate-y-0.5 duration-300">
-                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[20px] shadow-sm mb-2">
-                                                ☕
-                                            </div>
-                                            <p className="font-bold text-[12.5px] text-[#C67A5A] mb-0.5">카페 마스터</p>
-                                            <span className="text-[10px] text-[#D48F70] font-bold">해금 완료</span>
-                                        </div>
-
-                                        <div className="bg-[#F7F6F3] border border-[#E8E6E1] rounded-[20px] p-3.5 flex flex-col items-center text-center relative overflow-hidden transition-transform hover:-translate-y-0.5 duration-300">
-                                            <div className="absolute inset-0 bg-black/[0.01] flex items-center justify-center z-10 pointer-events-none"></div>
-                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[20px] shadow-sm mb-2 opacity-50 relative">
-                                                🍹
-                                                <span className="absolute text-[11px] font-bold text-[#7F776F] -bottom-1 -right-1 bg-white/95 px-1 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.1)]">50%</span>
-                                            </div>
-                                            <p className="font-bold text-[12.5px] text-[#7F776F] mb-0.5 opacity-60">야간 힙스터</p>
-                                            <span className="text-[10px] text-[#A09890] font-bold">진행 중</span>
+                                        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1.5 cursor-pointer">
+                                            {(() => {
+                                                const unlockedBadges = (dashboardData.badges || []).filter((b: any) => b.status === 'UNLOCKED');
+                                                
+                                                if (unlockedBadges.length === 0) {
+                                                    return (
+                                                        <div 
+                                                            onClick={() => setActiveTab('badges')}
+                                                            className="w-full bg-[#FAF8F5] border border-[#EFEBE4] rounded-[24px] p-6 text-center flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-orange-300 hover:bg-[#FFFDFC] transition-all duration-300"
+                                                        >
+                                                            <span className="text-[12.5px] font-bold text-[#8A7C6B]">아직 모은 무드 뱃지가 없어요.</span>
+                                                            <span className="text-[11.5px] font-extrabold text-orange-500 mt-1 flex items-center gap-0.5">픽플과 함께 분위기 탐색하러 가볼까요? ➔</span>
+                                                        </div>
+                                                    );
+                                                }
+                                                
+                                                return unlockedBadges.map((badge: any) => {
+                                                    const isUnlocked = badge.status === 'UNLOCKED';
+                                                    
+                                                    return (
+                                                        <div 
+                                                            key={badge.badgeId} 
+                                                            onClick={() => setActiveTab('badges')}
+                                                            className="w-[105px] shrink-0 border border-[#EAEAEA] rounded-[22px] p-3 flex flex-col items-center text-center transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_12px_24px_rgba(0,0,0,0.05)] bg-gradient-to-b from-white to-[#FAFAFA]"
+                                                            title={badge.description}
+                                                        >
+                                                            <div className="w-16 h-16 rounded-[14px] overflow-hidden bg-[#FAF9F6] border border-[#EFECE6] relative flex items-center justify-center mb-2 select-none shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.01)]">
+                                                                <img 
+                                                                    src={getBadgeImage(badge.badgeId)} 
+                                                                    alt={badge.badgeName} 
+                                                                    className="w-full h-full object-cover transition-all duration-300 ease-out group-hover:scale-108 group-hover:-translate-y-0.5" 
+                                                                    style={{
+                                                                        mixBlendMode: 'multiply'
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <p className="font-extrabold text-[11.5px] truncate w-full leading-tight text-[#191F28]">
+                                                                {badge.badgeName}
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )
+                    )}
+
+                    {/* 1-2. 내 뱃지 업적 상세 서브 페이지 */}
+                    {activeTab === 'badges' && (
+                        <MyPageBadgeAchievementView
+                            dashboardData={dashboardData}
+                            scrapsData={scrapsData}
+                            onBack={() => setActiveTab('dashboard')}
+                            onViewChange={onViewChange}
+                            equippedTitle={equippedTitle}
+                            onEquip={handleEquipChange}
+                        />
                     )}
 
                     {/* 2. 일반 설정 탭 내용 */}
