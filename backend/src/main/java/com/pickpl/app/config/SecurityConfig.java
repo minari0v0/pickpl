@@ -76,11 +76,26 @@ public class SecurityConfig {
                                 errMsg = exception.getMessage();
                             }
                             
+                            String clientUrl = "http://localhost:3000";
+                            String origin = request.getHeader("Origin");
+                            String referer = request.getHeader("Referer");
+                            if (origin != null && !origin.isBlank()) {
+                                clientUrl = origin;
+                            } else if (referer != null && !referer.isBlank()) {
+                                try {
+                                    java.net.URI uri = new java.net.URI(referer);
+                                    clientUrl = uri.getScheme() + "://" + uri.getAuthority();
+                                } catch (Exception e) {}
+                            }
+                            if (!clientUrl.contains("localhost") && !clientUrl.contains("127.0.0.1") && !clientUrl.contains("172.30.1.")) {
+                                clientUrl = "http://localhost:3000";
+                            }
+
                             if (session != null && session.getAttribute("link_user_id") != null) {
                                 session.removeAttribute("link_user_id");
-                                response.sendRedirect("http://localhost:3000/?linkError=" + java.net.URLEncoder.encode(errMsg, "UTF-8"));
+                                response.sendRedirect(clientUrl + "/?linkError=" + java.net.URLEncoder.encode(errMsg, "UTF-8"));
                             } else {
-                                response.sendRedirect("http://localhost:3000/login?error=" + java.net.URLEncoder.encode(errMsg, "UTF-8"));
+                                response.sendRedirect(clientUrl + "/login?error=" + java.net.URLEncoder.encode(errMsg, "UTF-8"));
                             }
                         })
                 );

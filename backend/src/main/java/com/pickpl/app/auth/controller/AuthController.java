@@ -241,7 +241,21 @@ public class AuthController {
             jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
         
         if (token == null || token.isBlank() || !jwtTokenProvider.validateToken(token)) {
-            response.sendRedirect("http://localhost:3000/mypage?linkError=" + java.net.URLEncoder.encode("인증 토큰이 올바르지 않습니다.", "UTF-8"));
+            String clientUrl = "http://localhost:3000";
+            String origin = request.getHeader("Origin");
+            String referer = request.getHeader("Referer");
+            if (origin != null && !origin.isBlank()) {
+                clientUrl = origin;
+            } else if (referer != null && !referer.isBlank()) {
+                try {
+                    java.net.URI uri = new java.net.URI(referer);
+                    clientUrl = uri.getScheme() + "://" + uri.getAuthority();
+                } catch (Exception e) {}
+            }
+            if (!clientUrl.contains("localhost") && !clientUrl.contains("127.0.0.1") && !clientUrl.contains("172.30.1.")) {
+                clientUrl = "http://localhost:3000";
+            }
+            response.sendRedirect(clientUrl + "/mypage?linkError=" + java.net.URLEncoder.encode("인증 토큰이 올바르지 않습니다.", "UTF-8"));
             return;
         }
         org.springframework.security.core.Authentication authentication = jwtTokenProvider.getAuthentication(token);

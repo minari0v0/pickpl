@@ -54,7 +54,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             // 로그인 기기 세션 기록
             recordUserSession(request, user, refreshToken);
 
-            String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/")
+            String baseClientUrl = determineTargetBaseUrl(request);
+            String targetUrl = UriComponentsBuilder.fromUriString(baseClientUrl + "/")
                     .queryParam("linkSuccess", "true")
                     .queryParam("provider", provider)
                     .queryParam("accessToken", accessToken)
@@ -82,15 +83,16 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         // 로그인 기기 세션 기록
         recordUserSession(request, user, refreshToken);
 
+        String baseClientUrl = determineTargetBaseUrl(request);
         String targetUrl;
 
         if (user.getRole() == Role.GUEST) {
-            targetUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/oauth-signup")
+            targetUrl = UriComponentsBuilder.fromUriString(baseClientUrl + "/oauth-signup")
                     .queryParam("accessToken", accessToken)
                     .queryParam("refreshToken", refreshToken)
                     .build().toUriString();
         } else {
-            targetUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/auth-success")
+            targetUrl = UriComponentsBuilder.fromUriString(baseClientUrl + "/auth-success")
                     .queryParam("accessToken", accessToken)
                     .queryParam("refreshToken", refreshToken)
                     .queryParam("nickname", user.getNickname())
@@ -165,5 +167,27 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private String getIpLocation(String ip) {
         return "Seoul";
+    }
+
+    private String determineTargetBaseUrl(HttpServletRequest request) {
+        String referer = request.getHeader("Referer");
+        String origin = request.getHeader("Origin");
+        
+        String clientUrl = "http://localhost:3000";
+        
+        if (origin != null && !origin.isBlank()) {
+            clientUrl = origin;
+        } else if (referer != null && !referer.isBlank()) {
+            try {
+                java.net.URI uri = new java.net.URI(referer);
+                clientUrl = uri.getScheme() + "://" + uri.getAuthority();
+            } catch (Exception e) {}
+        }
+        
+        if (clientUrl.contains("localhost") || clientUrl.contains("127.0.0.1") || clientUrl.contains("172.30.1.")) {
+            return clientUrl;
+        }
+        
+        return "http://localhost:3000";
     }
 }

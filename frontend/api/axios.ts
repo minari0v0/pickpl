@@ -1,8 +1,16 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+const getBaseURL = () => {
+  if (typeof window !== 'undefined') {
+    const { hostname } = window.location;
+    return `http://${hostname}:8080/api/v1`;
+  }
+  return 'http://localhost:8080/api/v1';
+};
+
 const instance = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -72,7 +80,7 @@ instance.interceptors.response.use(
 
       try {
         // 토큰 갱신 API 호출
-        const response = await axios.post('http://localhost:8080/api/v1/auth/reissue', {
+        const response = await axios.post(`${getBaseURL()}/auth/reissue`, {
           accessToken,
           refreshToken
         });

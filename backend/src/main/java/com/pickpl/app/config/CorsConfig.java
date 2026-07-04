@@ -20,7 +20,10 @@ public class CorsConfig {
         
         configuration.setAllowedOrigins(java.util.Arrays.asList(
                 "http://localhost:3000",
-                "http://localhost:3001"
+                "http://localhost:3001",
+                "http://172.30.1.32:3000",
+                "http://172.30.1.32:3001",
+                "http://172.30.1.32"
         ));
         configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.Arrays.asList("*"));
