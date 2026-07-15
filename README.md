@@ -47,7 +47,7 @@
 | **Frontend** | Next.js, React, Tailwind CSS 4, Zustand, Axios, TypeScript | - 모바일 중심 반응형 룩북 피드 및 직관적인 다중 태그 탐색 UI 제공<br>- Zustand 기반 상태 관리 및 하이브리드 캐싱 최적화 |
 | **Backend** | Spring Boot 4.0.6, Java 25, Spring Security, JPA, Gradle | - JWT 기반 무상태 보안 및 간편 OAuth2 소셜 로그인 구현<br>- 실시간 분위기 투표 및 컬렉션/스크랩 기능 비즈니스 API 설계 |
 | **Database & Cache** | MySQL 8.0.35, Redis 7.x, Docker Compose | - Docker 환경의 다중 데이터 스토리지 구성 및 격리된 인프라 구축<br>- Redis 캐싱 기반 태그 검색 및 세션 최적화 |
-| **Data Pipeline** | Python, Playwright, Gemini API, Tkinter GUI | - Playwright 자동화 엔진 기반 네이버 플레이스 정보 우회 수집<br>- Gemini 멀티모달(이미지/텍스트) 기반 무드 분석 및 자동 태깅<br>- Tkinter 기반 수집 현황 모니터링 GUI 대시보드 구축 |
+| **Data Pipeline** | Python, Playwright, Gemini API, Tkinter GUI | - Playwright 엔진 기반의 공간 정보 데이터 수집 및 정합성 검증<br>- Gemini 멀티모달(이미지/텍스트) 기반 무드 분석 및 자동 태깅<br>- Tkinter 기반 수집 현황 모니터링 GUI 대시보드 구축 |
 
 ---
 
@@ -95,7 +95,7 @@ graph TD
   - Docker Compose를 활용해 Spring Boot, MySQL, Redis 서버를 완전히 격리된 단일 네트워크에서 안전하게 구동하고 있어요.
   - Redis 메모리 캐싱과 토큰 인증을 활용해 API 성능을 한층 더 끌어올렸습니다.
 * **Data Pipeline (Python & Gemini API)**
-  - 독립된 **Playwright 기반 Python 크롤러**가 네이버 지도의 공간 사진과 리뷰 데이터를 수집해요. 오직 네이버 지도로 단일화하고 Playwright를 통한 모바일 페이지 우회 자동화로 수집 과정의 안정성을 크게 높였습니다.
+  - 독립된 **Playwright 기반 Python 수집 모듈**이 네이버 지도의 공간 사진과 리뷰 데이터를 수집해요. 오직 네이버 지도로 단일화하고 Playwright를 통한 모바일 웹 브라우저 컨텍스트 최적화로 수집 과정의 안정성을 크게 높였습니다.
   - 크롤링과 AI 분석을 2단계로 완전히 분리했어요. 덕분에 API 429 제한(Quota)이 발생해도 멈추지 않고, 이어서 수집(Resume)하고 백필(Backfill)할 수 있습니다.
   - 가공이 끝난 데이터셋은 백엔드의 `/api/v1/places/batch` API를 통해 안전하게 일괄 등록됩니다.
 
@@ -139,7 +139,7 @@ flowchart TD
 
 ## 📁 프로젝트 구조
 
-본 프로젝트는 프론트엔드와 백엔드, 그리고 수집 파이프라인이 유기적으로 연결된 **모노레포(Monorepo)** 형태로 구성되어 있습니다.
+프론트엔드와 백엔드, 그리고 데이터 파이프라인이 유기적으로 연결된 **모노레포(Monorepo)** 형태로 구성되어 있어요. 각 레이어는 느슨하게 결합되어 있어 데이터 수집/가공과 서비스 제공이 완벽하게 분리되어 안정적으로 동작합니다.
 
 ### 🗺️ 전체 디렉토리 오버뷰
 ```text
@@ -153,7 +153,7 @@ pickpl/ (Root Directory)
 
 <br />
 
-> **💡 아래의 각 레이어 영역을 클릭하면 상세 디렉토리 구조를 확인할 수 있습니다!**
+> **💡 아래의 각 레이어 영역을 클릭하면 상세 디렉토리 구조를 확인할 수 있어요!**
 
 <details>
 <summary><b>🎨 Frontend (Next.js & Tailwind CSS 4) 구조 보기</b></summary>
@@ -200,7 +200,7 @@ backend/
 
 ```text
 data-pipeline/
-├── scraper/              # 1단계: 네이버 플레이스 모바일 우회 크롤러 (Playwright)
+├── scraper/              # 1단계: 네이버 플레이스 모바일 페이지 기반 데이터 수집기 (Playwright)
 ├── analyzer/             # 2단계: Gemini AI 구조화 감성/카테고리 분석기
 ├── loader/               # 3단계: 가공 데이터 백엔드 DB 벌크 로더
 ├── raw_data/             # 크롤링 생데이터 및 AI 분석 JSON 결과 저장소
