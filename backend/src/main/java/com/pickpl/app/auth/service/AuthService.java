@@ -293,7 +293,7 @@ public class AuthService {
                     "    <div style=\"max-width: 600px; margin: 0 auto; padding: 40px 20px;\">\n" +
                     "        <!-- 상단 로고 영역 -->\n" +
                     "        <div style=\"background-color: #FFF0EB; padding: 24px; text-align: center; border-radius: 24px 24px 0 0; border: 1px solid #FFE3DA; border-bottom: none;\">\n" +
-                    "            <img src=\"cid:logo\" alt=\"PickPl Logo\" style=\"height: 80px; object-fit: contain;\" />\n" +
+                    "            <img src=\"http://localhost:8080/images/pickpl_main_logo.png\" alt=\"PickPl Logo\" style=\"height: 80px; object-fit: contain;\" />\n" +
                     "        </div>\n" +
                     "        \n" +
                     "        <!-- 본문 카드 영역 -->\n" +
@@ -339,12 +339,8 @@ public class AuthService {
             
             helper.setText(htmlContent, true);
             
-            ClassPathResource logoResource = new ClassPathResource("static/images/pickpl_main_logo.png");
-            if (logoResource.exists()) {
-                helper.addInline("logo", logoResource);
-            } else {
-                System.out.println("[Warning] pickpl_main_logo.png 리소스가 존재하지 않아 인라인 이미지를 추가하지 못했습니다.");
-            }
+            // 인라인 대신 퍼블릭 CDN 절대 주소 사용하므로 파일 첨부 생략
+
             
             mailSender.send(message);
             System.out.println("[SMTP Success] 이메일 발송 성공: " + email);
