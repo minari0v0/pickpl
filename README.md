@@ -4,6 +4,8 @@
 
 <br />
 
+![픽플로고](https://minari0v0.github.io/images/projects/pickpl/pickpl_main_logo.png)
+
 <div align="center">
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.2.6-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
