@@ -4,7 +4,7 @@
 
 <br />
 
-![픽플로고](https://minari0v0.github.io/images/projects/pickpl/pickpl_main_logo.png)
+<img src="https://minari0v0.github.io/images/projects/pickpl/pickpl_main_logo.png" alt="픽플로고" width="300">
 
 <div align="center">
 
