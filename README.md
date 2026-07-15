@@ -4,7 +4,9 @@
 
 <br />
 
-<img src="https://minari0v0.github.io/images/projects/pickpl/pickpl_main_logo.png" alt="픽플로고" width="300">
+<p align="center">
+  <img src="https://minari0v0.github.io/images/projects/pickpl/pickpl_main_logo.png" alt="픽플로고" width="700">
+</p>
 
 <div align="center">
 
