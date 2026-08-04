@@ -2,5 +2,9 @@
 venv/
 __pycache__/
 *.pyc
-raw_data/
+raw_data/*
+!raw_data/analyzed_places_2026-06-21.json
+!raw_data/analyzed_places_2026-06-25.json
+!raw_data/analyzed_places_2026-06-28.json
+!raw_data/analyzed_places_2026-07-12.json
 .env
